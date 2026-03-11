@@ -6,33 +6,60 @@
 const { Pool } = require('pg');
 
 class PostgresAdapter {
-    constructor(connectionString) {
+    constructor(connectionString, schemaName = 'public') {
+        this.schemaName = schemaName;
         this.pool = new Pool({
             connectionString,
             max: 20,
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 5000
         });
+
+        // Set search_path for all clients in the pool
+        if (this.schemaName && this.schemaName !== 'public') {
+            this.pool.on('connect', client => {
+                client.query(`SET search_path TO ${this.schemaName}, public`).catch(err => {
+                    console.error(`[Postgres] Failed to set search_path for schema ${this.schemaName}:`, err.message);
+                });
+            });
+        }
+
         this.type = 'postgres';
     }
 
     async init(schemaSql) {
-        // PostgreSQL uses $1, $2 etc. but our schema uses standard SQL
-        // Convert SQLite-specific syntax to PostgreSQL
-        let pgSchema = schemaSql
-            // SQLite uses (CURRENT_TIMESTAMP) with parens for DEFAULT
-            .replace(/DEFAULT \(CURRENT_TIMESTAMP\)/g, "DEFAULT NOW()")
-            // INTEGER for booleans is fine in PostgreSQL too
-            // TEXT is compatible
-            // CREATE INDEX IF NOT EXISTS is supported
-            ;
-
         const client = await this.pool.connect();
         try {
+            // Ensure schema exists if isolated
+            if (this.schemaName && this.schemaName !== 'public') {
+                await client.query(`CREATE SCHEMA IF NOT EXISTS ${this.schemaName};`);
+                await client.query(`SET search_path TO ${this.schemaName}, public;`);
+            }
+
+            // SQLite uses (CURRENT_TIMESTAMP) with parens for DEFAULT
+            // Convert SQLite-specific syntax to PostgreSQL
+            let pgSchema = schemaSql
+                .replace(/DEFAULT \(CURRENT_TIMESTAMP\)/g, "DEFAULT NOW()")
+                .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, "SERIAL PRIMARY KEY")
+                .replace(/AUTOINCREMENT/gi, "") // Handle any stray AUTOINCREMENT
+                ;
+
             // Split and execute each statement
             const statements = pgSchema.split(';').filter(s => s.trim());
             for (const stmt of statements) {
-                await client.query(stmt.trim() + ';');
+                let sql = stmt.trim();
+                let isInsertIgnore = false;
+
+                if (sql.toUpperCase().startsWith('INSERT OR IGNORE INTO')) {
+                    sql = sql.replace(/INSERT OR IGNORE INTO/i, 'INSERT INTO');
+                    isInsertIgnore = true;
+                }
+
+                if (isInsertIgnore) {
+                    await client.query(sql + ' ON CONFLICT DO NOTHING;');
+                } else {
+                    await client.query(sql + ';');
+                }
             }
         } finally {
             client.release();

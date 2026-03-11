@@ -22,7 +22,7 @@ function createAdapter(opts = {}) {
         if (!opts.connectionString) {
             throw new Error('connectionString is required for PostgreSQL adapter');
         }
-        return new PostgresAdapter(opts.connectionString);
+        return new PostgresAdapter(opts.connectionString, opts.name);
     }
 
     const SQLiteAdapter = require('./sqlite');
