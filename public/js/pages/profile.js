@@ -206,7 +206,7 @@ const ProfilePage = {
 
     try {
       container.innerHTML = '';
-      var settings = Object.assign({ animation: 'walking', speed: 1, autoRotate: true, zoom: 0.9, autoRotateSpeed: 1 }, prefs || {});
+      var settings = Object.assign({ animation: 'walking', speed: 1, autoRotate: true, zoom: 0.8, autoRotateSpeed: 1 }, prefs || {});
 
       // Create a canvas element for the renderer
       var canvas = document.createElement('canvas');
@@ -217,7 +217,7 @@ const ProfilePage = {
         width: container.clientWidth || 160,
         height: container.clientHeight || 240,
         skin: 'https://mc-heads.net/skin/' + uuid,
-        zoom: settings.zoom || 0.9,
+        zoom: settings.zoom || 0.8,
         animation: ProfilePage._createAnimation(settings.animation, settings.speed)
       });
 
@@ -254,7 +254,7 @@ const ProfilePage = {
     if (!modal || !profile.minecraft_uuid) return;
     modal.classList.remove('hidden');
 
-    var currentPrefs = Object.assign({ animation: 'walking', speed: 1, autoRotate: true, zoom: 0.9, autoRotateSpeed: 1 }, profile.skin_animation || {});
+    var currentPrefs = Object.assign({ animation: 'walking', speed: 1, autoRotate: true, zoom: 0.8, autoRotateSpeed: 1 }, profile.skin_animation || {});
 
     // Build animation options dropdown
     var animOptions = '';
@@ -382,7 +382,7 @@ const ProfilePage = {
         width: 180,
         height: 260,
         skin: 'https://mc-heads.net/skin/' + uuid,
-        zoom: prefs.zoom || 0.9,
+        zoom: prefs.zoom || 0.8,
         animation: ProfilePage._createAnimation(prefs.animation, prefs.speed)
       });
 
