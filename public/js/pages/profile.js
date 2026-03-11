@@ -104,7 +104,7 @@ const ProfilePage = {
         setTimeout(function () {
           if (!window.skin3d) {
             var script = document.createElement('script');
-            script.src = '/ext/minecraft/lib/skin3d.umd.js';
+            script.src = '/node_modules/skin3d/dist/skin3d.umd.js';
             script.onload = function () { ProfilePage.initSkinViewer(profile.minecraft_uuid); };
             document.head.appendChild(script);
           } else {

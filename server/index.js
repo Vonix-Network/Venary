@@ -100,6 +100,9 @@ async function start() {
         // Deploy Discord commands (including those registered by extensions)
         await discordBot.deployCommands();
 
+        // Serve node modules (for UI libraries like skin3d)
+        app.use('/node_modules', express.static(path.join(__dirname, '..', 'node_modules')));
+
         // Serve static files
         app.use(express.static(path.join(__dirname, '..', 'public')));
 
