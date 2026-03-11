@@ -1,0 +1,35 @@
+{
+    "id": "forum",
+    "name": "Forum",
+    "version": "1.0.0",
+    "description": "Full-featured forum with categories, threads, and replies. Supports pinning, locking, and moderation.",
+    "author": "Venary",
+    "enabled": true,
+    "nav": [
+        {
+            "label": "Forum",
+            "icon": "message-square",
+            "route": "/forum",
+            "position": 3
+        }
+    ],
+    "routes": {
+        "prefix": "/api/ext/forum",
+        "file": "server/routes.js"
+    },
+    "pages": [
+        {
+            "route": "/forum",
+            "file": "public/pages/forum.js",
+            "global": "ForumPage"
+        }
+    ],
+    "css": [
+        "public/css/forum.css"
+    ],
+    "data": [
+        "forum_categories",
+        "forum_threads",
+        "forum_posts"
+    ]
+}

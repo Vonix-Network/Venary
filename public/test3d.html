@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/skin3d@latest/bundles/skin3d.umd.js"></script>
+</head>
+
+<body>
+    <div id="c" style="width: 200px; height: 300px;"></div>
+    <script>
+        console.log("skin3d object:", window.skin3d);
+        try {
+            const viewer = new window.skin3d.Render({
+                canvas: document.createElement('canvas'),
+                width: 200,
+                height: 300,
+                skin: 'https://minotar.net/skin/Notch'
+            });
+            document.getElementById('c').appendChild(viewer.canvas);
+            viewer.animation = new window.skin3d.WalkingAnimation();
+            viewer.autoRotate = true;
+            console.log("Render created!");
+        } catch (e) {
+            console.error("Error creating render:", e);
+        }
+    </script>
+</body>
+
+</html>

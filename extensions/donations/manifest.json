@@ -1,0 +1,41 @@
+{
+    "id": "donations",
+    "name": "Donations & Ranks",
+    "version": "1.0.0",
+    "description": "Stripe-powered donation system with tiered ranks, Discord webhook notifications, and in-game rank synchronization.",
+    "author": "Venary",
+    "enabled": true,
+    "nav": [
+        {
+            "label": "Donate",
+            "icon": "heart",
+            "route": "/donate",
+            "position": 3
+        }
+    ],
+    "routes": {
+        "prefix": "/api/ext/donations",
+        "file": "server/routes.js"
+    },
+    "admin_route": "/donations-admin",
+    "pages": [
+        {
+            "route": "/donate",
+            "file": "public/pages/donations.js",
+            "global": "DonationsPage"
+        },
+        {
+            "route": "/donations-admin",
+            "file": "public/pages/donations-admin.js",
+            "global": "DonationsAdminPage"
+        }
+    ],
+    "css": [
+        "public/css/donations.css"
+    ],
+    "data": [
+        "donation_ranks",
+        "donations",
+        "user_ranks"
+    ]
+}

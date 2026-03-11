@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venary — Setup Wizard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-deep: #04060c;
+            --bg-card: rgba(10, 14, 26, 0.7);
+            --text-primary: #e8eaf6;
+            --text-secondary: rgba(232, 234, 246, 0.7);
+            --text-muted: rgba(232, 234, 246, 0.4);
+            --neon-cyan: #29b6f6;
+            --neon-purple: #b026ff;
+            --neon-pink: #ff2d78;
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-accent: rgba(41, 182, 246, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 30%, rgba(41, 182, 246, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 70% 50% at 80% 70%, rgba(176, 38, 255, 0.06) 0%, transparent 60%);
+            animation: bgPulse 8s ease-in-out infinite alternate;
+            z-index: 0;
+        }
+
+        @keyframes bgPulse {
+            0% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .setup-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 580px;
+            padding: 20px;
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .setup-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .setup-logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .setup-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .setup-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 20px;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 28px;
+        }
+
+        .step-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--border-subtle);
+            transition: all 0.3s;
+        }
+
+        .step-dot.active {
+            background: var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(41, 182, 246, 0.5);
+        }
+
+        .step-dot.done {
+            background: rgba(41, 182, 246, 0.4);
+        }
+
+        .step-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: var(--neon-cyan);
+        }
+
+        .step-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(10, 12, 20, 0.65);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--border-accent);
+            box-shadow: 0 0 0 3px rgba(41, 182, 246, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-group select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23666' stroke-width='2'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+
+        .form-group select option {
+            background: #0a0e1a;
+            color: var(--text-primary);
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .db-test-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .db-test-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 24px rgba(41, 182, 246, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .btn-test {
+            padding: 12px 20px;
+            white-space: nowrap;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-row .btn {
+            flex: 1;
+        }
+
+        .status-msg {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .status-msg.success {
+            display: block;
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #81c784;
+        }
+
+        .status-msg.error {
+            display: block;
+            background: rgba(244, 67, 54, 0.15);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            color: #ef9a9a;
+        }
+
+        .pg-fields {
+            display: none;
+        }
+
+        .pg-fields.visible {
+            display: block;
+        }
+
+        /* Step visibility */
+        .setup-step {
+            display: none;
+        }
+
+        .setup-step.active {
+            display: block;
+        }
+
+        /* Success animation */
+        .setup-success {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(41, 182, 246, 0.2), rgba(176, 38, 255, 0.2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            animation: successPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes successPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(41, 182, 246, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 0 16px rgba(41, 182, 246, 0);
+            }
+        }
+
+        .success-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .success-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .loading-spinner-btn {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="setup-container">
+        <div class="setup-header">
+            <div class="setup-logo">
+                <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
+                    <path d="M16 2L28 9V23L16 30L4 23V9L16 2Z" stroke="url(#sg)" stroke-width="2" fill="none" />
+                    <path d="M16 6L24 10.5V21.5L16 26L8 21.5V10.5L16 6Z" fill="url(#sg)" opacity="0.3" />
+                    <defs>
+                        <linearGradient id="sg" x1="4" y1="2" x2="28" y2="30">
+                            <stop stop-color="#00f0ff" />
+                            <stop offset="1" stop-color="#b026ff" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>VENARY</h1>
+            </div>
+            <p>First-time setup — let's get your platform ready</p>
+        </div>
+
+        <div class="setup-card">
+            <div class="step-indicator">
+                <div class="step-dot active" id="dot-0"></div>
+                <div class="step-dot" id="dot-1"></div>
+                <div class="step-dot" id="dot-2"></div>
+            </div>
+
+            <!-- Step 1: Platform Config -->
+            <div class="setup-step active" id="step-0">
+                <div class="step-title">Platform Configuration</div>
+                <div class="step-desc">Choose your site name and database backend.</div>
+
+                <div class="form-group">
+                    <label for="site-name">Site Name</label>
+                    <input type="text" id="site-name" value="Venary" placeholder="My Gaming Platform">
+                </div>
+
+                <div class="form-group">
+                    <label for="db-type">Database Engine</label>
+                    <select id="db-type">
+                        <option value="sqlite">SQLite (Recommended for getting started)</option>
+                        <option value="postgres">PostgreSQL (Recommended for production)</option>
+                    </select>
+                </div>
+
+                <div class="pg-fields" id="pg-fields">
+                    <div class="form-group">
+                        <label for="db-url">PostgreSQL Connection URL</label>
+                        <input type="text" id="db-url" placeholder="postgres://user:pass@localhost:5432/venary">
+                        <div class="form-hint">Example: postgres://venary:password@localhost:5432/venary</div>
+                    </div>
+                    <button class="btn btn-secondary btn-test" id="btn-test-db" onclick="testConnection()">Test
+                        Connection</button>
+                    <div class="status-msg" id="db-test-status"></div>
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="nextStep()">Continue</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Admin Account -->
+            <div class="setup-step" id="step-1">
+                <div class="step-title">Admin Account</div>
+                <div class="step-desc">Create the administrator account for your platform.</div>
+
+                <div class="form-group">
+                    <label for="admin-username">Username</label>
+                    <input type="text" id="admin-username" placeholder="admin" minlength="3" maxlength="20">
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-email">Email Address</label>
+                    <input type="email" id="admin-email" placeholder="admin@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-display">Display Name</label>
+                    <input type="text" id="admin-display" placeholder="Platform Admin">
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password" placeholder="••••••••" minlength="6">
+                    <div class="form-hint">Must be at least 6 characters.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-password-confirm">Confirm Password</label>
+                    <input type="password" id="admin-password-confirm" placeholder="••••••••">
+                </div>
+
+                <div class="status-msg" id="admin-error"></div>
+
+                <div class="btn-row">
+                    <button class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button class="btn btn-primary" onclick="nextStep()">Continue</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Review & Confirm -->
+            <div class="setup-step" id="step-2">
+                <div class="step-title">Review & Launch</div>
+                <div class="step-desc">Confirm your settings and launch the platform.</div>
+
+                <div id="review-summary" style="margin-bottom: 20px;"></div>
+
+                <div class="status-msg" id="setup-error"></div>
+
+                <div class="btn-row">
+                    <button class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button class="btn btn-primary" id="btn-finish" onclick="finishSetup()">Launch Platform</button>
+                </div>
+            </div>
+
+            <!-- Success -->
+            <div class="setup-step" id="step-success">
+                <div class="setup-success">
+                    <div class="success-icon">🚀</div>
+                    <div class="success-title">Setup Complete!</div>
+                    <div class="success-desc">Your platform is being initialized. The page will reload momentarily...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        const totalSteps = 3;
+
+        function updateDots() {
+            for (let i = 0; i < totalSteps; i++) {
+                const dot = document.getElementById('dot-' + i);
+                dot.className = 'step-dot';
+                if (i < currentStep) dot.classList.add('done');
+                if (i === currentStep) dot.classList.add('active');
+            }
+        }
+
+        function showStep(idx) {
+            document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
+            const target = idx === 'success' ? 'step-success' : 'step-' + idx;
+            document.getElementById(target).classList.add('active');
+            currentStep = typeof idx === 'number' ? idx : currentStep;
+            updateDots();
+        }
+
+        function nextStep() {
+            if (currentStep === 0) {
+                // Validate DB
+                const dbType = document.getElementById('db-type').value;
+                if (dbType === 'postgres') {
+                    const url = document.getElementById('db-url').value.trim();
+                    if (!url) {
+                        showError('db-test-status', 'Please enter a PostgreSQL connection URL');
+                        return;
+                    }
+                }
+            }
+
+            if (currentStep === 1) {
+                // Validate admin
+                const username = document.getElementById('admin-username').value.trim();
+                const email = document.getElementById('admin-email').value.trim();
+                const password = document.getElementById('admin-password').value;
+                const confirm = document.getElementById('admin-password-confirm').value;
+
+                if (!username || username.length < 3) {
+                    showError('admin-error', 'Username must be at least 3 characters');
+                    return;
+                }
+                if (!email || !email.includes('@')) {
+                    showError('admin-error', 'Please enter a valid email address');
+                    return;
+                }
+                if (!password || password.length < 6) {
+                    showError('admin-error', 'Password must be at least 6 characters');
+                    return;
+                }
+                if (password !== confirm) {
+                    showError('admin-error', 'Passwords do not match');
+                    return;
+                }
+                hideError('admin-error');
+
+                // Build review summary
+                buildReview();
+            }
+
+            showStep(currentStep + 1);
+        }
+
+        function prevStep() {
+            if (currentStep > 0) showStep(currentStep - 1);
+        }
+
+        function buildReview() {
+            const siteName = document.getElementById('site-name').value || 'Venary';
+            const dbType = document.getElementById('db-type').value;
+            const username = document.getElementById('admin-username').value;
+            const email = document.getElementById('admin-email').value;
+
+            document.getElementById('review-summary').innerHTML = `
+        <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 16px; font-size: 0.85rem; line-height: 2;">
+          <div><span style="color: var(--text-muted);">Site Name:</span> <strong>${escapeHtml(siteName)}</strong></div>
+          <div><span style="color: var(--text-muted);">Database:</span> <strong>${dbType === 'postgres' ? 'PostgreSQL' : 'SQLite'}</strong></div>
+          <div style="border-top: 1px solid var(--border-subtle); margin: 8px 0;"></div>
+          <div><span style="color: var(--text-muted);">Admin User:</span> <strong>${escapeHtml(username)}</strong></div>
+          <div><span style="color: var(--text-muted);">Admin Email:</span> <strong>${escapeHtml(email)}</strong></div>
+        </div>
+      `;
+        }
+
+        // DB type toggle
+        document.getElementById('db-type').addEventListener('change', function () {
+            const pg = document.getElementById('pg-fields');
+            pg.classList.toggle('visible', this.value === 'postgres');
+        });
+
+        async function testConnection() {
+            const btn = document.getElementById('btn-test-db');
+            const status = document.getElementById('db-test-status');
+            const dbType = document.getElementById('db-type').value;
+            const dbUrl = document.getElementById('db-url').value.trim();
+
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            try {
+                const res = await fetch('/api/setup/test-db', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dbType, dbConnectionString: dbUrl })
+                });
+                const data = await res.json();
+                status.className = 'status-msg ' + (data.success ? 'success' : 'error');
+                status.textContent = data.message;
+                status.style.display = 'block';
+            } catch (err) {
+                showError('db-test-status', 'Connection test failed: ' + err.message);
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Test Connection';
+        }
+
+        async function finishSetup() {
+            const btn = document.getElementById('btn-finish');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner-btn"></span>Setting Up...';
+
+            const payload = {
+                siteName: document.getElementById('site-name').value.trim() || 'Venary',
+                dbType: document.getElementById('db-type').value,
+                dbConnectionString: document.getElementById('db-url').value.trim() || undefined,
+                adminUsername: document.getElementById('admin-username').value.trim(),
+                adminEmail: document.getElementById('admin-email').value.trim(),
+                adminDisplayName: document.getElementById('admin-display').value.trim() || undefined,
+                adminPassword: document.getElementById('admin-password').value
+            };
+
+            try {
+                const res = await fetch('/api/setup/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showError('setup-error', data.error || 'Setup failed');
+                    btn.disabled = false;
+                    btn.textContent = 'Launch Platform';
+                    return;
+                }
+
+                // Show success and reload
+                showStep('success');
+                setTimeout(() => { window.location.href = '/'; }, 3000);
+            } catch (err) {
+                showError('setup-error', 'Setup failed: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Launch Platform';
+            }
+        }
+
+        function showError(id, msg) {
+            const el = document.getElementById(id);
+            el.className = 'status-msg error';
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function hideError(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

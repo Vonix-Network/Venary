@@ -1,0 +1,44 @@
+{
+    "id": "minecraft",
+    "name": "Minecraft",
+    "version": "1.0.0",
+    "description": "Full Minecraft integration — server list, pinging, downtime detection, leaderboards, account linking, and 3D skin viewer.",
+    "author": "Venary",
+    "enabled": true,
+    "nav": [
+        {
+            "label": "Minecraft",
+            "icon": "server",
+            "route": "/servers",
+            "position": 2
+        }
+    ],
+    "routes": {
+        "prefix": "/api/ext/minecraft",
+        "file": "server/routes.js"
+    },
+    "admin_route": "/minecraft-admin",
+    "pages": [
+        {
+            "route": "/servers",
+            "file": "public/pages/minecraft.js",
+            "global": "MinecraftPage"
+        },
+        {
+            "route": "/minecraft-admin",
+            "file": "public/pages/minecraft-admin.js",
+            "global": "MinecraftAdminPage"
+        }
+    ],
+    "css": [
+        "public/css/minecraft.css"
+    ],
+    "data": [
+        "mc_servers",
+        "linked_accounts",
+        "server_xp",
+        "mc_players",
+        "uptime_history",
+        "link_codes"
+    ]
+}

@@ -1,0 +1,170 @@
+/*
+ * Name: Vonix Network
+ * Description: The official dark, neon-glassmorphism theme mirroring vonix.network.
+ * Author: Antigravity
+ * Version: 1.0.0
+ */
+
+:root {
+    /* Color Palette - Premium Fluid & Glass */
+    --bg-primary: #070809;
+    --bg-secondary: #0A0C11;
+    --bg-tertiary: #0B0D11;
+    --bg-card: rgba(11, 13, 17, 0.45);
+    --bg-card-hover: rgba(15, 18, 23, 0.6);
+    --bg-glass: rgba(0, 0, 0, 0.5);
+    --bg-input: rgba(11, 13, 17, 0.7);
+
+    /* Modern Accents */
+    --neon-cyan: #00D9FF;
+    --neon-magenta: #8B5CF6;
+    --neon-pink: #EC4899;
+    --neon-green: #22c55e;
+    --neon-orange: #F97316;
+    --neon-yellow: #eab308;
+    --neon-blue: #3b82f6;
+
+    /* Gradient Combos */
+    --gradient-primary: linear-gradient(135deg, #00D9FF 0%, #3b82f6 25%, #8B5CF6 50%, #EC4899 75%, #F97316 100%);
+    --gradient-secondary: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+    --gradient-accent: linear-gradient(135deg, #00D9FF 0%, #8B5CF6 100%);
+    --gradient-warm: linear-gradient(135deg, #F97316 0%, #EC4899 100%);
+    --gradient-dark: linear-gradient(135deg, #070809 0%, #0B0D11 100%);
+
+    /* Text Colors */
+    --text-primary: #FAFAFA;
+    --text-secondary: #838BA1;
+    --text-muted: rgba(131, 139, 161, 0.7);
+    --text-highlight: #00D9FF;
+
+    /* Borders - Refined Glass Edge */
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-light: rgba(255, 255, 255, 0.15);
+    --border-accent: rgba(0, 217, 255, 0.4);
+
+    /* Shadows - Modern Soft Depth */
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.7);
+    --shadow-neon: 0 0 20px rgba(255, 255, 255, 0.3);
+    --shadow-neon-strong: 0 0 20px rgba(0, 217, 255, 0.3);
+
+    /* Border Radius */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+
+    /* Typography */
+    --font-display: 'Inter', -apple-system, sans-serif;
+    --font-body: 'Inter', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* ========== Vonix Specific Component Overrides ========== */
+
+body {
+    background: transparent !important;
+}
+
+/* Primary buttons get the signature pink-purple-orange gradient */
+.btn-primary {
+    background: linear-gradient(to right, #6366f1, #ec4899, #f43f5e) !important;
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.3) !important;
+    color: white !important;
+    border: none !important;
+    transition: all 0.3s ease !important;
+    border-radius: 9999px !important;
+    font-weight: 600 !important;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 0 30px rgba(236, 72, 153, 0.5) !important;
+    transform: translateY(-2px) !important;
+    opacity: 0.95;
+}
+
+/* Brand Text Override */
+.nav-brand {
+    font-size: 0;
+}
+
+.brand-text {
+    font-size: 0;
+    display: none;
+}
+
+.nav-brand::after {
+    content: "VONIX";
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    background: linear-gradient(90deg, #FAFAFA, #838BA1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Sidebar Navigation */
+.main-nav {
+    background: rgba(0, 0, 0, 0.2);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.active {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--neon-cyan);
+    box-shadow: none;
+    border-left: none;
+}
+
+.nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 60%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+/* Glassmorphism Cards */
+.card,
+.post-card,
+.stat-card,
+.rank-card {
+    background: rgba(11, 13, 17, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 16px !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.input-field {
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.input-field:focus {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.2);
+}
+
+/* Headings Typography tweak for tighter modern feel */
+h1,
+h2,
+h3 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+h1 {
+    letter-spacing: -0.04em;
+}

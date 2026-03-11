@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venary — Extension Development Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0a0e17;
+            --bg2: #111827;
+            --bg3: #1a2236;
+            --text: #e2e8f0;
+            --text2: #94a3b8;
+            --text3: #64748b;
+            --cyan: #00f0ff;
+            --magenta: #b026ff;
+            --green: #39ff14;
+            --pink: #ff6b9d;
+            --orange: #ff9640;
+            --border: rgba(255, 255, 255, 0.08);
+            --glow: rgba(0, 240, 255, 0.15);
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.7;
+        }
+
+        a {
+            color: var(--cyan);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: var(--magenta);
+        }
+
+        /* Layout */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 80px 24px 60px;
+            background: linear-gradient(180deg, rgba(0, 240, 255, 0.05) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, var(--cyan), var(--magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            color: var(--text2);
+            font-size: 1.1rem;
+            margin-top: 12px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero .badge-row {
+            margin-top: 24px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-cyan {
+            background: rgba(0, 240, 255, 0.12);
+            color: var(--cyan);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        .badge-magenta {
+            background: rgba(176, 38, 255, 0.12);
+            color: var(--magenta);
+            border: 1px solid rgba(176, 38, 255, 0.2);
+        }
+
+        .badge-green {
+            background: rgba(57, 255, 20, 0.12);
+            color: var(--green);
+            border: 1px solid rgba(57, 255, 20, 0.2);
+        }
+
+        /* Sections */
+        h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            letter-spacing: 1px;
+            color: var(--cyan);
+            margin: 48px 0 20px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+            color: var(--text);
+            margin: 28px 0 12px;
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text2);
+        }
+
+        ul,
+        ol {
+            margin-bottom: 16px;
+            padding-left: 24px;
+            color: var(--text2);
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        strong {
+            color: var(--text);
+        }
+
+        /* Code */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            background: var(--bg3);
+            padding: 2px 7px;
+            border-radius: 4px;
+            color: var(--cyan);
+        }
+
+        pre {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: var(--text);
+        }
+
+        .lang-label {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .card:hover {
+            border-color: rgba(0, 240, 255, 0.15);
+        }
+
+        .card h4 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            color: var(--text);
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .card p {
+            margin-bottom: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            font-size: 0.88rem;
+        }
+
+        th {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-align: left;
+            padding: 10px 16px;
+            color: var(--text3);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text2);
+        }
+
+        tr:hover td {
+            background: rgba(0, 240, 255, 0.02);
+        }
+
+        /* Alert */
+        .alert {
+            background: rgba(0, 240, 255, 0.06);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            border-left: 3px solid var(--cyan);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+            color: var(--text2);
+        }
+
+        .alert strong {
+            color: var(--cyan);
+        }
+
+        .alert-warn {
+            background: rgba(255, 150, 64, 0.06);
+            border-color: rgba(255, 150, 64, 0.15);
+            border-left-color: var(--orange);
+        }
+
+        .alert-warn strong {
+            color: var(--orange);
+        }
+
+        /* Nav */
+        .toc {
+            position: sticky;
+            top: 20px;
+        }
+
+        .toc a {
+            display: block;
+            padding: 6px 0;
+            font-size: 0.85rem;
+            color: var(--text3);
+        }
+
+        .toc a:hover {
+            color: var(--cyan);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 1.6rem;
+            }
+
+            .hero {
+                padding: 40px 16px 30px;
+            }
+
+            .container {
+                padding: 20px 16px 60px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="hero">
+        <h1>🧩 VENARY EXTENSIONS</h1>
+        <p>Build powerful, self-contained modules for the Venary gaming platform. No core code changes needed.</p>
+        <div class="badge-row">
+            <span class="badge badge-cyan">PHPBB-style Modules</span>
+            <span class="badge badge-magenta">Auto-Discovery</span>
+            <span class="badge badge-green">Hot-Loadable</span>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <h2>🏗️ Architecture Overview</h2>
+        <p>Venary uses a <strong>PHPBB-style extension system</strong> where each module is a self-contained folder
+            inside the <code>extensions/</code> directory. On server startup, the Extension Loader scans for
+            <code>manifest.json</code> files, validates them, and automatically mounts routes, serves static files, and
+            initializes data collections.</p>
+
+        <div class="alert">
+            <strong>Key Principle:</strong> Extensions are completely decoupled from core. They have their own backend
+            routes, frontend pages, CSS, and data — and can be enabled/disabled without any code changes.
+        </div>
+
+        <h2>📁 Extension Structure</h2>
+        <pre><code><span class="lang-label">Directory Layout</span>extensions/
+  my-extension/
+  ├── manifest.json         # Required: metadata + declarations
+  ├── server/
+  │   └── routes.js         # Express router (auto-mounted at /api/ext/&lt;id&gt;)
+  └── public/
+      ├── pages/
+      │   └── my-page.js    # Frontend page logic (defines a global object)
+      └── css/
+          └── my-style.css  # Extension styles (auto-injected)</code></pre>
+
+        <h2>📋 Manifest Reference</h2>
+        <p>The <code>manifest.json</code> is the heart of every extension. It declares everything the loader needs:</p>
+        <pre><code><span class="lang-label">manifest.json</span>{
+  "id": "my-extension",           // Must match folder name
+  "name": "My Extension",         // Display name
+  "version": "1.0.0",             // Semantic version
+  "description": "What it does",  // Shown in admin panel
+  "author": "Your Name",          // Author attribution
+  "enabled": true,                // Default enabled state
+
+  "nav": [                        // Sidebar navigation entries
+    {
+      "label": "My Page",         // Link text
+      "icon": "grid",             // Icon name (see icon list below)
+      "route": "/my-ext",         // Hash route (becomes #/my-ext)
+      "position": 5               // Sort order in nav
+    }
+  ],
+
+  "routes": {
+    "prefix": "/api/ext/my-extension",  // API prefix
+    "file": "server/routes.js"          // Path to Express router
+  },
+
+  "pages": [
+    {
+      "route": "/my-ext",               // Route this page handles
+      "file": "public/pages/my-page.js", // JS file path
+      "global": "MyExtPage"              // Global object name defined by the script
+    }
+  ],
+
+  "css": [
+    "public/css/my-style.css"            // Auto-injected stylesheet
+  ],
+
+  "data": [
+    "my_ext_items",                      // Data collection names (auto-created in DB)
+    "my_ext_settings"
+  ]
+}</code></pre>
+
+        <h3>Manifest Fields</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>id</code></td>
+                    <td>✅</td>
+                    <td>Unique identifier, must match directory name</td>
+                </tr>
+                <tr>
+                    <td><code>name</code></td>
+                    <td>✅</td>
+                    <td>Human-readable name</td>
+                </tr>
+                <tr>
+                    <td><code>version</code></td>
+                    <td>✅</td>
+                    <td>Semantic version string</td>
+                </tr>
+                <tr>
+                    <td><code>description</code></td>
+                    <td>No</td>
+                    <td>Description shown in admin</td>
+                </tr>
+                <tr>
+                    <td><code>author</code></td>
+                    <td>No</td>
+                    <td>Author name</td>
+                </tr>
+                <tr>
+                    <td><code>enabled</code></td>
+                    <td>No</td>
+                    <td>Default enabled state (default: <code>true</code>)</td>
+                </tr>
+                <tr>
+                    <td><code>nav</code></td>
+                    <td>No</td>
+                    <td>Array of nav link objects</td>
+                </tr>
+                <tr>
+                    <td><code>routes</code></td>
+                    <td>No</td>
+                    <td>Backend route config</td>
+                </tr>
+                <tr>
+                    <td><code>pages</code></td>
+                    <td>No</td>
+                    <td>Frontend page definitions</td>
+                </tr>
+                <tr>
+                    <td><code>css</code></td>
+                    <td>No</td>
+                    <td>Stylesheets to inject</td>
+                </tr>
+                <tr>
+                    <td><code>data</code></td>
+                    <td>No</td>
+                    <td>Data collections to auto-create</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>⚙️ Backend Routes</h2>
+        <p>Your backend routes file should export an Express Router. It's mounted at the prefix defined in your manifest
+            (default: <code>/api/ext/&lt;id&gt;</code>).</p>
+        <pre><code><span class="lang-label">server/routes.js</span>const express = require('express');
+const router = express.Router();
+const db = require('../../../server/db');
+const { authenticateToken } = require('../../../server/middleware/auth');
+
+// Public endpoint
+router.get('/items', function(req, res) {
+  var items = db._data.my_ext_items || [];
+  res.json(items);
+});
+
+// Protected endpoint
+router.post('/items', authenticateToken, function(req, res) {
+  var item = {
+    id: require('uuid').v4(),
+    user_id: req.user.id,
+    title: req.body.title,
+    created_at: new Date().toISOString()
+  };
+  db._data.my_ext_items.push(item);
+  db.scheduleSave();
+  res.status(201).json(item);
+});
+
+module.exports = router;</code></pre>
+
+        <div class="alert alert-warn">
+            <strong>Important:</strong> Use <code>../../../server/db</code> paths since your file is at
+            <code>extensions/&lt;id&gt;/server/routes.js</code> (3 levels deep from project root).
+        </div>
+
+        <h3>Available Core Imports</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>Path</th>
+                    <th>Provides</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Database</td>
+                    <td><code>../../../server/db</code></td>
+                    <td><code>db._data</code>, <code>db.scheduleSave()</code></td>
+                </tr>
+                <tr>
+                    <td>Auth Middleware</td>
+                    <td><code>../../../server/middleware/auth</code></td>
+                    <td><code>authenticateToken</code>, <code>optionalAuth</code></td>
+                </tr>
+                <tr>
+                    <td>UUID</td>
+                    <td><code>uuid</code></td>
+                    <td>UUID generation (pre-installed)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🖥️ Frontend Pages</h2>
+        <p>Your page JS file must define a <strong>global object</strong> with a <code>render(container, params)</code>
+            method. The <code>global</code> name in your manifest tells the loader which window object to look for.</p>
+        <pre><code><span class="lang-label">public/pages/my-page.js</span>var MyExtPage = {
+  async render(container, params) {
+    // params is an array of URL segments after your route
+    // e.g. #/my-ext/item/123 → params = ['item', '123']
+
+    container.innerHTML = '&lt;div class="my-ext-page"&gt;' +
+      '&lt;h1&gt;My Extension&lt;/h1&gt;' +
+      '&lt;div id="my-ext-content"&gt;&lt;/div&gt;' +
+    '&lt;/div&gt;';
+
+    // Use the API client for requests
+    try {
+      var items = await API.get('/api/ext/my-extension/items');
+      var content = document.getElementById('my-ext-content');
+      content.innerHTML = items.map(function(item) {
+        return '&lt;div class="card"&gt;' + App.escapeHtml(item.title) + '&lt;/div&gt;';
+      }).join('');
+    } catch (err) {
+      App.showToast(err.message, 'error');
+    }
+  }
+};</code></pre>
+
+        <h3>Available Frontend Utilities</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Function</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>API.get(url)</code></td>
+                    <td>Authenticated GET request</td>
+                </tr>
+                <tr>
+                    <td><code>API.post(url, body)</code></td>
+                    <td>Authenticated POST request</td>
+                </tr>
+                <tr>
+                    <td><code>API.put(url, body)</code></td>
+                    <td>Authenticated PUT request</td>
+                </tr>
+                <tr>
+                    <td><code>API.delete(url)</code></td>
+                    <td>Authenticated DELETE request</td>
+                </tr>
+                <tr>
+                    <td><code>App.currentUser</code></td>
+                    <td>Current logged-in user object</td>
+                </tr>
+                <tr>
+                    <td><code>App.escapeHtml(str)</code></td>
+                    <td>XSS-safe HTML escaping</td>
+                </tr>
+                <tr>
+                    <td><code>App.timeAgo(date)</code></td>
+                    <td>Human-readable time (e.g. "3m ago")</td>
+                </tr>
+                <tr>
+                    <td><code>App.showToast(msg, type)</code></td>
+                    <td>Show notification (success/error/info)</td>
+                </tr>
+                <tr>
+                    <td><code>Router.register(path, handler)</code></td>
+                    <td>Register additional routes</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🎨 Styling</h2>
+        <p>Your CSS is auto-injected. Use the platform's CSS variables for consistent theming:</p>
+        <pre><code><span class="lang-label">CSS Variables</span>--bg-primary: #0a0e17       --neon-cyan: #00f0ff
+--bg-secondary: #111827     --neon-magenta: #b026ff
+--bg-tertiary: #1a2236      --neon-green: #39ff14
+--text-primary: #e2e8f0     --neon-pink: #ff6b9d
+--text-secondary: #94a3b8   --neon-orange: #ff9640
+--text-muted: #64748b       --font-display: 'Orbitron'
+--border-primary: ...       --font-body: 'Inter'
+--radius-lg: 12px           --radius-md: 8px</code></pre>
+
+        <h2>🔌 Nav Icons</h2>
+        <p>Available icon names for the <code>nav.icon</code> field:</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+            <div class="card">
+                <h4>message-square</h4>
+                <p>Chat/forum icon</p>
+            </div>
+            <div class="card">
+                <h4>users</h4>
+                <p>People/friends</p>
+            </div>
+            <div class="card">
+                <h4>home</h4>
+                <p>Home/feed icon</p>
+            </div>
+            <div class="card">
+                <h4>settings</h4>
+                <p>Settings gear</p>
+            </div>
+            <div class="card">
+                <h4>shield</h4>
+                <p>Security/admin</p>
+            </div>
+            <div class="card">
+                <h4>grid</h4>
+                <p>Default/generic</p>
+            </div>
+        </div>
+
+        <h2>🗄️ Data Storage</h2>
+        <p>List collection names in your manifest's <code>data</code> array. They are auto-created as empty arrays in
+            the JSON data store on first load. Access them via <code>db._data.your_collection</code>.</p>
+        <div class="alert">
+            <strong>Tip:</strong> Always call <code>db.scheduleSave()</code> after modifying data to persist changes to
+            disk.
+        </div>
+
+        <h2>🧪 Testing</h2>
+        <ol>
+            <li>Place your extension folder in <code>extensions/</code></li>
+            <li>Restart the server — look for <code>✅ Extension loaded: ...</code> in console</li>
+            <li>Verify your nav link appears in the sidebar</li>
+            <li>Test your routes with <code>curl</code> or the browser</li>
+            <li>Check the Admin Dashboard → Extensions tab for status</li>
+        </ol>
+
+        <h2>📦 Example Extensions</h2>
+        <div class="card">
+            <h4>🏛️ Forum</h4>
+            <p>Full-featured forum with categories, threads, replies, pinning, locking, and moderation. The reference
+                implementation for extension development.</p>
+        </div>
+        <div class="card" style="opacity:0.5">
+            <h4>📊 Polls (Coming Soon)</h4>
+            <p>Create polls and surveys within the platform. Demonstrates simple data collection extensions.</p>
+        </div>
+        <div class="card" style="opacity:0.5">
+            <h4>🏆 Tournaments (Coming Soon)</h4>
+            <p>Bracket-style tournament management. Demonstrates complex multi-page extensions.</p>
+        </div>
+
+    </div>
+
+</body>
+
+</html>
