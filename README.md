@@ -43,6 +43,8 @@ node server/index.js
 
 The setup wizard will guide you through creating your admin account and setting up the database connection.
 
+For detailed Ubuntu/Linux instructions, see the [Ubuntu Setup Guide](./UBUNTU_SETUP.md).
+
 ---
 
 ## 📁 Project Structure
