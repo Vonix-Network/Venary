@@ -8,35 +8,46 @@ var MinecraftPage = {
     servers: [],
     selectedServer: null,
     chartRange: '24h',
+    leaderboardPage: 1,
+    leaderboardLimit: 50,
 
     async render(container, params) {
-        // If a server ID is in the route, show detail page
-        if (params && params[0]) {
+        if (params && params.length > 0) {
             return this.renderServerDetail(container, params[0]);
         }
 
         container.innerHTML = `
-            <div class="minecraft-page" style="max-width: 1000px; margin: 0 auto;">
-                <h1 style="margin-bottom:0.5rem">⛏️ Minecraft</h1>
-                <p style="color:rgba(255,255,255,0.5);margin-bottom:1.5rem">Live server status, leaderboards, and account linking.</p>
-                <div class="mc-tabs">
-                    <button class="mc-tab active" data-tab="servers">🖥️ Servers</button>
-                    <button class="mc-tab" data-tab="leaderboard">🏆 Leaderboard</button>
-                    <button class="mc-tab" data-tab="link">🔗 Link Account</button>
+            <div class="minecraft-page">
+                <div class="mc-header">
+                    <h1 class="mc-title">Minecraft Integration</h1>
+                    <p class="mc-subtitle">Connect, link, and track your progress across our network.</p>
                 </div>
-                <div id="mc-tab-content"></div>
+
+                <div class="mc-tabs">
+                    <button class="mc-tab ${this.currentTab === 'servers' ? 'active' : ''}" onclick="MinecraftPage.switchTab('servers', this)">
+                        <span>🖥️</span> Servers
+                    </button>
+                    <button class="mc-tab ${this.currentTab === 'leaderboard' ? 'active' : ''}" onclick="MinecraftPage.switchTab('leaderboard', this)">
+                        <span>🏆</span> Leaderboard
+                    </button>
+                    <button class="mc-tab ${this.currentTab === 'link' ? 'active' : ''}" onclick="MinecraftPage.switchTab('link', this)">
+                        <span>🔗</span> Link Account
+                    </button>
+                </div>
+
+                <div id="mc-tab-content" class="animate-fade-in">
+                    <!-- Tab content injected here -->
+                </div>
             </div>
         `;
 
-        container.querySelectorAll('.mc-tab').forEach(btn => {
-            btn.addEventListener('click', () => {
-                container.querySelectorAll('.mc-tab').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.currentTab = btn.dataset.tab;
-                this.renderTab(document.getElementById('mc-tab-content'));
-            });
-        });
+        this.renderTab(document.getElementById('mc-tab-content'));
+    },
 
+    switchTab(tab, btn) {
+        this.currentTab = tab;
+        document.querySelectorAll('.mc-tab').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
         this.renderTab(document.getElementById('mc-tab-content'));
     },
 
@@ -330,10 +341,17 @@ var MinecraftPage = {
     async renderLeaderboard(container) {
         container.innerHTML = '<div class="loading-spinner" style="text-align:center;padding:3rem">Loading leaderboard...</div>';
 
-        let entries;
+        const offset = (this.leaderboardPage - 1) * this.leaderboardLimit;
+        let data;
         try {
-            entries = await API.get('/api/ext/minecraft/leaderboard?limit=50');
-        } catch { entries = []; }
+            data = await API.get(`/api/ext/minecraft/leaderboard?limit=${this.leaderboardLimit}&offset=${offset}`);
+        } catch (err) {
+            console.error('[MC] Leaderboard fetch error:', err);
+            data = { entries: [], total: 0 };
+        }
+
+        const entries = data.entries || [];
+        const total = data.total || 0;
 
         // Resolve names for leaderboard entries if they are UUIDs
         const needsResolution = entries.filter(e => {
@@ -355,7 +373,7 @@ var MinecraftPage = {
             }));
         }
 
-        if (entries.length === 0) {
+        if (entries.length === 0 && this.leaderboardPage === 1) {
             container.innerHTML = '<div style="text-align:center;padding:3rem;color:rgba(255,255,255,0.5)">No leaderboard data yet.</div>';
             return;
         }
@@ -369,7 +387,7 @@ var MinecraftPage = {
         `;
 
         entries.forEach((e, i) => {
-            const rank = i + 1;
+            const rank = offset + i + 1;
             const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
             const headUrl = e.minecraft_uuid
                 ? `https://mc-heads.net/avatar/${e.minecraft_uuid}/20`
@@ -392,7 +410,34 @@ var MinecraftPage = {
         });
 
         html += '</tbody></table>';
+
+        // Add Pagination Controls
+        if (total > this.leaderboardLimit) {
+            const totalPages = Math.ceil(total / this.leaderboardLimit);
+            html += `
+                <div class="mc-pagination">
+                    <button class="mc-page-btn" ${this.leaderboardPage <= 1 ? 'disabled' : ''} onclick="MinecraftPage.changeLeaderboardPage(-1)">
+                        ← Previous
+                    </button>
+                    <div class="mc-page-info">
+                        Page <strong>${this.leaderboardPage}</strong> of <strong>${totalPages}</strong>
+                        <span style="margin-left:8px;opacity:0.6">(${total} players)</span>
+                    </div>
+                    <button class="mc-page-btn" ${this.leaderboardPage >= totalPages ? 'disabled' : ''} onclick="MinecraftPage.changeLeaderboardPage(1)">
+                        Next →
+                    </button>
+                </div>
+            `;
+        }
+
         container.innerHTML = html;
+    },
+
+    changeLeaderboardPage(delta) {
+        this.leaderboardPage += delta;
+        this.renderLeaderboard(document.getElementById('mc-tab-content'));
+        // Scroll to top of leaderboard
+        document.querySelector('.mc-tabs').scrollIntoView({ behavior: 'smooth' });
     },
 
     // ══════════════════════════════════════════════════════

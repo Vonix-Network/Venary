@@ -139,10 +139,11 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /leaderboard — combined XP leaderboard
+    // GET /leaderboard — combined XP leaderboard with pagination
     router.get('/leaderboard', async (req, res) => {
         try {
             const limit = parseInt(req.query.limit) || 50;
+            const offset = parseInt(req.query.offset) || 0;
             const type = req.query.type || 'xp'; // 'xp' or 'playtime'
 
             // Registered users with MC accounts
@@ -153,7 +154,6 @@ module.exports = function (extDb) {
                 const user = await coreDb.get('SELECT id, username, display_name, avatar, level, xp, role FROM users WHERE id = ?', [link.user_id]);
                 if (!user) continue;
 
-                // Get total playtime across servers
                 const playtimeRow = await extDb.get('SELECT COALESCE(SUM(playtime_seconds),0) as total FROM server_xp WHERE user_id = ?', [link.user_id]);
 
                 entries.push({
@@ -190,7 +190,15 @@ module.exports = function (extDb) {
                 entries.sort((a, b) => b.total_xp - a.total_xp);
             }
 
-            res.json(entries.slice(0, limit));
+            const total = entries.length;
+            const paginated = entries.slice(offset, offset + limit);
+
+            res.json({
+                total,
+                limit,
+                offset,
+                entries: paginated
+            });
         } catch (err) {
             console.error('[MC] Leaderboard error:', err);
             res.status(500).json({ error: 'Server error' });
