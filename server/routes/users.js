@@ -47,7 +47,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     try {
         const user = await db.get(
             `SELECT id, username, display_name, avatar, bio, gaming_tags, level, xp,
-                    games_played, achievements, status, created_at, last_seen
+                    games_played, achievements, status, created_at, last_seen, skin_animation
              FROM users WHERE id = ?`,
             [req.params.id]
         );
@@ -57,6 +57,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         }
 
         user.gaming_tags = safeParseJSON(user.gaming_tags);
+        user.skin_animation = safeParseJSON(user.skin_animation);
 
         // Check friendship status
         const friendship = await db.get(
@@ -119,7 +120,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Update profile
 router.put('/profile', authenticateToken, async (req, res) => {
     try {
-        const { display_name, bio, gaming_tags, avatar } = req.body;
+        const { display_name, bio, gaming_tags, avatar, skin_animation } = req.body;
         const maxBioLength = Config.get('maxBioLength', 300);
 
         const updates = [];
@@ -143,6 +144,10 @@ router.put('/profile', authenticateToken, async (req, res) => {
             updates.push('gaming_tags = ?');
             values.push(JSON.stringify(gaming_tags));
         }
+        if (skin_animation !== undefined) {
+            updates.push('skin_animation = ?');
+            values.push(JSON.stringify(skin_animation));
+        }
         if (avatar !== undefined) {
             updates.push('avatar = ?');
             values.push(avatar);
@@ -157,6 +162,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
         const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
         user.gaming_tags = safeParseJSON(user.gaming_tags);
+        user.skin_animation = safeParseJSON(user.skin_animation);
 
         res.json({
             id: user.id,

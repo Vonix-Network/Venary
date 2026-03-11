@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     ban_reason TEXT,
     banned_until TEXT,
     last_seen TEXT,
+    skin_animation TEXT DEFAULT '{}',
     created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 

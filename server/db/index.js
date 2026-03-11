@@ -43,6 +43,9 @@ const db = {
         await adapter.init(schemaSql);
         initialized = true;
 
+        // Run column migrations for existing databases
+        await db._runMigrations();
+
         // Migrate existing JSON data if present
         await db._migrateFromJSON();
     },
@@ -66,6 +69,18 @@ const db = {
 
     async close() {
         if (adapter) await adapter.close();
+    },
+
+    /**
+     * Safely add new columns to existing databases.
+     */
+    async _runMigrations() {
+        const migrations = [
+            "ALTER TABLE users ADD COLUMN skin_animation TEXT DEFAULT '{}'"
+        ];
+        for (const sql of migrations) {
+            try { await adapter.run(sql); } catch (e) { /* column already exists */ }
+        }
     },
 
     /**
