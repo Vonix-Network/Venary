@@ -89,7 +89,7 @@ const ProfilePage = {
       statsHtml += '<div class="stat-card"><div class="stat-value">' + (profile.friend_count || 0) + '</div><div class="stat-label">Friends</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + (profile.post_count || 0) + '</div><div class="stat-label">Posts</div></div>';
 
-      // Build the skin viewer section (replaces the old static avatar for MC-linked users)
+      // Build the skin viewer section — positioned on the RIGHT side of the header
       var skinViewerHtml = '';
       if (profile.minecraft_uuid) {
         skinViewerHtml = '<div class="skin-viewer-wrapper">' +
@@ -100,11 +100,10 @@ const ProfilePage = {
 
       container.innerHTML = '<div class="profile-page">' +
         '<div class="profile-header" style="position:relative">' +
+        (profile.minecraft_uuid ? skinViewerHtml : '') +
         '<div class="profile-info">' +
         '<div class="profile-avatar-section">' +
-        (profile.minecraft_uuid
-          ? skinViewerHtml
-          : '<div class="profile-avatar">' + avatarContent + '</div>') +
+        '<div class="profile-avatar">' + avatarContent + '</div>' +
         roleBadge +
         '</div>' +
         '<div class="profile-details">' +
@@ -279,11 +278,29 @@ const ProfilePage = {
       '</div></div>';
 
     // Close handlers
-    document.getElementById('close-skin-customize').addEventListener('click', function () { modal.classList.add('hidden'); ProfilePage._disposePreviewViewer(); });
-    document.getElementById('skin-customize-overlay').addEventListener('click', function (e) { if (e.target.id === 'skin-customize-overlay') { modal.classList.add('hidden'); ProfilePage._disposePreviewViewer(); } });
+    document.getElementById('close-skin-customize').addEventListener('click', function () { 
+      modal.classList.add('hidden'); 
+      ProfilePage._disposePreviewViewer(); 
+      if (profile.minecraft_uuid) ProfilePage.initSkinViewer(profile.minecraft_uuid, profile.skin_animation || {});
+    });
+    document.getElementById('skin-customize-overlay').addEventListener('click', function (e) { 
+      if (e.target.id === 'skin-customize-overlay') { 
+        modal.classList.add('hidden'); 
+        ProfilePage._disposePreviewViewer(); 
+        if (profile.minecraft_uuid) ProfilePage.initSkinViewer(profile.minecraft_uuid, profile.skin_animation || {});
+      } 
+    });
 
-    // Init preview viewer
-    ProfilePage._initPreviewViewer(profile.minecraft_uuid, currentPrefs);
+    // Temporarily dispose main viewer to free up WebGL context for the modal
+    if (ProfilePage._viewer) {
+      try { ProfilePage._viewer.dispose(); } catch (e) { }
+      ProfilePage._viewer = null;
+    }
+
+    // Init preview viewer after a short delay to ensure modal is visible
+    setTimeout(() => {
+        ProfilePage._initPreviewViewer(profile.minecraft_uuid, currentPrefs);
+    }, 100);
 
     // Live preview controls
     document.getElementById('skin-anim-type').addEventListener('change', function () { ProfilePage._updatePreview(); });

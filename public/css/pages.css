@@ -507,10 +507,14 @@
 
 /* ========== Skin3D Viewer ========== */
 .skin-viewer-wrapper {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-sm);
+    z-index: 2;
 }
 
 .skin-viewer-box {
