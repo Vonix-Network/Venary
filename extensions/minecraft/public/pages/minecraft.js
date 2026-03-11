@@ -25,13 +25,13 @@ var MinecraftPage = {
 
                 <div class="mc-tabs">
                     <button class="mc-tab ${this.currentTab === 'servers' ? 'active' : ''}" onclick="MinecraftPage.switchTab('servers', this)">
-                        <span>🖥️</span> Servers
+                        <span>\uD83D\uDDA5\uFE0F</span> Servers
                     </button>
                     <button class="mc-tab ${this.currentTab === 'leaderboard' ? 'active' : ''}" onclick="MinecraftPage.switchTab('leaderboard', this)">
-                        <span>🏆</span> Leaderboard
+                        <span>\uD83C\uDFC6</span> Leaderboard
                     </button>
                     <button class="mc-tab ${this.currentTab === 'link' ? 'active' : ''}" onclick="MinecraftPage.switchTab('link', this)">
-                        <span>🔗</span> Link Account
+                        <span>\uD83D\uDD17</span> Link Account
                     </button>
                 </div>
 
@@ -72,7 +72,7 @@ var MinecraftPage = {
         if (this.servers.length === 0) {
             container.innerHTML = `
                 <div style="text-align:center;padding:4rem 1rem">
-                    <div style="font-size:3rem;margin-bottom:1rem">🖥️</div>
+                    <div style="font-size:3rem;margin-bottom:1rem">\uD83D\uDDA5\uFE0F</div>
                     <h2>No Servers Configured</h2>
                     <p style="color:rgba(255,255,255,0.5)">Admins can add servers from the admin dashboard.</p>
                 </div>`;
@@ -94,7 +94,7 @@ var MinecraftPage = {
             const address = s.hide_port || s.port === 25565 ? s.address : s.address + ':' + s.port;
             const iconHtml = s.icon && s.icon.startsWith('data:')
                 ? `<img class="mc-server-icon" src="${s.icon}" alt="${s.name}">`
-                : `<div class="mc-server-icon-placeholder">⛏</div>`;
+                : `<div class="mc-server-icon-placeholder">\u26CF</div>`;
 
             html += `
                 <div class="mc-server-card" data-server-id="${s.id}">
@@ -112,20 +112,20 @@ var MinecraftPage = {
                     ${s.description ? `<p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:8px">${this._esc(s.description)}</p>` : ''}
                     ${s.motd ? `<div class="mc-server-motd">${this._esc(s.motd)}</div>` : ''}
                     <div class="mc-server-stats">
-                        <div class="mc-stat">👤 <span class="value">${s.players?.online || 0}</span>/<span>${s.players?.max || 0}</span></div>
-                        ${s.modpack_name ? `<div class="mc-stat">📦 ${this._esc(s.modpack_name)}</div>` : ''}
+                        <div class="mc-stat">\uD83D\uDC64 <span class="value">${s.players?.online || 0}</span>/<span>${s.players?.max || 0}</span></div>
+                        ${s.modpack_name ? `<div class="mc-stat">\uD83D\uDCE6 ${this._esc(s.modpack_name)}</div>` : ''}
                     </div>
                     <div class="mc-ip-bar">
-                        <span>🌐</span>
+                        <span>\uD83C\uDF10</span>
                         <code style="flex:1">${address}</code>
-                        <button class="mc-btn mc-btn-copy" onclick="MinecraftPage.copyIP('${address}', this)">📋 Copy</button>
+                        <button class="mc-btn mc-btn-copy" onclick="MinecraftPage.copyIP('${address}', this)">\uD83D\uDCCB Copy</button>
                     </div>
                     <div class="mc-btn-group" style="align-items:center">
-                        ${s.user_linked ? `<div style="font-size:0.9rem;font-weight:600;color:var(--neon-cyan);margin-right:8px">✨ ${(s.user_xp || 0).toLocaleString()} XP</div>` : ''}
+                        ${s.user_linked ? `<div style="font-size:0.9rem;font-weight:600;color:var(--neon-cyan);margin-right:8px">\u2728 ${(s.user_xp || 0).toLocaleString()} XP</div>` : ''}
                         ${s.curseforge_url ? `<a href="${s.curseforge_url}" target="_blank" class="mc-btn mc-btn-curseforge"><img src="https://www.curseforge.com/favicon.ico" alt="CF">CurseForge</a>` : ''}
                         ${s.modrinth_url ? `<a href="${s.modrinth_url}" target="_blank" class="mc-btn mc-btn-modrinth"><img src="https://modrinth.com/favicon.ico" alt="MR">Modrinth</a>` : ''}
-                        ${s.bluemap_url ? `<a href="${s.bluemap_url}" target="_blank" class="mc-btn mc-btn-map">🗺️ Map</a>` : ''}
-                        <button class="mc-btn" onclick="MinecraftPage.viewServer('${s.id}')" style="margin-left:auto">View Details →</button>
+                        ${s.bluemap_url ? `<a href="${s.bluemap_url}" target="_blank" class="mc-btn mc-btn-map">\uD83D\uDDFA\uFE0F Map</a>` : ''}
+                        <button class="mc-btn" onclick="MinecraftPage.viewServer('${s.id}')" style="margin-left:auto">View Details \u2192</button>
                     </div>
                 </div>
             `;
@@ -137,8 +137,8 @@ var MinecraftPage = {
     copyIP(ip, btn) {
         navigator.clipboard.writeText(ip).then(() => {
             btn.classList.add('copied');
-            btn.textContent = '✓ Copied!';
-            setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋 Copy'; }, 2000);
+            btn.textContent = '\u2713 Copied!';
+            setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '\uD83D\uDCCB Copy'; }, 2000);
         });
     },
 
@@ -163,11 +163,11 @@ var MinecraftPage = {
         const address = server.hide_port || server.port === 25565 ? server.address : server.address + ':' + server.port;
         const iconHtml = server.icon && server.icon.startsWith('data:')
             ? `<img class="mc-server-icon" src="${server.icon}" alt="${server.name}" style="width:64px;height:64px">`
-            : `<div class="mc-server-icon-placeholder" style="width:64px;height:64px;font-size:28px">⛏</div>`;
+            : `<div class="mc-server-icon-placeholder" style="width:64px;height:64px;font-size:28px">\u26CF</div>`;
 
         let html = `
             <div class="minecraft-page" style="max-width: 1000px; margin: 0 auto;">
-                <button class="mc-btn" onclick="window.location.hash='#/servers'" style="margin-bottom:1rem">← Back to Servers</button>
+                <button class="mc-btn" onclick="window.location.hash='#/servers'" style="margin-bottom:1rem">\u2190 Back to Servers</button>
 
                 <div style="display:flex;gap:16px;align-items:center;margin-bottom:1.5rem">
                     ${iconHtml}
@@ -193,18 +193,18 @@ var MinecraftPage = {
                             </div>
                             <div class="mc-stat" style="justify-content:space-between;width:100%">
                                 <span>Ping</span>
-                                <span class="value">${server.responseTimeMs || '—'}ms</span>
+                                <span class="value">${server.responseTimeMs || '\u2014'}ms</span>
                             </div>
                         </div>
                         <div class="mc-ip-bar" style="margin-top:12px">
-                            <span>🌐</span>
+                            <span>\uD83C\uDF10</span>
                             <code style="flex:1">${address}</code>
-                            <button class="mc-btn mc-btn-copy" onclick="MinecraftPage.copyIP('${address}', this)">📋 Copy</button>
+                            <button class="mc-btn mc-btn-copy" onclick="MinecraftPage.copyIP('${address}', this)">\uD83D\uDCCB Copy</button>
                         </div>
                         <div class="mc-btn-group">
                             ${server.curseforge_url ? `<a href="${server.curseforge_url}" target="_blank" class="mc-btn mc-btn-curseforge"><img src="https://www.curseforge.com/favicon.ico" alt="CF">CurseForge</a>` : ''}
                             ${server.modrinth_url ? `<a href="${server.modrinth_url}" target="_blank" class="mc-btn mc-btn-modrinth"><img src="https://modrinth.com/favicon.ico" alt="MR">Modrinth</a>` : ''}
-                            ${server.bluemap_url ? `<a href="${server.bluemap_url}" target="_blank" class="mc-btn mc-btn-map">🗺️ Map</a>` : ''}
+                            ${server.bluemap_url ? `<a href="${server.bluemap_url}" target="_blank" class="mc-btn mc-btn-map">\uD83D\uDDFA\uFE0F Map</a>` : ''}
                         </div>
                     </div>
 
@@ -244,7 +244,7 @@ var MinecraftPage = {
         if (server.bluemap_url) {
             html += `
                     <div class="mc-detail-card mc-map-container">
-                        <h3>🗺️ Server Map</h3>
+                        <h3>\uD83D\uDDFA\uFE0F Server Map</h3>
                         <iframe src="${server.bluemap_url}" title="Server Map" loading="lazy" allowfullscreen></iframe>
                     </div>
             `;
@@ -417,14 +417,14 @@ var MinecraftPage = {
             html += `
                 <div class="mc-pagination">
                     <button class="mc-page-btn" ${this.leaderboardPage <= 1 ? 'disabled' : ''} onclick="MinecraftPage.changeLeaderboardPage(-1)">
-                        ← Previous
+                        \u2190 Previous
                     </button>
                     <div class="mc-page-info">
                         Page <strong>${this.leaderboardPage}</strong> of <strong>${totalPages}</strong>
                         <span style="margin-left:8px;opacity:0.6">(${total} players)</span>
                     </div>
                     <button class="mc-page-btn" ${this.leaderboardPage >= totalPages ? 'disabled' : ''} onclick="MinecraftPage.changeLeaderboardPage(1)">
-                        Next →
+                        Next \u2192
                     </button>
                 </div>
             `;
@@ -471,14 +471,14 @@ var MinecraftPage = {
         if (link.linked) {
             container.innerHTML = `
                 <div class="mc-link-card" style="max-width:500px;margin:0 auto;text-align:center">
-                    <h3 style="font-family:var(--font-display);font-size:1.2rem;margin-bottom:1rem">✅ Minecraft Account Linked</h3>
+                    <h3 style="font-family:var(--font-display);font-size:1.2rem;margin-bottom:1rem">\u2705 Minecraft Account Linked</h3>
                     <div id="mc-profile-skin" style="width:150px;height:250px;margin:1.5rem auto;position:relative;background:rgba(0,0,0,0.2);border-radius:12px;overflow:hidden;border:1px solid var(--border-subtle)">
                         <div class="loading-spinner" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
                     </div>
                     <div class="mc-skin-username" style="font-size:1.1rem">${this._esc(link.minecraft_username)}</div>
                     <p style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">${link.minecraft_uuid}</p>
                     <p style="color:var(--text-secondary);margin:1.5rem 0">MC XP: <strong style="color:var(--neon-cyan);font-size:1.1rem">${(link.minecraft_xp || 0).toLocaleString()}</strong></p>
-                    <button class="btn btn-secondary" onclick="MinecraftPage.unlinkAccount()" style="margin-top:0.5rem">🔗 Unlink Account</button>
+                    <button class="btn btn-secondary" onclick="MinecraftPage.unlinkAccount()" style="margin-top:0.5rem">\uD83D\uDD17 Unlink Account</button>
                 </div>
             `;
 
@@ -496,7 +496,7 @@ var MinecraftPage = {
         } else {
             container.innerHTML = `
                 <div class="mc-link-card" style="max-width:500px;margin:0 auto">
-                    <h3 style="text-align:center;margin-bottom:1rem;font-family:var(--font-display)">🔗 Link Minecraft Account</h3>
+                    <h3 style="text-align:center;margin-bottom:1rem;font-family:var(--font-display)">\uD83D\uDD17 Link Minecraft Account</h3>
                     <p style="color:var(--text-muted);text-align:center;margin-bottom:1.5rem;font-size:0.95rem">
                         Run <code style="background:rgba(0,240,255,0.1);color:var(--neon-cyan);padding:2px 6px;border-radius:4px;font-family:var(--font-mono)">/link</code> on any connected server to get a 6-character code.
                     </p>
@@ -519,10 +519,10 @@ var MinecraftPage = {
         }
         try {
             const res = await API.post('/api/ext/minecraft/link', { code });
-            resultEl.innerHTML = '<span style="color:var(--neon-green)">✓ ' + (res.message || 'Linked!') + '</span>';
+            resultEl.innerHTML = '<span style="color:var(--neon-green)">\u2713 ' + (res.message || 'Linked!') + '</span>';
             setTimeout(() => this.renderLink(document.getElementById('mc-tab-content')), 1500);
         } catch (err) {
-            resultEl.innerHTML = '<span style="color:var(--neon-magenta)">✗ ' + (err.message || 'Failed') + '</span>';
+            resultEl.innerHTML = '<span style="color:var(--neon-magenta)">\u2717 ' + (err.message || 'Failed') + '</span>';
         }
     },
 
