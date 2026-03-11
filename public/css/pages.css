@@ -346,12 +346,11 @@
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
     padding: var(--space-xl);
-    padding-right: 200px;
     margin-bottom: var(--space-xl);
     position: relative;
-    overflow: visible;
+    overflow: hidden;
     animation: fadeInUp 0.4s ease-out;
-    min-height: 260px;
+    min-height: 320px;
 }
 
 .profile-header::before {
@@ -371,6 +370,7 @@
     align-items: flex-start;
     position: relative;
     z-index: 1;
+    padding-right: 180px;
 }
 
 .profile-avatar-section {
@@ -425,7 +425,7 @@
 
 .profile-stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--space-md);
     margin-top: var(--space-lg);
 }
@@ -607,6 +607,12 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (max-width: 768px) {
+    .profile-header {
+        min-height: auto;
+    }
+    .profile-info {
+        padding-right: 0;
+    }
     .skin-viewer-wrapper {
         position: relative;
         top: auto;
