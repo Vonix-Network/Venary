@@ -38,10 +38,10 @@ git clone <your-repo-url> venary
 cd venary
 npm install
 node server/index.js
-# Open http://localhost:3000
+# Open http://localhost:3000 to access the Setup Wizard!
 ```
 
-The first registered user can be promoted to admin by editing `data/venary.json` and setting `"role": "admin"`.
+The setup wizard will guide you through creating your admin account and setting up the database connection.
 
 ---
 
@@ -51,10 +51,10 @@ The first registered user can be promoted to admin by editing `data/venary.json`
 venary/
 ├── server/                  # Backend
 │   ├── index.js             # Express server entry point
-│   ├── db.js                # JSON data store
+│   ├── db/                  # SQLite and Postgres database adapters
 │   ├── extension-loader.js  # PHPBB-style extension system
 │   ├── socket.js            # Socket.io real-time events
-│   ├── middleware/           # Auth middleware
+│   ├── middleware/          # Auth middleware
 │   └── routes/              # Core API routes
 ├── public/                  # Frontend (SPA)
 │   ├── index.html           # App shell

@@ -5,6 +5,18 @@ All notable changes to Venary will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Database**
+  - Added support for SQLite and PostgreSQL databases.
+  - Automatic migration from legacy JSON data store to relational database.
+- **Donations Extension**
+  - Integrated Stripe checkouts for server donations and ranks.
+  - Implemented Discord webhooks to broadcast donation notifications.
+- **Minecraft Integration**
+  - Replaced static avatar fallbacks with 3D animated player skins using the `skin3d` NPM library.
+
 ## [1.0.0] - 2026-02-27
 
 ### Added
