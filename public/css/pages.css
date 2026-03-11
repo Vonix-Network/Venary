@@ -346,10 +346,12 @@
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
     padding: var(--space-xl);
+    padding-right: 200px;
     margin-bottom: var(--space-xl);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     animation: fadeInUp 0.4s ease-out;
+    min-height: 260px;
 }
 
 .profile-header::before {
@@ -513,13 +515,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-xs);
     z-index: 2;
 }
 
 .skin-viewer-box {
-    width: 200px;
-    height: 280px;
+    width: 160px;
+    height: 240px;
     border-radius: 12px;
     overflow: hidden;
     background: rgba(0, 0, 0, 0.25);
@@ -531,13 +533,14 @@
 .skin-viewer-box canvas {
     border-radius: 12px;
     display: block;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .skin-customize-btn {
-    font-size: 0.8rem !important;
-    padding: var(--space-xs) var(--space-md) !important;
+    font-size: 0.75rem !important;
+    padding: 4px 14px !important;
     border-radius: var(--radius-full) !important;
-    margin-top: var(--space-xs);
     transition: all var(--transition-normal);
 }
 
@@ -560,6 +563,7 @@
 .skin-customize-preview > div {
     border: 1px solid var(--border-subtle);
     box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+    border-radius: 12px;
 }
 
 /* Range input styling */
@@ -602,10 +606,16 @@ input[type="range"]::-moz-range-thumb {
     cursor: pointer;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+    .skin-viewer-wrapper {
+        position: relative;
+        top: auto;
+        right: auto;
+        margin: 0 auto var(--space-md);
+    }
     .skin-viewer-box {
-        width: 160px;
-        height: 220px;
+        width: 140px;
+        height: 200px;
     }
 }
 

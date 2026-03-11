@@ -4,6 +4,7 @@
    ======================================= */
 const ProfilePage = {
   _viewer: null,
+  _previewViewer: null,
   _currentProfile: null,
 
   async render(container, params) {
@@ -11,11 +12,9 @@ const ProfilePage = {
     var isOwnProfile = userId === (App.currentUser ? App.currentUser.id : null);
     container.innerHTML = '<div class="loading-spinner"></div>';
 
-    // Dispose previous viewer if it exists
-    if (ProfilePage._viewer) {
-      try { ProfilePage._viewer.dispose(); } catch (e) { }
-      ProfilePage._viewer = null;
-    }
+    // Dispose previous viewers
+    ProfilePage._disposeMainViewer();
+    ProfilePage._disposePreviewViewer();
 
     try {
       var profile;
@@ -58,7 +57,6 @@ const ProfilePage = {
       var statsHtml = '';
 
       if (profile.minecraft_uuid) {
-        // Resolve username if it's a UUID or missing
         if (!profile.minecraft_username || profile.minecraft_username === profile.minecraft_uuid) {
           try {
             const mojang = await fetch('https://api.ashcon.app/mojang/v2/user/' + profile.minecraft_uuid).then(r => r.json());
@@ -89,7 +87,7 @@ const ProfilePage = {
       statsHtml += '<div class="stat-card"><div class="stat-value">' + (profile.friend_count || 0) + '</div><div class="stat-label">Friends</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + (profile.post_count || 0) + '</div><div class="stat-label">Posts</div></div>';
 
-      // Build the skin viewer section — positioned on the RIGHT side of the header
+      // Build the skin viewer — positioned on the RIGHT side of the profile header
       var skinViewerHtml = '';
       if (profile.minecraft_uuid) {
         skinViewerHtml = '<div class="skin-viewer-wrapper">' +
@@ -125,7 +123,7 @@ const ProfilePage = {
       // Load skin3d and init viewer
       if (profile.minecraft_uuid) {
         ProfilePage._loadSkin3d(function () {
-          ProfilePage.initSkinViewer(profile.minecraft_uuid, profile.skin_animation || {});
+          ProfilePage._initMainViewer(profile.minecraft_uuid, profile.skin_animation || {});
         });
       }
 
@@ -142,81 +140,89 @@ const ProfilePage = {
     }
   },
 
-  /**
-   * Load the skin3d UMD bundle if not already loaded.
-   */
+  // ──────────────────────────────────────────────
+  //  Skin3D Library Loading
+  // ──────────────────────────────────────────────
+
   _loadSkin3d(callback) {
-    if (window.skin3d) return callback();
+    if (window.skin3d && window.skin3d.Render) return callback();
     var script = document.createElement('script');
-    script.src = '/node_modules/skin3d/dist/skin3d.umd.js';
-    script.onload = callback;
-    script.onerror = function () { console.error('Failed to load skin3d library'); };
+    script.src = '/js/skin3d.bundle.js';
+    script.onload = function () {
+      console.log('[Skin3D] Library loaded, exports:', Object.keys(window.skin3d || {}));
+      callback();
+    };
+    script.onerror = function () { console.error('[Skin3D] Failed to load bundle'); };
     document.head.appendChild(script);
   },
 
-  /**
-   * Available animation types and their labels.
-   */
+  // ──────────────────────────────────────────────
+  //  Animation Definitions
+  // ──────────────────────────────────────────────
+
   ANIMATIONS: {
-    idle: { label: '😴 Idle', desc: 'Gentle sway' },
-    walking: { label: '🚶 Walking', desc: 'Arms and legs swing' },
-    running: { label: '🏃 Running', desc: 'Fast, exaggerated swing' },
-    flying: { label: '🦅 Flying', desc: 'Body rotates, elytra' },
-    waving: { label: '👋 Waving', desc: 'One arm waves' },
-    crouch: { label: '🧎 Crouching', desc: 'Crouch pose' },
-    hit: { label: '⚔️ Hit', desc: 'Right arm swings' },
-    none: { label: '🧍 None', desc: 'Static pose' }
+    idle:    { label: '😴 Idle',      desc: 'Gentle sway' },
+    walking: { label: '🚶 Walking',   desc: 'Arms and legs swing' },
+    running: { label: '🏃 Running',   desc: 'Fast, exaggerated swing' },
+    flying:  { label: '🦅 Flying',    desc: 'Body rotates, elytra' },
+    waving:  { label: '👋 Waving',    desc: 'One arm waves' },
+    crouch:  { label: '🧎 Crouching', desc: 'Crouch pose' },
+    hit:     { label: '⚔️ Hit',       desc: 'Right arm swings' },
+    none:    { label: '🧍 None',      desc: 'Static pose' }
   },
 
-  /**
-   * Create a skin3d animation instance from a type string.
-   */
   _createAnimation(type, speed) {
-    if (!window.skin3d) return null;
+    var s3d = window.skin3d;
+    if (!s3d) return null;
     var anim = null;
     switch (type) {
-      case 'idle': anim = new window.skin3d.IdleAnimation(); break;
-      case 'walking': anim = new window.skin3d.WalkingAnimation(); break;
-      case 'running': anim = new window.skin3d.RunningAnimation(); break;
-      case 'flying': anim = new window.skin3d.FlyingAnimation(); break;
-      case 'waving': anim = new window.skin3d.WaveAnimation(); break;
-      case 'crouch': anim = new window.skin3d.CrouchAnimation(); break;
-      case 'hit': anim = new window.skin3d.HitAnimation(); break;
-      case 'none': return null;
-      default: anim = new window.skin3d.WalkingAnimation(); break;
+      case 'idle':    anim = new s3d.IdleAnimation(); break;
+      case 'walking': anim = new s3d.WalkingAnimation(); break;
+      case 'running': anim = new s3d.RunningAnimation(); break;
+      case 'flying':  anim = new s3d.FlyingAnimation(); break;
+      case 'waving':  anim = new s3d.WaveAnimation(); break;
+      case 'crouch':  anim = new s3d.CrouchAnimation(); break;
+      case 'hit':     anim = new s3d.HitAnimation(); break;
+      case 'none':    return null;
+      default:        anim = new s3d.WalkingAnimation(); break;
     }
     if (anim && speed) anim.speed = speed;
     return anim;
   },
 
-  /**
-   * Initialize the 3D skin viewer with saved animation preferences.
-   */
-  initSkinViewer(uuid, prefs) {
-    try {
-      var container = document.getElementById('skin-viewer-container');
-      if (!container) return;
-      container.innerHTML = '';
+  // ──────────────────────────────────────────────
+  //  Main Profile Viewer (right side of header)
+  // ──────────────────────────────────────────────
 
-      var settings = Object.assign({ animation: 'walking', speed: 1, autoRotate: true, zoom: 0.9 }, prefs || {});
+  _initMainViewer(uuid, prefs) {
+    var container = document.getElementById('skin-viewer-container');
+    if (!container || !window.skin3d || !window.skin3d.Render) {
+      console.error('[Skin3D] Cannot init: container=', !!container, 'skin3d=', !!window.skin3d);
+      return;
+    }
+
+    // Dispose any existing viewer first
+    ProfilePage._disposeMainViewer();
+
+    try {
+      container.innerHTML = '';
+      var settings = Object.assign({ animation: 'walking', speed: 1, autoRotate: true, zoom: 0.9, autoRotateSpeed: 1 }, prefs || {});
+
+      // Create a canvas element for the renderer
+      var canvas = document.createElement('canvas');
+      container.appendChild(canvas);
 
       var viewer = new window.skin3d.Render({
-        canvas: document.createElement('canvas'),
-        width: 200,
-        height: 280,
-        skin: 'https://minotar.net/skin/' + uuid,
+        canvas: canvas,
+        width: container.clientWidth || 160,
+        height: container.clientHeight || 240,
+        skin: 'https://mc-heads.net/skin/' + uuid,
         zoom: settings.zoom || 0.9,
-        enableControls: true
+        animation: ProfilePage._createAnimation(settings.animation, settings.speed)
       });
-
-      container.appendChild(viewer.canvas);
-      viewer.canvas.style.borderRadius = '12px';
 
       viewer.autoRotate = settings.autoRotate !== false;
       viewer.autoRotateSpeed = settings.autoRotateSpeed || 1;
-
-      var anim = ProfilePage._createAnimation(settings.animation, settings.speed);
-      if (anim) viewer.animation = anim;
 
       // Show nametag if username is known
       if (ProfilePage._currentProfile && ProfilePage._currentProfile.minecraft_username) {
@@ -224,16 +230,25 @@ const ProfilePage = {
       }
 
       ProfilePage._viewer = viewer;
+      console.log('[Skin3D] Main viewer initialized successfully');
     } catch (e) {
-      console.error('Failed to init skin viewer', e);
-      var container = document.getElementById('skin-viewer-container');
-      if (container) container.innerHTML = '<img src="https://mc-heads.net/body/' + uuid + '/200" alt="Skin" style="image-rendering:pixelated;margin:auto;display:block;height:100%">';
+      console.error('[Skin3D] Failed to init main viewer:', e);
+      // Fallback to static image
+      container.innerHTML = '<img src="https://mc-heads.net/body/' + uuid + '/160" alt="Skin" style="image-rendering:pixelated;margin:auto;display:block;height:100%">';
     }
   },
 
-  /**
-   * Show the Skin3D customization modal (own profile only).
-   */
+  _disposeMainViewer() {
+    if (ProfilePage._viewer) {
+      try { ProfilePage._viewer.dispose(); } catch (e) { }
+      ProfilePage._viewer = null;
+    }
+  },
+
+  // ──────────────────────────────────────────────
+  //  Customization Modal
+  // ──────────────────────────────────────────────
+
   showCustomizeModal(profile) {
     var modal = document.getElementById('skin-customize-modal');
     if (!modal || !profile.minecraft_uuid) return;
@@ -241,7 +256,7 @@ const ProfilePage = {
 
     var currentPrefs = Object.assign({ animation: 'walking', speed: 1, autoRotate: true, zoom: 0.9, autoRotateSpeed: 1 }, profile.skin_animation || {});
 
-    // Build animation options
+    // Build animation options dropdown
     var animOptions = '';
     var anims = ProfilePage.ANIMATIONS;
     for (var key in anims) {
@@ -277,30 +292,30 @@ const ProfilePage = {
       '</div>' +
       '</div></div>';
 
-    // Close handlers
-    document.getElementById('close-skin-customize').addEventListener('click', function () { 
-      modal.classList.add('hidden'); 
-      ProfilePage._disposePreviewViewer(); 
-      if (profile.minecraft_uuid) ProfilePage.initSkinViewer(profile.minecraft_uuid, profile.skin_animation || {});
-    });
-    document.getElementById('skin-customize-overlay').addEventListener('click', function (e) { 
-      if (e.target.id === 'skin-customize-overlay') { 
-        modal.classList.add('hidden'); 
-        ProfilePage._disposePreviewViewer(); 
-        if (profile.minecraft_uuid) ProfilePage.initSkinViewer(profile.minecraft_uuid, profile.skin_animation || {});
-      } 
+    // Close modal handler (with viewer cleanup/restore)
+    var closeModal = function () {
+      modal.classList.add('hidden');
+      ProfilePage._disposePreviewViewer();
+      // Restore main viewer
+      if (profile.minecraft_uuid) {
+        ProfilePage._initMainViewer(profile.minecraft_uuid, profile.skin_animation || {});
+      }
+    };
+
+    document.getElementById('close-skin-customize').addEventListener('click', closeModal);
+    document.getElementById('skin-customize-overlay').addEventListener('click', function (e) {
+      if (e.target.id === 'skin-customize-overlay') closeModal();
     });
 
-    // Temporarily dispose main viewer to free up WebGL context for the modal
-    if (ProfilePage._viewer) {
-      try { ProfilePage._viewer.dispose(); } catch (e) { }
-      ProfilePage._viewer = null;
-    }
+    // Dispose main viewer first to free WebGL context
+    ProfilePage._disposeMainViewer();
 
-    // Init preview viewer after a short delay to ensure modal is visible
-    setTimeout(() => {
+    // Init preview viewer after a frame so the modal DOM is painted
+    requestAnimationFrame(function () {
+      setTimeout(function () {
         ProfilePage._initPreviewViewer(profile.minecraft_uuid, currentPrefs);
-    }, 100);
+      }, 50);
+    });
 
     // Live preview controls
     document.getElementById('skin-anim-type').addEventListener('change', function () { ProfilePage._updatePreview(); });
@@ -337,44 +352,47 @@ const ProfilePage = {
         ProfilePage._disposePreviewViewer();
         App.showToast('Skin animation saved!', 'success');
         // Re-init main viewer with new settings
-        if (ProfilePage._viewer) {
-          try { ProfilePage._viewer.dispose(); } catch (ex) { }
-          ProfilePage._viewer = null;
-        }
-        ProfilePage.initSkinViewer(profile.minecraft_uuid, newPrefs);
+        ProfilePage._initMainViewer(profile.minecraft_uuid, newPrefs);
       } catch (err) {
         App.showToast(err.message || 'Failed to save', 'error');
       }
     });
   },
 
-  _previewViewer: null,
+  // ──────────────────────────────────────────────
+  //  Preview Viewer (inside customize modal)
+  // ──────────────────────────────────────────────
 
   _initPreviewViewer(uuid, prefs) {
+    var container = document.getElementById('skin-customize-viewer');
+    if (!container || !window.skin3d || !window.skin3d.Render) {
+      console.error('[Skin3D] Cannot init preview: container=', !!container, 'skin3d=', !!window.skin3d);
+      return;
+    }
+
+    ProfilePage._disposePreviewViewer();
+
     try {
-      var container = document.getElementById('skin-customize-viewer');
-      if (!container || !window.skin3d) return;
       container.innerHTML = '';
+      var canvas = document.createElement('canvas');
+      container.appendChild(canvas);
 
       var viewer = new window.skin3d.Render({
-        canvas: document.createElement('canvas'),
+        canvas: canvas,
         width: 180,
         height: 260,
-        skin: 'https://minotar.net/skin/' + uuid,
+        skin: 'https://mc-heads.net/skin/' + uuid,
         zoom: prefs.zoom || 0.9,
-        enableControls: true
+        animation: ProfilePage._createAnimation(prefs.animation, prefs.speed)
       });
 
-      container.appendChild(viewer.canvas);
       viewer.autoRotate = prefs.autoRotate !== false;
       viewer.autoRotateSpeed = prefs.autoRotateSpeed || 1;
 
-      var anim = ProfilePage._createAnimation(prefs.animation, prefs.speed);
-      if (anim) viewer.animation = anim;
-
       ProfilePage._previewViewer = viewer;
+      console.log('[Skin3D] Preview viewer initialized successfully');
     } catch (e) {
-      console.error('Preview viewer error', e);
+      console.error('[Skin3D] Preview viewer error:', e);
     }
   },
 
@@ -388,12 +406,11 @@ const ProfilePage = {
       var zoom = parseFloat(document.getElementById('skin-anim-zoom').value);
       var rotateSpeed = parseFloat(document.getElementById('skin-rotate-speed').value);
 
-      var anim = ProfilePage._createAnimation(type, speed);
-      viewer.animation = anim;
+      viewer.animation = ProfilePage._createAnimation(type, speed);
       viewer.autoRotate = autoRotate;
       viewer.autoRotateSpeed = rotateSpeed;
       viewer.zoom = zoom;
-    } catch (e) { console.error('Preview update error', e); }
+    } catch (e) { console.error('[Skin3D] Preview update error:', e); }
   },
 
   _disposePreviewViewer() {
@@ -402,6 +419,10 @@ const ProfilePage = {
       ProfilePage._previewViewer = null;
     }
   },
+
+  // ──────────────────────────────────────────────
+  //  Friend Actions
+  // ──────────────────────────────────────────────
 
   renderFriendButton(profile) {
     if (profile.friendship_status === 'accepted') {
@@ -427,6 +448,10 @@ const ProfilePage = {
     try { await API.removeFriend(id); App.showToast('Friend removed', 'info'); Router.navigate(window.location.hash); } catch (err) { App.showToast(err.message, 'error'); }
   },
 
+  // ──────────────────────────────────────────────
+  //  Posts
+  // ──────────────────────────────────────────────
+
   async loadUserPosts(userId) {
     try {
       var posts = await API.getFeed();
@@ -440,6 +465,10 @@ const ProfilePage = {
       }
     } catch (err) { /* silently fail */ }
   },
+
+  // ──────────────────────────────────────────────
+  //  Edit Profile Modal
+  // ──────────────────────────────────────────────
 
   showEditModal(profile) {
     var modal = document.getElementById('edit-modal');
