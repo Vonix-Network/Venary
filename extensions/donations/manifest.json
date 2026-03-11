@@ -1,7 +1,7 @@
 {
     "id": "donations",
     "name": "Donations & Ranks",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Stripe-powered donation system with tiered ranks, Discord webhook notifications, and in-game rank synchronization.",
     "author": "Venary",
     "enabled": true,

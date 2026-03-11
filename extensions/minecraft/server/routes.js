@@ -348,18 +348,24 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /minecraft/register-direct — register new platform account with password from in-game
+    // POST /minecraft/register-direct — register new platform account with detailed info from in-game
     router.post('/minecraft/register-direct', async (req, res) => {
         try {
             const server = await validateApiKey(req);
             if (!server) return res.status(403).json({ error: 'Invalid API key' });
 
-            const { minecraft_username, minecraft_uuid, password } = req.body;
+            const { minecraft_username, minecraft_uuid, password, email, display_name, username: platformUsername } = req.body;
+            
             if (!minecraft_uuid || !password) return res.status(400).json({ error: 'minecraft_uuid and password required' });
             if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
             const uuid = formatUUID(minecraft_uuid);
-            const username = minecraft_username || uuid;
+            const mcUsername = minecraft_username || uuid;
+            
+            // Use provided platform username or fallback to MC username
+            const finalUsername = platformUsername || mcUsername;
+            const finalEmail = email || `${finalUsername.toLowerCase()}@mc.local`;
+            const finalDisplayName = display_name || finalUsername;
 
             // Check if already linked
             const existingLink = await extDb.get('SELECT * FROM linked_accounts WHERE minecraft_uuid = ?', [uuid]);
@@ -368,9 +374,15 @@ module.exports = function (extDb) {
             }
 
             // Check if username is taken on the platform
-            const existingUser = await coreDb.get('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [username]);
+            const existingUser = await coreDb.get('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [finalUsername]);
             if (existingUser) {
-                return res.status(409).json({ error: 'Username already taken on the platform. Register on the website instead.' });
+                return res.status(409).json({ error: 'Username already taken on the platform. Choose another one.' });
+            }
+
+            // Check if email is taken
+            const existingEmail = await coreDb.get('SELECT id FROM users WHERE LOWER(email) = LOWER(?)', [finalEmail]);
+            if (existingEmail) {
+                return res.status(409).json({ error: 'Email already taken on the platform. Choose another one.' });
             }
 
             // Create platform user
@@ -384,30 +396,35 @@ module.exports = function (extDb) {
 
             await coreDb.run(
                 'INSERT INTO users (id, username, email, password, display_name, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-                [userId, username, `${username.toLowerCase()}@mc.local`, hashedPassword, username, now]
+                [userId, finalUsername, finalEmail, hashedPassword, finalDisplayName, now]
             );
 
             // Auto-link Minecraft account
             await extDb.run(
                 'INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username) VALUES (?, ?, ?, ?)',
-                [uuidv4(), userId, uuid, username]
+                [uuidv4(), userId, uuid, mcUsername]
             );
 
             // Also ensure they exist in mc_players for leaderboard
             const existingPlayer = await extDb.get('SELECT * FROM mc_players WHERE uuid = ?', [uuid]);
             if (existingPlayer) {
                 await extDb.run('UPDATE mc_players SET linked_user_id = ? WHERE uuid = ?', [userId, uuid]);
+            } else {
+                await extDb.run(
+                    'INSERT INTO mc_players (id, uuid, username, linked_user_id) VALUES (?, ?, ?, ?)',
+                    [uuidv4(), uuid, mcUsername, userId]
+                );
             }
 
-            const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: '7d' });
+            const token = jwt.sign({ id: userId, username: finalUsername }, JWT_SECRET, { expiresIn: '7d' });
 
             res.status(201).json({
                 success: true,
                 token,
                 user: {
                     id: userId,
-                    username,
-                    minecraft_username: username,
+                    username: finalUsername,
+                    minecraft_username: mcUsername,
                     minecraft_uuid: uuid,
                     role: 'member',
                     level: 1
