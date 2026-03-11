@@ -47,7 +47,7 @@ module.exports = function (extDb) {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 10, 50);
             const donations = await extDb.all(
-                `SELECT d.id, d.amount, d.currency, d.payment_type, d.created_at, d.minecraft_username,
+                `SELECT d.id, d.user_id, d.amount, d.currency, d.payment_type, d.created_at, d.minecraft_username,
                         r.name as rank_name, r.color as rank_color
                  FROM donations d
                  LEFT JOIN donation_ranks r ON d.rank_id = r.id
