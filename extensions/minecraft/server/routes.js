@@ -238,11 +238,20 @@ module.exports = function (extDb) {
             const uuidTaken = await extDb.get('SELECT user_id FROM linked_accounts WHERE minecraft_uuid = ?', [entry.minecraft_uuid]);
             if (uuidTaken) return res.status(409).json({ error: 'This Minecraft account is already linked to another user.' });
 
-            // Create link
+            // Check if this UUID exists as an unregistered mc_player (to migrate XP)
+            const existingPlayer = await extDb.get('SELECT * FROM mc_players WHERE uuid = ?', [entry.minecraft_uuid]);
+            const migratedXp = existingPlayer ? (existingPlayer.xp || 0) : 0;
+
+            // Create link with migrated XP
             await extDb.run(
-                'INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username) VALUES (?, ?, ?, ?)',
-                [uuidv4(), req.user.id, entry.minecraft_uuid, entry.minecraft_username]
+                'INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username, minecraft_xp) VALUES (?, ?, ?, ?, ?)',
+                [uuidv4(), req.user.id, entry.minecraft_uuid, entry.minecraft_username, migratedXp]
             );
+
+            // Update mc_players to mark as linked (prevents duplicate "unlinked" entry on leaderboard)
+            if (existingPlayer) {
+                await extDb.run('UPDATE mc_players SET linked_user_id = ? WHERE uuid = ?', [req.user.id, entry.minecraft_uuid]);
+            }
 
             // Delete used code
             await extDb.run('DELETE FROM link_codes WHERE id = ?', [entry.id]);
@@ -257,6 +266,11 @@ module.exports = function (extDb) {
     // DELETE /link — unlink MC account
     router.delete('/link', authenticateToken, async (req, res) => {
         try {
+            // Reset mc_players.linked_user_id so they appear as unregistered on leaderboard again
+            const link = await extDb.get('SELECT minecraft_uuid FROM linked_accounts WHERE user_id = ?', [req.user.id]);
+            if (link) {
+                await extDb.run('UPDATE mc_players SET linked_user_id = NULL WHERE uuid = ?', [link.minecraft_uuid]);
+            }
             await extDb.run('DELETE FROM linked_accounts WHERE user_id = ?', [req.user.id]);
             res.json({ message: 'Minecraft account unlinked' });
         } catch (err) {
@@ -701,17 +715,33 @@ module.exports = function (extDb) {
                 return res.status(409).json({ error: 'This UUID is already linked to another user' });
             }
 
-            // Upsert
+            // Check if this UUID exists as an unregistered mc_player (to migrate XP)
+            const existingPlayer = await extDb.get('SELECT * FROM mc_players WHERE uuid = ?', [uuid]);
+            const migratedXp = existingPlayer ? (existingPlayer.xp || 0) : 0;
+            const mcUsername = minecraft_username || (existingPlayer ? existingPlayer.username : null) || uuid;
+
+            // Upsert linked_accounts
             const userLink = await extDb.get('SELECT * FROM linked_accounts WHERE user_id = ?', [userId]);
             if (userLink) {
-                await extDb.run('UPDATE linked_accounts SET minecraft_uuid = ?, minecraft_username = ? WHERE id = ?',
-                    [uuid, minecraft_username || uuid, userLink.id]);
+                await extDb.run('UPDATE linked_accounts SET minecraft_uuid = ?, minecraft_username = ?, minecraft_xp = ? WHERE id = ?',
+                    [uuid, mcUsername, Math.max(userLink.minecraft_xp || 0, migratedXp), userLink.id]);
             } else {
-                await extDb.run('INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username) VALUES (?, ?, ?, ?)',
-                    [uuidv4(), userId, uuid, minecraft_username || uuid]);
+                await extDb.run('INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username, minecraft_xp) VALUES (?, ?, ?, ?, ?)',
+                    [uuidv4(), userId, uuid, mcUsername, migratedXp]);
             }
 
-            res.json({ message: 'Minecraft account assigned', minecraft_uuid: uuid, minecraft_username: minecraft_username || uuid });
+            // Update mc_players to mark as linked (prevents duplicate "unlinked" entry on leaderboard)
+            if (existingPlayer) {
+                await extDb.run('UPDATE mc_players SET linked_user_id = ? WHERE uuid = ?', [userId, uuid]);
+            } else {
+                // Create mc_players entry so leaderboard data stays consistent
+                await extDb.run(
+                    'INSERT INTO mc_players (id, uuid, username, xp, level, linked_user_id) VALUES (?, ?, ?, ?, ?, ?)',
+                    [uuidv4(), uuid, mcUsername, 0, 0, userId]
+                );
+            }
+
+            res.json({ message: 'Minecraft account assigned', minecraft_uuid: uuid, minecraft_username: mcUsername });
         } catch (err) {
             console.error('[MC] Admin assign error:', err);
             res.status(500).json({ error: 'Server error' });
