@@ -168,9 +168,22 @@ module.exports = function (extDb) {
                 });
             }
 
-            // Unregistered MC players
+            // Build a set of UUIDs already covered by linked_accounts (defensive check for stale data)
+            const linkedUuids = new Set(linked.map(l => l.minecraft_uuid));
+
+            // Auto-heal any mc_players rows that are stale (linked via admin before fix was deployed)
+            for (const lnk of linked) {
+                const player = await extDb.get('SELECT id, linked_user_id FROM mc_players WHERE uuid = ?', [lnk.minecraft_uuid]);
+                if (player && !player.linked_user_id) {
+                    await extDb.run('UPDATE mc_players SET linked_user_id = ? WHERE uuid = ?', [lnk.user_id, lnk.minecraft_uuid]);
+                }
+            }
+
+            // Unregistered MC players — exclude any whose UUID is already in linked_accounts
             const unregistered = await extDb.all('SELECT * FROM mc_players WHERE linked_user_id IS NULL');
             for (const p of unregistered) {
+                if (linkedUuids.has(p.uuid)) continue;
+
                 entries.push({
                     id: 'mc-' + p.id, username: p.username, display_name: p.username,
                     avatar: null, role: null,
