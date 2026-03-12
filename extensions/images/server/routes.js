@@ -54,7 +54,11 @@ module.exports = (extDb) => {
             if (!extDb) throw new Error('Extension DB not initialized');
 
             for (const key in updates) {
-                await extDb.run('INSERT OR REPLACE INTO image_settings ("key", "value") VALUES (?, ?)', [key, String(updates[key])]);
+                if (extDb.type === 'postgres') {
+                    await extDb.run('INSERT INTO image_settings ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value"', [key, String(updates[key])]);
+                } else {
+                    await extDb.run('INSERT OR REPLACE INTO image_settings ("key", "value") VALUES (?, ?)', [key, String(updates[key])]);
+                }
             }
             res.json({ message: 'Settings updated' });
         } catch (err) {
@@ -81,9 +85,9 @@ module.exports = (extDb) => {
                 const formData = new FormData();
                 formData.append('reqtype', 'fileupload');
 
-                // Convert buffer to File for fetch since FormData in Node sometimes drops the filename with just Blob
-                const fileObj = new File([req.file.buffer], req.file.originalname || 'upload.png', { type: req.file.mimetype || 'image/png' });
-                formData.append('fileToUpload', fileObj);
+                // Use Blob + Filename for maximum Node.js version compatibility
+                const blob = new Blob([req.file.buffer], { type: req.file.mimetype || 'image/png' });
+                formData.append('fileToUpload', blob, req.file.originalname || 'upload.png');
 
                 const response = await fetch('https://catbox.moe/user/api.php', {
                     method: 'POST',
