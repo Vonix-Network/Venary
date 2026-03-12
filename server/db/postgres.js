@@ -36,9 +36,14 @@ class PostgresAdapter {
                 await client.query(`SET search_path TO ${this.schemaName}, public;`);
             }
 
+            // Strip SQL comments (single-line and multi-line)
+            let cleanSql = schemaSql
+                .replace(/--.*$/gm, '') // Strip -- comments
+                .replace(/\/\*[\s\S]*?\*\//g, ''); // Strip /* */ comments
+
             // SQLite uses (CURRENT_TIMESTAMP) with parens for DEFAULT
             // Convert SQLite-specific syntax to PostgreSQL
-            let pgSchema = schemaSql
+            let pgSchema = cleanSql
                 .replace(/DEFAULT \(CURRENT_TIMESTAMP\)/g, "DEFAULT NOW()")
                 .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, "SERIAL PRIMARY KEY")
                 .replace(/AUTOINCREMENT/gi, "") // Handle any stray AUTOINCREMENT
@@ -48,14 +53,11 @@ class PostgresAdapter {
             const statements = pgSchema.split(';').filter(s => s.trim());
             for (const stmt of statements) {
                 let sql = stmt.trim();
-                let isInsertIgnore = false;
+                if (!sql) continue;
 
-                if (sql.toUpperCase().startsWith('INSERT OR IGNORE INTO')) {
-                    sql = sql.replace(/INSERT OR IGNORE INTO/i, 'INSERT INTO');
-                    isInsertIgnore = true;
-                }
-
-                if (isInsertIgnore) {
+                // Handle INSERT OR IGNORE → INSERT INTO ... ON CONFLICT DO NOTHING
+                if (/^INSERT OR IGNORE INTO/i.test(sql)) {
+                    sql = sql.replace(/^INSERT OR IGNORE INTO/i, 'INSERT INTO');
                     await client.query(sql + ' ON CONFLICT DO NOTHING;');
                 } else {
                     await client.query(sql + ';');
