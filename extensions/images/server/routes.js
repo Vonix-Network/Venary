@@ -31,6 +31,7 @@ module.exports = (extDb) => {
             rows.forEach(r => settings[r.key] = r.value);
             res.json(settings);
         } catch (err) {
+            console.error('[Images Settings] Error:', err);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -39,16 +40,26 @@ module.exports = (extDb) => {
     router.put('/settings', authenticateToken, async (req, res) => {
         try {
             const db = require('../../../server/db');
+            if (!db) throw new Error('Core DB module not found');
+
             const user = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
-            if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+            if (!user || user.role !== 'admin') {
+                console.warn('[Images Settings] Unauthorized access attempt by user:', req.user.id);
+                return res.status(403).json({ error: 'Admin only' });
+            }
 
             const updates = req.body;
+            if (!updates) throw new Error('No updates provided in body');
+
+            if (!extDb) throw new Error('Extension DB not initialized');
+
             for (const key in updates) {
-                await extDb.run('INSERT OR REPLACE INTO image_settings (key, value) VALUES (?, ?)', [key, String(updates[key])]);
+                await extDb.run('INSERT OR REPLACE INTO image_settings ("key", "value") VALUES (?, ?)', [key, String(updates[key])]);
             }
             res.json({ message: 'Settings updated' });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Images Settings] Detailed Error:', err);
+            res.status(500).json({ error: 'Server error: ' + err.message });
         }
     });
 
