@@ -431,9 +431,8 @@ var MinecraftPage = {
         entries.forEach((e, i) => {
             const rank = offset + i + 1;
             const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
-            const headUrl = e.minecraft_uuid
-                ? `https://mc-heads.net/avatar/${e.minecraft_uuid}/20`
-                : (e.avatar || '/img/default-avatar.png');
+            const identifier = e.minecraft_uuid || e.minecraft_username || e.username || 'MHF_Steve';
+            const headUrl = `https://mc-heads.net/avatar/${identifier}/20`;
 
             html += `
                 <tr>
