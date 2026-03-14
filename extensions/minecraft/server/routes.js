@@ -190,7 +190,7 @@ module.exports = function (extDb) {
                      FROM player_stats ps
                      LEFT JOIN mc_players mp ON mp.uuid = ps.player_uuid
                      WHERE ps.stat_key = ?
-                     GROUP BY ps.player_uuid
+                     GROUP BY ps.player_uuid, mp.username
                      ORDER BY stat_value DESC
                      LIMIT ? OFFSET ?`,
                     [stat, limit, offset]
