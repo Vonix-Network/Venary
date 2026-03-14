@@ -179,10 +179,10 @@ class ExtensionLoader {
                     nav: ext.enabled ? (m.nav || []) : [],
                     pages: ext.enabled ? (m.pages || []).map(p => ({
                         route: p.route,
-                        src: '/ext/' + m.id + '/' + p.file.replace(/^public\//, ''),
+                        src: '/ext/' + m.id + '/' + p.file.replace(/^public\//, '') + '?v=' + m.version,
                         global: p.global || null
                     })) : [],
-                    css: ext.enabled ? (m.css || []).map(c => '/ext/' + m.id + '/' + c.replace(/^public\//, '')) : [],
+                    css: ext.enabled ? (m.css || []).map(c => '/ext/' + m.id + '/' + c.replace(/^public\//, '') + '?v=' + m.version) : [],
                     admin_route: ext.enabled ? (m.admin_route || null) : null
                 });
             }
