@@ -10,6 +10,9 @@ var MinecraftPage = {
     chartRange: '24h',
     leaderboardPage: 1,
     leaderboardLimit: 50,
+    leaderboardStat: 'play_time',
+    leaderboardServer: 'all',
+    leaderboardMeta: null,
 
     async render(container, params) {
         if (params && params.length > 0) {
@@ -121,7 +124,6 @@ var MinecraftPage = {
                         <button class="mc-btn mc-btn-copy" onclick="MinecraftPage.copyIP('${address}', this)">\uD83D\uDCCB Copy</button>
                     </div>
                     <div class="mc-btn-group" style="align-items:center">
-                        ${s.user_linked ? `<div style="font-size:0.9rem;font-weight:600;color:var(--neon-cyan);margin-right:8px">\u2728 ${(s.user_xp || 0).toLocaleString()} XP</div>` : ''}
                         ${s.curseforge_url ? `<a href="${s.curseforge_url}" target="_blank" class="mc-btn mc-btn-curseforge"><img src="https://www.curseforge.com/favicon.ico" alt="CF">CurseForge</a>` : ''}
                         ${s.modrinth_url ? `<a href="${s.modrinth_url}" target="_blank" class="mc-btn mc-btn-modrinth"><img src="https://modrinth.com/favicon.ico" alt="MR">Modrinth</a>` : ''}
                         ${s.bluemap_url ? `<a href="${s.bluemap_url}" target="_blank" class="mc-btn mc-btn-map">\uD83D\uDDFA\uFE0F Map</a>` : ''}
@@ -205,6 +207,7 @@ var MinecraftPage = {
                             ${server.curseforge_url ? `<a href="${server.curseforge_url}" target="_blank" class="mc-btn mc-btn-curseforge"><img src="https://www.curseforge.com/favicon.ico" alt="CF">CurseForge</a>` : ''}
                             ${server.modrinth_url ? `<a href="${server.modrinth_url}" target="_blank" class="mc-btn mc-btn-modrinth"><img src="https://modrinth.com/favicon.ico" alt="MR">Modrinth</a>` : ''}
                             ${server.bluemap_url ? `<a href="${server.bluemap_url}" target="_blank" class="mc-btn mc-btn-map">\uD83D\uDDFA\uFE0F Map</a>` : ''}
+                            <button class="mc-btn mc-btn-primary" onclick="MinecraftPage.viewServerLeaderboard('${server.id}')">\uD83C\uDFC6 View Leaderboard</button>
                         </div>
                     </div>
 
@@ -255,6 +258,17 @@ var MinecraftPage = {
 
         // Load chart
         this.loadChart(serverId, this.chartRange);
+    },
+
+    viewServerLeaderboard(serverId) {
+        this.leaderboardServer = serverId;
+        this.currentTab = 'leaderboard';
+        document.querySelectorAll('.mc-tab').forEach(b => {
+            b.classList.remove('active');
+            if (b.innerText.includes('Leaderboard')) b.classList.add('active');
+        });
+        window.location.hash = '#/servers';
+        this.renderTab(document.getElementById('mc-tab-content'));
     },
 
     setChartMetric(metric, btn, serverId) {
@@ -339,12 +353,20 @@ var MinecraftPage = {
     // LEADERBOARD TAB
     // ══════════════════════════════════════════════════════
     async renderLeaderboard(container) {
+        if (!this.leaderboardMeta) {
+            try {
+                this.leaderboardMeta = await API.get('/api/ext/minecraft/leaderboard/meta');
+            } catch {
+                this.leaderboardMeta = { categories: {}, servers: [] };
+            }
+        }
+
         container.innerHTML = '<div class="loading-spinner" style="text-align:center;padding:3rem">Loading leaderboard...</div>';
 
         const offset = (this.leaderboardPage - 1) * this.leaderboardLimit;
         let data;
         try {
-            data = await API.get(`/api/ext/minecraft/leaderboard?limit=${this.leaderboardLimit}&offset=${offset}`);
+            data = await API.get(`/api/ext/minecraft/leaderboard?stat=${this.leaderboardStat}&server_id=${this.leaderboardServer}&limit=${this.leaderboardLimit}&offset=${offset}`);
         } catch (err) {
             console.error('[MC] Leaderboard fetch error:', err);
             data = { entries: [], total: 0 };
@@ -373,15 +395,36 @@ var MinecraftPage = {
             }));
         }
 
+        let statSelectorHtml = `<div style="display:flex;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
+            <select class="input-field" style="width:auto;min-width:200px" onchange="MinecraftPage.changeLeaderboardFilter('server', this.value)">
+                <option value="all" ${this.leaderboardServer === 'all' ? 'selected' : ''}>Network Total (All Servers)</option>
+                ${(this.leaderboardMeta.servers || []).map(s => `<option value="${s.id}" ${this.leaderboardServer === s.id ? 'selected' : ''}>${this._esc(s.name)}</option>`).join('')}
+            </select>
+            
+            <select class="input-field" style="width:auto;min-width:200px" onchange="MinecraftPage.changeLeaderboardFilter('stat', this.value)">
+                ${Object.entries(this.leaderboardMeta.categories || {}).map(([cat, stats]) => `
+                    <optgroup label="${cat.toUpperCase()}">
+                        ${stats.map(s => `<option value="${s}" ${this.leaderboardStat === s ? 'selected' : ''}>${MinecraftPage.formatStatName(s)}</option>`).join('')}
+                    </optgroup>
+                `).join('')}
+            </select>
+            
+            <button class="btn btn-secondary" style="margin-left:auto" onclick="MinecraftPage.renderLeaderboard(document.getElementById('mc-tab-content'))">
+                \uD83D\uDD04 Refresh
+            </button>
+        </div>`;
+
         if (entries.length === 0 && this.leaderboardPage === 1) {
-            container.innerHTML = '<div style="text-align:center;padding:3rem;color:rgba(255,255,255,0.5)">No leaderboard data yet.</div>';
+            container.innerHTML = statSelectorHtml + '<div style="text-align:center;padding:3rem;color:rgba(255,255,255,0.5)">No leaderboard data yet for this stat/server combination.</div>';
             return;
         }
 
-        let html = `
+        let html = statSelectorHtml + `
             <table class="mc-leaderboard">
                 <thead><tr>
-                    <th>#</th><th>Player</th><th>Site XP</th><th>MC XP</th><th>Total XP</th><th>Level</th>
+                    <th style="width:60px;text-align:center">#</th>
+                    <th>Player</th>
+                    <th style="text-align:right">${MinecraftPage.formatStatName(this.leaderboardStat)}</th>
                 </tr></thead>
                 <tbody>
         `;
@@ -395,16 +438,13 @@ var MinecraftPage = {
 
             html += `
                 <tr>
-                    <td><span class="mc-rank ${rankClass}">${rank}</span></td>
+                    <td style="text-align:center"><span class="mc-rank ${rankClass}">${rank}</span></td>
                     <td style="display:flex;align-items:center;gap:8px">
                         <img src="${headUrl}" style="width:20px;height:20px;border-radius:3px" alt="">
                         <span>${this._esc(e.minecraft_username || e.username)}</span>
                         ${!e.is_registered ? '<span style="font-size:0.7rem;color:rgba(255,255,255,0.3)">(unlinked)</span>' : ''}
                     </td>
-                    <td>${(e.site_xp || 0).toLocaleString()}</td>
-                    <td>${(e.minecraft_xp || 0).toLocaleString()}</td>
-                    <td style="font-weight:700;color:var(--neon-cyan)">${(e.total_xp || 0).toLocaleString()}</td>
-                    <td>${e.level || 1}</td>
+                    <td style="text-align:right;font-weight:700;color:var(--neon-cyan)">${MinecraftPage.formatStat(this.leaderboardStat, e.stat_value)}</td>
                 </tr>
             `;
         });
@@ -431,6 +471,13 @@ var MinecraftPage = {
         }
 
         container.innerHTML = html;
+    },
+
+    changeLeaderboardFilter(type, value) {
+        if (type === 'server') this.leaderboardServer = value;
+        if (type === 'stat') this.leaderboardStat = value;
+        this.leaderboardPage = 1;
+        this.renderLeaderboard(document.getElementById('mc-tab-content'));
     },
 
     changeLeaderboardPage(delta) {
@@ -477,7 +524,15 @@ var MinecraftPage = {
                     </div>
                     <div class="mc-skin-username" style="font-size:1.1rem">${this._esc(link.minecraft_username)}</div>
                     <p style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">${link.minecraft_uuid}</p>
-                    <p style="color:var(--text-secondary);margin:1.5rem 0">MC XP: <strong style="color:var(--neon-cyan);font-size:1.1rem">${(link.minecraft_xp || 0).toLocaleString()}</strong></p>
+                    <div style="margin:1.5rem 0;color:var(--text-secondary);text-align:left;background:rgba(0,0,0,0.2);padding:1rem;border-radius:8px">
+                        <h4 style="margin:0 0 12px 0;font-size:0.9rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.6)">Top Network Stats</h4>
+                        ${(link.top_stats || []).slice(0, 3).map(s => `
+                            <div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.05);padding:8px 0;last-child:border-bottom:none">
+                                <span>${MinecraftPage.formatStatName(s.stat_key)}</span>
+                                <strong style="color:var(--neon-cyan)">${MinecraftPage.formatStat(s.stat_key, s.total)}</strong>
+                            </div>
+                        `).join('') || '<div style="opacity:0.5;text-align:center;padding:1rem">No stats synced yet. Play on a server!</div>'}
+                    </div>
                     <button class="btn btn-secondary" onclick="MinecraftPage.unlinkAccount()" style="margin-top:0.5rem">\uD83D\uDD17 Unlink Account</button>
                 </div>
             `;
@@ -563,6 +618,32 @@ var MinecraftPage = {
     },
 
     // ── Helpers ──
+    formatStat(key, value) {
+        if (!value) return "0";
+        if (key.includes('time')) {
+            const seconds = Math.floor(value / 20);
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            if (h > 0) return `${h}h ${m}m`;
+            return `${m}m`;
+        }
+        if (key.includes('one_cm')) {
+            const m = value / 100;
+            if (m > 1000) return (m / 1000).toFixed(2) + ' km';
+            return Math.floor(m) + ' m';
+        }
+        if (key.includes('damage')) {
+            return (value / 10).toFixed(1) + ' \u2764';
+        }
+        return value.toLocaleString();
+    },
+
+    formatStatName(key) {
+        if (!key) return '';
+        return key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+            .replace('One Cm', 'Distance').replace('Play Time', 'Playtime');
+    },
+
     _esc(str) {
         if (!str) return '';
         return String(str)

@@ -30,31 +30,27 @@ CREATE TABLE IF NOT EXISTS linked_accounts (
     user_id TEXT NOT NULL UNIQUE,
     minecraft_uuid TEXT NOT NULL UNIQUE,
     minecraft_username TEXT NOT NULL,
-    minecraft_xp INTEGER DEFAULT 0,
     linked_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
--- Per-server XP for registered users
-CREATE TABLE IF NOT EXISTS server_xp (
+-- Per-player, per-server stat tracking
+-- One row per (player_uuid, server_id, stat_key) combination
+CREATE TABLE IF NOT EXISTS player_stats (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    player_uuid TEXT NOT NULL,
     server_id TEXT NOT NULL,
-    xp INTEGER DEFAULT 0,
-    level INTEGER DEFAULT 0,
-    playtime_seconds INTEGER DEFAULT 0,
+    stat_key TEXT NOT NULL,
+    stat_value BIGINT DEFAULT 0,
     last_synced_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     FOREIGN KEY (server_id) REFERENCES mc_servers(id),
-    UNIQUE(user_id, server_id)
+    UNIQUE(player_uuid, server_id, stat_key)
 );
 
--- Unregistered Minecraft players (for leaderboard)
+-- Player profiles (tracks usernames, last seen, etc.)
 CREATE TABLE IF NOT EXISTS mc_players (
     id TEXT PRIMARY KEY,
     uuid TEXT NOT NULL UNIQUE,
     username TEXT NOT NULL,
-    xp INTEGER DEFAULT 0,
-    level INTEGER DEFAULT 0,
-    playtime_seconds INTEGER DEFAULT 0,
     linked_user_id TEXT,
     last_synced_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
@@ -82,11 +78,14 @@ CREATE TABLE IF NOT EXISTS link_codes (
     created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
--- Indices
+-- Indices for performance
 CREATE INDEX IF NOT EXISTS idx_linked_user ON linked_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_linked_uuid ON linked_accounts(minecraft_uuid);
-CREATE INDEX IF NOT EXISTS idx_server_xp_user ON server_xp(user_id);
-CREATE INDEX IF NOT EXISTS idx_server_xp_server ON server_xp(server_id);
+CREATE INDEX IF NOT EXISTS idx_player_stats_uuid ON player_stats(player_uuid);
+CREATE INDEX IF NOT EXISTS idx_player_stats_server ON player_stats(server_id);
+CREATE INDEX IF NOT EXISTS idx_player_stats_key ON player_stats(stat_key);
+CREATE INDEX IF NOT EXISTS idx_player_stats_lookup ON player_stats(player_uuid, server_id, stat_key);
+CREATE INDEX IF NOT EXISTS idx_player_stats_leaderboard ON player_stats(stat_key, stat_value);
 CREATE INDEX IF NOT EXISTS idx_mc_players_uuid ON mc_players(uuid);
 CREATE INDEX IF NOT EXISTS idx_uptime_server ON uptime_history(server_id);
 CREATE INDEX IF NOT EXISTS idx_uptime_checked ON uptime_history(checked_at);

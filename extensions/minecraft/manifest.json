@@ -1,8 +1,8 @@
 {
     "id": "minecraft",
     "name": "Minecraft",
-    "version": "1.1.0",
-    "description": "Full Minecraft integration — server list, pinging, downtime detection, leaderboards, account linking, and 3D skin viewer.",
+    "version": "2.0.0",
+    "description": "Full Minecraft integration — server list, pinging, downtime detection, stats leaderboards, account linking, and 3D skin viewer.",
     "author": "Venary",
     "enabled": true,
     "nav": [
@@ -36,7 +36,7 @@
     "data": [
         "mc_servers",
         "linked_accounts",
-        "server_xp",
+        "player_stats",
         "mc_players",
         "uptime_history",
         "link_codes"

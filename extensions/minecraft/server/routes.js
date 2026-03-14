@@ -49,17 +49,13 @@ module.exports = function (extDb) {
         try {
             const servers = await extDb.all('SELECT * FROM mc_servers ORDER BY sort_order ASC, name ASC');
 
-            let userXpMap = {};
             let isLinked = false;
+            let userUuid = null;
 
             if (req.user) {
                 const linked = await extDb.get('SELECT * FROM linked_accounts WHERE user_id = ?', [req.user.id]);
                 isLinked = !!linked;
-
-                const userXps = await extDb.all('SELECT server_id, xp FROM server_xp WHERE user_id = ?', [req.user.id]);
-                userXps.forEach(row => {
-                    userXpMap[row.server_id] = row.xp;
-                });
+                userUuid = linked ? linked.minecraft_uuid : null;
             }
 
             const results = await Promise.all(servers.map(async s => {
@@ -75,7 +71,6 @@ module.exports = function (extDb) {
                     players: status.players,
                     motd: status.motd,
                     responseTimeMs: status.responseTimeMs,
-                    user_xp: userXpMap[s.id] || 0,
                     user_linked: isLinked
                 };
             }));
@@ -139,78 +134,107 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /leaderboard — combined XP leaderboard with pagination
+    // Stat metadata for formatting on the frontend
+    const STAT_CATEGORIES = {
+        core: ['deaths', 'mob_kills', 'player_kills', 'play_time', 'total_world_time'],
+        movement: ['walk_one_cm', 'sprint_one_cm', 'crouch_one_cm', 'climb_one_cm', 'fly_one_cm', 'swim_one_cm', 'fall_one_cm', 'walk_on_water_one_cm', 'walk_under_water_one_cm', 'horse_one_cm', 'boat_one_cm', 'minecart_one_cm', 'aviate_one_cm', 'pig_one_cm', 'strider_one_cm'],
+        combat: ['damage_dealt', 'damage_taken', 'damage_blocked_by_shield', 'damage_absorbed', 'damage_resisted', 'damage_dealt_absorbed', 'damage_dealt_resisted'],
+        progression: ['total_blocks_mined', 'total_items_crafted', 'total_items_used', 'total_items_broken', 'total_items_picked_up', 'total_items_dropped', 'total_entities_killed', 'total_killed_by', 'animals_bred', 'fish_caught', 'raid_win', 'raid_trigger', 'traded_with_villager', 'enchant_item'],
+        interactions: ['jump', 'drop', 'open_chest', 'open_enderchest', 'open_shulker_box', 'play_noteblock', 'interact_with_crafting_table', 'interact_with_furnace', 'interact_with_blast_furnace', 'interact_with_smoker', 'interact_with_anvil', 'interact_with_brewingstand', 'interact_with_beacon', 'interact_with_smithing_table', 'interact_with_grindstone', 'interact_with_stonecutter', 'interact_with_loom', 'interact_with_cartography_table', 'sleep_in_bed', 'leave_game', 'time_since_death', 'time_since_rest']
+    };
+    const ALL_TRACKED_STATS = Object.values(STAT_CATEGORIES).flat();
+
+    // GET /leaderboard/meta — returns stat categories and server list for UI
+    router.get('/leaderboard/meta', async (req, res) => {
+        try {
+            const servers = await extDb.all('SELECT id, name FROM mc_servers ORDER BY sort_order ASC, name ASC');
+            res.json({ categories: STAT_CATEGORIES, servers });
+        } catch (err) {
+            console.error('[MC] Leaderboard meta error:', err);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
+    // GET /leaderboard — stats-based leaderboard with server/stat filtering
+    // ?stat=deaths&server_id=<id>&category=core&limit=50&offset=0
+    // When server_id is omitted or "all", sums across all servers
     router.get('/leaderboard', async (req, res) => {
         try {
-            const limit = parseInt(req.query.limit) || 50;
+            const limit = Math.min(parseInt(req.query.limit) || 50, 100);
             const offset = parseInt(req.query.offset) || 0;
-            const type = req.query.type || 'xp'; // 'xp' or 'playtime'
+            const stat = req.query.stat || 'play_time';
+            const serverId = req.query.server_id;
+            const category = req.query.category;
 
-            // Registered users with MC accounts
-            const linked = await extDb.all('SELECT * FROM linked_accounts');
-            const entries = [];
-
-            for (const link of linked) {
-                const user = await coreDb.get('SELECT id, username, display_name, avatar, level, xp, role FROM users WHERE id = ?', [link.user_id]);
-                if (!user) continue;
-
-                const playtimeRow = await extDb.get('SELECT COALESCE(SUM(playtime_seconds),0) as total FROM server_xp WHERE user_id = ?', [link.user_id]);
-
-                entries.push({
-                    id: user.id, username: user.username, display_name: user.display_name,
-                    avatar: user.avatar, role: user.role,
-                    minecraft_username: link.minecraft_username, minecraft_uuid: link.minecraft_uuid,
-                    site_xp: user.xp, minecraft_xp: link.minecraft_xp,
-                    total_xp: user.xp + (link.minecraft_xp || 0),
-                    level: user.level,
-                    playtime_seconds: playtimeRow.total || 0,
-                    is_registered: true
-                });
+            // Validate stat key
+            if (!ALL_TRACKED_STATS.includes(stat)) {
+                return res.status(400).json({ error: 'Invalid stat key', valid: ALL_TRACKED_STATS });
             }
 
-            // Build a set of UUIDs already covered by linked_accounts (defensive check for stale data)
-            const linkedUuids = new Set(linked.map(l => l.minecraft_uuid));
-
-            // Auto-heal any mc_players rows that are stale (linked via admin before fix was deployed)
-            for (const lnk of linked) {
-                const player = await extDb.get('SELECT id, linked_user_id FROM mc_players WHERE uuid = ?', [lnk.minecraft_uuid]);
-                if (player && !player.linked_user_id) {
-                    await extDb.run('UPDATE mc_players SET linked_user_id = ? WHERE uuid = ?', [lnk.user_id, lnk.minecraft_uuid]);
-                }
-            }
-
-            // Unregistered MC players — exclude any whose UUID is already in linked_accounts
-            const unregistered = await extDb.all('SELECT * FROM mc_players WHERE linked_user_id IS NULL');
-            for (const p of unregistered) {
-                if (linkedUuids.has(p.uuid)) continue;
-
-                entries.push({
-                    id: 'mc-' + p.id, username: p.username, display_name: p.username,
-                    avatar: null, role: null,
-                    minecraft_username: p.username, minecraft_uuid: p.uuid,
-                    site_xp: 0, minecraft_xp: p.xp,
-                    total_xp: p.xp,
-                    level: p.level,
-                    playtime_seconds: p.playtime_seconds || 0,
-                    is_registered: false
-                });
-            }
-
-            // Sort
-            if (type === 'playtime') {
-                entries.sort((a, b) => b.playtime_seconds - a.playtime_seconds);
+            let rows;
+            if (serverId && serverId !== 'all') {
+                // Per-server leaderboard
+                rows = await extDb.all(
+                    `SELECT ps.player_uuid, ps.stat_value, mp.username
+                     FROM player_stats ps
+                     LEFT JOIN mc_players mp ON mp.uuid = ps.player_uuid
+                     WHERE ps.stat_key = ? AND ps.server_id = ? AND ps.stat_value > 0
+                     ORDER BY ps.stat_value DESC
+                     LIMIT ? OFFSET ?`,
+                    [stat, serverId, limit, offset]
+                );
             } else {
-                entries.sort((a, b) => b.total_xp - a.total_xp);
+                // All servers — sum stat values across servers
+                rows = await extDb.all(
+                    `SELECT ps.player_uuid, SUM(ps.stat_value) as stat_value, mp.username
+                     FROM player_stats ps
+                     LEFT JOIN mc_players mp ON mp.uuid = ps.player_uuid
+                     WHERE ps.stat_key = ? AND ps.stat_value > 0
+                     GROUP BY ps.player_uuid
+                     ORDER BY stat_value DESC
+                     LIMIT ? OFFSET ?`,
+                    [stat, limit, offset]
+                );
             }
 
-            const total = entries.length;
-            const paginated = entries.slice(offset, offset + limit);
+            // Get total count for pagination
+            let totalRow;
+            if (serverId && serverId !== 'all') {
+                totalRow = await extDb.get(
+                    'SELECT COUNT(DISTINCT player_uuid) as total FROM player_stats WHERE stat_key = ? AND server_id = ? AND stat_value > 0',
+                    [stat, serverId]
+                );
+            } else {
+                totalRow = await extDb.get(
+                    'SELECT COUNT(DISTINCT player_uuid) as total FROM player_stats WHERE stat_key = ? AND stat_value > 0',
+                    [stat]
+                );
+            }
+
+            // Build linked accounts map for display
+            const linkedMap = {};
+            const linked = await extDb.all('SELECT minecraft_uuid, minecraft_username, user_id FROM linked_accounts');
+            linked.forEach(l => { linkedMap[l.minecraft_uuid] = l; });
+
+            const entries = rows.map((row, i) => {
+                const link = linkedMap[row.player_uuid];
+                return {
+                    rank: offset + i + 1,
+                    player_uuid: row.player_uuid,
+                    username: row.username || row.player_uuid,
+                    minecraft_username: link ? link.minecraft_username : (row.username || row.player_uuid),
+                    stat_value: parseInt(row.stat_value) || 0,
+                    is_registered: !!link
+                };
+            });
 
             res.json({
-                total,
+                stat,
+                server_id: serverId || 'all',
+                total: totalRow ? totalRow.total : 0,
                 limit,
                 offset,
-                entries: paginated
+                entries
             });
         } catch (err) {
             console.error('[MC] Leaderboard error:', err);
@@ -218,12 +242,21 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /account/:userId — get MC link info for a user (public)
+    // GET /account/:userId — get MC link info + top stats for a user (public)
     router.get('/account/:userId', async (req, res) => {
         try {
-            const link = await extDb.get('SELECT minecraft_uuid, minecraft_username, minecraft_xp FROM linked_accounts WHERE user_id = ?', [req.params.userId]);
+            const link = await extDb.get('SELECT minecraft_uuid, minecraft_username FROM linked_accounts WHERE user_id = ?', [req.params.userId]);
             if (!link) return res.json({ linked: false });
-            res.json({ linked: true, ...link });
+
+            // Get top stats across all servers
+            const topStats = await extDb.all(
+                `SELECT stat_key, SUM(stat_value) as total
+                 FROM player_stats WHERE player_uuid = ?
+                 GROUP BY stat_key ORDER BY total DESC LIMIT 10`,
+                [link.minecraft_uuid]
+            );
+
+            res.json({ linked: true, ...link, top_stats: topStats });
         } catch (err) {
             res.status(500).json({ error: 'Server error' });
         }
@@ -251,14 +284,13 @@ module.exports = function (extDb) {
             const uuidTaken = await extDb.get('SELECT user_id FROM linked_accounts WHERE minecraft_uuid = ?', [entry.minecraft_uuid]);
             if (uuidTaken) return res.status(409).json({ error: 'This Minecraft account is already linked to another user.' });
 
-            // Check if this UUID exists as an unregistered mc_player (to migrate XP)
+            // Check if this UUID exists as an unregistered mc_player
             const existingPlayer = await extDb.get('SELECT * FROM mc_players WHERE uuid = ?', [entry.minecraft_uuid]);
-            const migratedXp = existingPlayer ? (existingPlayer.xp || 0) : 0;
 
-            // Create link with migrated XP
+            // Create link
             await extDb.run(
-                'INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username, minecraft_xp) VALUES (?, ?, ?, ?, ?)',
-                [uuidv4(), req.user.id, entry.minecraft_uuid, entry.minecraft_username, migratedXp]
+                'INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username) VALUES (?, ?, ?, ?)',
+                [uuidv4(), req.user.id, entry.minecraft_uuid, entry.minecraft_username]
             );
 
             // Update mc_players to mark as linked (prevents duplicate "unlinked" entry on leaderboard)
@@ -475,8 +507,8 @@ module.exports = function (extDb) {
     // SERVER API KEY PROTECTED (from MC mod/plugin)
     // ══════════════════════════════════════════════════════
 
-    // POST /sync/xp — bulk XP sync from a Minecraft server
-    router.post('/sync/xp', async (req, res) => {
+    // POST /sync/stats — bulk stats sync from a Minecraft server
+    router.post('/sync/stats', async (req, res) => {
         try {
             const server = await validateApiKey(req);
             if (!server) return res.status(403).json({ error: 'Invalid API key' });
@@ -486,57 +518,60 @@ module.exports = function (extDb) {
                 return res.status(400).json({ error: 'No players to sync' });
             }
 
-            let synced = 0, registered = 0, unregisteredCount = 0;
+            let synced = 0;
             const errors = [];
+            const now = new Date().toISOString();
 
             for (const player of players) {
                 try {
                     const uuid = formatUUID(player.uuid);
-                    const newXp = player.totalExperience || 0;
-                    const newPlaytime = player.playtimeSeconds || 0;
+                    const stats = player.stats || {};
 
-                    // Check if linked to a platform user
-                    const link = await extDb.get('SELECT * FROM linked_accounts WHERE minecraft_uuid = ?', [uuid]);
-
-                    if (link) {
-                        // ── Registered user ──
-                        registered++;
-                        // Update username if changed
-                        if (player.username && player.username !== link.minecraft_username) {
-                            await extDb.run('UPDATE linked_accounts SET minecraft_username = ? WHERE id = ?', [player.username, link.id]);
-                        }
-
-                        // Upsert server_xp (high-water mark)
-                        const existing = await extDb.get('SELECT * FROM server_xp WHERE user_id = ? AND server_id = ?', [link.user_id, server.id]);
-                        if (existing) {
-                            const xpToStore = Math.max(parseInt(existing.xp) || 0, newXp);
-                            const ptToStore = Math.max(parseInt(existing.playtime_seconds) || 0, newPlaytime);
-                            await extDb.run('UPDATE server_xp SET xp = ?, level = ?, playtime_seconds = ?, last_synced_at = ? WHERE id = ?',
-                                [xpToStore, player.level || 0, ptToStore, new Date().toISOString(), existing.id]);
+                    // Upsert mc_players profile
+                    const existingPlayer = await extDb.get('SELECT * FROM mc_players WHERE uuid = ?', [uuid]);
+                    if (existingPlayer) {
+                        if (player.username && player.username !== existingPlayer.username) {
+                            await extDb.run('UPDATE mc_players SET username = ?, last_synced_at = ? WHERE id = ?',
+                                [player.username, now, existingPlayer.id]);
                         } else {
-                            await extDb.run('INSERT INTO server_xp (id, user_id, server_id, xp, level, playtime_seconds) VALUES (?, ?, ?, ?, ?, ?)',
-                                [uuidv4(), link.user_id, server.id, newXp, player.level || 0, newPlaytime]);
+                            await extDb.run('UPDATE mc_players SET last_synced_at = ? WHERE id = ?', [now, existingPlayer.id]);
                         }
-
-                        // Recalculate total minecraft XP across all servers for this user
-                        const totalRow = await extDb.get('SELECT COALESCE(SUM(xp),0) as total FROM server_xp WHERE user_id = ?', [link.user_id]);
-                        const totalMcXp = totalRow.total || 0;
-                        await extDb.run('UPDATE linked_accounts SET minecraft_xp = ? WHERE id = ?', [totalMcXp, link.id]);
-
                     } else {
-                        // ── Unregistered player ──
-                        unregisteredCount++;
-                        const existingPlayer = await extDb.get('SELECT * FROM mc_players WHERE uuid = ?', [uuid]);
-                        if (existingPlayer) {
-                            const xpToStore = Math.max(parseInt(existingPlayer.xp) || 0, newXp);
-                            const ptToStore = Math.max(parseInt(existingPlayer.playtime_seconds) || 0, newPlaytime);
-                            await extDb.run('UPDATE mc_players SET username = ?, xp = ?, level = ?, playtime_seconds = ?, last_synced_at = ? WHERE id = ?',
-                                [player.username, xpToStore, player.level || 0, ptToStore, new Date().toISOString(), existingPlayer.id]);
+                        await extDb.run(
+                            'INSERT INTO mc_players (id, uuid, username, last_synced_at) VALUES (?, ?, ?, ?)',
+                            [uuidv4(), uuid, player.username || uuid, now]
+                        );
+                    }
+
+                    // Update linked_accounts username if changed
+                    const link = await extDb.get('SELECT * FROM linked_accounts WHERE minecraft_uuid = ?', [uuid]);
+                    if (link && player.username && player.username !== link.minecraft_username) {
+                        await extDb.run('UPDATE linked_accounts SET minecraft_username = ? WHERE id = ?', [player.username, link.id]);
+                    }
+
+                    // Upsert each stat value
+                    for (const [statKey, statValue] of Object.entries(stats)) {
+                        if (typeof statValue !== 'number' || statValue < 0) continue;
+
+                        const existing = await extDb.get(
+                            'SELECT id, stat_value FROM player_stats WHERE player_uuid = ? AND server_id = ? AND stat_key = ?',
+                            [uuid, server.id, statKey]
+                        );
+
+                        if (existing) {
+                            // Always take the latest value from the mod (it reads directly from MC stats)
+                            await extDb.run(
+                                'UPDATE player_stats SET stat_value = ?, last_synced_at = ? WHERE id = ?',
+                                [statValue, now, existing.id]
+                            );
                         } else {
-                            await extDb.run('INSERT INTO mc_players (id, uuid, username, xp, level, playtime_seconds) VALUES (?, ?, ?, ?, ?, ?)',
-                                [uuidv4(), uuid, player.username, newXp, player.level || 0, newPlaytime]);
+                            await extDb.run(
+                                'INSERT INTO player_stats (id, player_uuid, server_id, stat_key, stat_value, last_synced_at) VALUES (?, ?, ?, ?, ?, ?)',
+                                [uuidv4(), uuid, server.id, statKey, statValue, now]
+                            );
                         }
                     }
+
                     synced++;
                 } catch (e) {
                     errors.push(player.uuid);
@@ -544,9 +579,9 @@ module.exports = function (extDb) {
                 }
             }
 
-            res.json({ success: true, synced, syncedCount: synced, registered, unregistered: unregisteredCount, errors });
+            res.json({ success: true, synced, syncedCount: synced, errors });
         } catch (err) {
-            console.error('[MC] XP sync error:', err);
+            console.error('[MC] Stats sync error:', err);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -607,8 +642,6 @@ module.exports = function (extDb) {
                 user: {
                     id: user.id, username: user.username, display_name: user.display_name,
                     role: user.role, level: user.level,
-                    site_xp: user.xp, minecraft_xp: link.minecraft_xp,
-                    total_xp: user.xp + (link.minecraft_xp || 0),
                     minecraft_username: link.minecraft_username, minecraft_uuid: link.minecraft_uuid,
                     donation_rank: await (async () => {
                         try {
@@ -690,7 +723,7 @@ module.exports = function (extDb) {
     router.delete('/admin/servers/:id', authenticateToken, requireAdmin, async (req, res) => {
         try {
             await extDb.run('DELETE FROM uptime_history WHERE server_id = ?', [req.params.id]);
-            await extDb.run('DELETE FROM server_xp WHERE server_id = ?', [req.params.id]);
+            await extDb.run('DELETE FROM player_stats WHERE server_id = ?', [req.params.id]);
             await extDb.run('DELETE FROM link_codes WHERE server_id = ?', [req.params.id]);
             await extDb.run('DELETE FROM mc_servers WHERE id = ?', [req.params.id]);
             res.json({ message: 'Server deleted' });
@@ -728,29 +761,28 @@ module.exports = function (extDb) {
                 return res.status(409).json({ error: 'This UUID is already linked to another user' });
             }
 
-            // Check if this UUID exists as an unregistered mc_player (to migrate XP)
+            // Check if this UUID exists as a mc_player
             const existingPlayer = await extDb.get('SELECT * FROM mc_players WHERE uuid = ?', [uuid]);
-            const migratedXp = existingPlayer ? (existingPlayer.xp || 0) : 0;
             const mcUsername = minecraft_username || (existingPlayer ? existingPlayer.username : null) || uuid;
 
             // Upsert linked_accounts
             const userLink = await extDb.get('SELECT * FROM linked_accounts WHERE user_id = ?', [userId]);
             if (userLink) {
-                await extDb.run('UPDATE linked_accounts SET minecraft_uuid = ?, minecraft_username = ?, minecraft_xp = ? WHERE id = ?',
-                    [uuid, mcUsername, Math.max(userLink.minecraft_xp || 0, migratedXp), userLink.id]);
+                await extDb.run('UPDATE linked_accounts SET minecraft_uuid = ?, minecraft_username = ? WHERE id = ?',
+                    [uuid, mcUsername, userLink.id]);
             } else {
-                await extDb.run('INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username, minecraft_xp) VALUES (?, ?, ?, ?, ?)',
-                    [uuidv4(), userId, uuid, mcUsername, migratedXp]);
+                await extDb.run('INSERT INTO linked_accounts (id, user_id, minecraft_uuid, minecraft_username) VALUES (?, ?, ?, ?)',
+                    [uuidv4(), userId, uuid, mcUsername]);
             }
 
-            // Update mc_players to mark as linked (prevents duplicate "unlinked" entry on leaderboard)
+            // Update mc_players to mark as linked
             if (existingPlayer) {
                 await extDb.run('UPDATE mc_players SET linked_user_id = ? WHERE uuid = ?', [userId, uuid]);
             } else {
-                // Create mc_players entry so leaderboard data stays consistent
+                // Create mc_players entry
                 await extDb.run(
-                    'INSERT INTO mc_players (id, uuid, username, xp, level, linked_user_id) VALUES (?, ?, ?, ?, ?, ?)',
-                    [uuidv4(), uuid, mcUsername, 0, 0, userId]
+                    'INSERT INTO mc_players (id, uuid, username, linked_user_id) VALUES (?, ?, ?, ?)',
+                    [uuidv4(), uuid, mcUsername, userId]
                 );
             }
 
