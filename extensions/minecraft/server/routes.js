@@ -144,6 +144,18 @@ module.exports = function (extDb) {
     };
     const ALL_TRACKED_STATS = Object.values(STAT_CATEGORIES).flat();
 
+    // GET /leaderboard/debug — raw DB diagnostic (admin, dev use)
+    router.get('/leaderboard/debug', async (req, res) => {
+        try {
+            const totalRows = await extDb.get('SELECT COUNT(*) as cnt FROM player_stats');
+            const keys = await extDb.all('SELECT stat_key, COUNT(*) as cnt FROM player_stats GROUP BY stat_key ORDER BY cnt DESC LIMIT 30');
+            const servers = await extDb.all('SELECT id, name FROM mc_servers');
+            res.json({ totalRows: totalRows ? totalRows.cnt : 0, distinctStatKeys: keys, servers });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     // GET /leaderboard/meta — returns stat categories and server list for UI
     router.get('/leaderboard/meta', async (req, res) => {
         try {
@@ -550,8 +562,18 @@ module.exports = function (extDb) {
                     }
 
                     // Upsert each stat value
-                    for (const [statKey, statValue] of Object.entries(stats)) {
+                    for (let [statKey, statValue] of Object.entries(stats)) {
                         if (typeof statValue !== 'number' || statValue < 0) continue;
+
+                        // Normalize stat key — strip minecraft: and minecraft.custom: prefixes
+                        // e.g. "minecraft.custom:minecraft.deaths" -> "deaths"
+                        //      "minecraft:deaths" -> "deaths"
+                        statKey = statKey
+                            .replace(/^minecraft\.custom:minecraft\./, '')
+                            .replace(/^minecraft\.custom:/, '')
+                            .replace(/^minecraft:minecraft\./, '')
+                            .replace(/^minecraft:/, '')
+                            .replace(/^minecraft\./, '');
 
                         const existing = await extDb.get(
                             'SELECT id, stat_value FROM player_stats WHERE player_uuid = ? AND server_id = ? AND stat_key = ?',
