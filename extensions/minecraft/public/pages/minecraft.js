@@ -353,12 +353,11 @@ var MinecraftPage = {
     // LEADERBOARD TAB
     // ══════════════════════════════════════════════════════
     async renderLeaderboard(container) {
-        if (!this.leaderboardMeta) {
-            try {
-                this.leaderboardMeta = await API.get('/api/ext/minecraft/leaderboard/meta');
-            } catch {
-                this.leaderboardMeta = { categories: {}, servers: [] };
-            }
+        // Always refresh metadata so server dropdown is up-to-date
+        try {
+            this.leaderboardMeta = await API.get('/api/ext/minecraft/leaderboard/meta');
+        } catch {
+            if (!this.leaderboardMeta) this.leaderboardMeta = { categories: {}, servers: [] };
         }
 
         container.innerHTML = '<div class="loading-spinner" style="text-align:center;padding:3rem">Loading leaderboard...</div>';
