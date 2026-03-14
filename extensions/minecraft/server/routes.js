@@ -178,7 +178,7 @@ module.exports = function (extDb) {
                     `SELECT ps.player_uuid, ps.stat_value, mp.username
                      FROM player_stats ps
                      LEFT JOIN mc_players mp ON mp.uuid = ps.player_uuid
-                     WHERE ps.stat_key = ? AND ps.server_id = ? AND ps.stat_value > 0
+                     WHERE ps.stat_key = ? AND ps.server_id = ?
                      ORDER BY ps.stat_value DESC
                      LIMIT ? OFFSET ?`,
                     [stat, serverId, limit, offset]
@@ -189,7 +189,7 @@ module.exports = function (extDb) {
                     `SELECT ps.player_uuid, SUM(ps.stat_value) as stat_value, mp.username
                      FROM player_stats ps
                      LEFT JOIN mc_players mp ON mp.uuid = ps.player_uuid
-                     WHERE ps.stat_key = ? AND ps.stat_value > 0
+                     WHERE ps.stat_key = ?
                      GROUP BY ps.player_uuid
                      ORDER BY stat_value DESC
                      LIMIT ? OFFSET ?`,
@@ -201,12 +201,12 @@ module.exports = function (extDb) {
             let totalRow;
             if (serverId && serverId !== 'all') {
                 totalRow = await extDb.get(
-                    'SELECT COUNT(DISTINCT player_uuid) as total FROM player_stats WHERE stat_key = ? AND server_id = ? AND stat_value > 0',
+                    'SELECT COUNT(DISTINCT player_uuid) as total FROM player_stats WHERE stat_key = ? AND server_id = ?',
                     [stat, serverId]
                 );
             } else {
                 totalRow = await extDb.get(
-                    'SELECT COUNT(DISTINCT player_uuid) as total FROM player_stats WHERE stat_key = ? AND stat_value > 0',
+                    'SELECT COUNT(DISTINCT player_uuid) as total FROM player_stats WHERE stat_key = ?',
                     [stat]
                 );
             }
@@ -573,6 +573,9 @@ module.exports = function (extDb) {
                     }
 
                     synced++;
+                    if (synced % 10 === 0 || players.length <= 5) {
+                        console.log(`[MC] Stats sync progress: ${synced}/${players.length} players`);
+                    }
                 } catch (e) {
                     errors.push(player.uuid);
                     console.error('[MC] Sync player error:', e);
