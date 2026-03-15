@@ -228,13 +228,20 @@ module.exports = function (extDb) {
             const linked = await extDb.all('SELECT minecraft_uuid, minecraft_username, user_id FROM linked_accounts');
             linked.forEach(l => { linkedMap[l.minecraft_uuid] = l; });
 
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             const entries = rows.map((row, i) => {
                 const link = linkedMap[row.player_uuid];
+                // row.username comes from mc_players via LEFT JOIN — could be null or a raw UUID
+                // if it's a raw UUID (stored as fallback when mod sent no username), treat it as missing
+                const rawUsername = row.username && !uuidRegex.test(row.username) ? row.username : null;
+                const safeUsername = link
+                    ? (link.minecraft_username || rawUsername)
+                    : (rawUsername || (row.player_uuid ? row.player_uuid.replace(/-/g, '').slice(0, 8) + '...' : '???'));
                 return {
                     rank: offset + i + 1,
                     player_uuid: row.player_uuid,
-                    username: row.username || row.player_uuid,
-                    minecraft_username: link ? link.minecraft_username : (row.username || row.player_uuid),
+                    username: safeUsername,
+                    minecraft_username: safeUsername,
                     stat_value: parseInt(row.stat_value) || 0,
                     is_registered: !!link
                 };
@@ -612,8 +619,24 @@ module.exports = function (extDb) {
                     } else {
                         await extDb.run(
                             'INSERT INTO mc_players (id, uuid, username, last_synced_at) VALUES (?, ?, ?, ?)',
-                            [uuidv4(), uuid, player.username || uuid, now]
+                            [uuidv4(), uuid, player.username || null, now]
                         );
+                        // If mod sent no username, fetch it async from Mojang via Ashcon proxy
+                        if (!player.username) {
+                            const uuidForFetch = uuid;
+                            (async () => {
+                                try {
+                                    const resp = await fetch(`https://api.ashcon.app/mojang/v2/user/${uuidForFetch}`);
+                                    if (resp.ok) {
+                                        const data = await resp.json();
+                                        if (data && data.username) {
+                                            await extDb.run('UPDATE mc_players SET username = ? WHERE uuid = ?', [data.username, uuidForFetch]);
+                                            console.log(`[MC] Repaired username for ${uuidForFetch}: ${data.username}`);
+                                        }
+                                    }
+                                } catch (e) { /* non-fatal */ }
+                            })();
+                        }
                     }
 
                     // Update linked_accounts username if changed

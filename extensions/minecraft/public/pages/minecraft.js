@@ -431,15 +431,18 @@ var MinecraftPage = {
         entries.forEach((e, i) => {
             const rank = offset + i + 1;
             const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
-            const identifier = e.minecraft_uuid || e.minecraft_username || e.username || 'MHF_Steve';
-            const headUrl = `https://mc-heads.net/avatar/${identifier}/20`;
+            // Use player_uuid for mc-heads (most reliable for skin lookup), fall back to username/MHF_Steve
+            const headIdentifier = e.player_uuid || e.minecraft_username || e.username || 'MHF_Steve';
+            const headUrl = `https://mc-heads.net/avatar/${headIdentifier}/20`;
+            // Safe display name — never show raw undefined/null
+            const displayName = e.minecraft_username || e.username || (e.player_uuid ? e.player_uuid.slice(0, 8) + '...' : '???');
 
             html += `
                 <tr>
                     <td style="text-align:center"><span class="mc-rank ${rankClass}">${rank}</span></td>
                     <td style="display:flex;align-items:center;gap:8px">
                         <img src="${headUrl}" style="width:20px;height:20px;border-radius:3px" alt="">
-                        <span>${this._esc(e.minecraft_username || e.username)}</span>
+                        <span>${this._esc(displayName)}</span>
                         ${!e.is_registered ? '<span style="font-size:0.7rem;color:rgba(255,255,255,0.3)">(unlinked)</span>' : ''}
                     </td>
                     <td style="text-align:right;font-weight:700;color:var(--neon-cyan)">${MinecraftPage.formatStat(this.leaderboardStat, e.stat_value)}</td>
