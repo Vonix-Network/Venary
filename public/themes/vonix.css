@@ -10,10 +10,10 @@
     --bg-primary: #070809;
     --bg-secondary: #0A0C11;
     --bg-tertiary: #0B0D11;
-    --bg-card: rgba(11, 13, 17, 0.45);
-    --bg-card-hover: rgba(15, 18, 23, 0.6);
-    --bg-glass: rgba(0, 0, 0, 0.5);
-    --bg-input: rgba(11, 13, 17, 0.7);
+    .75);
+    .85);
+    .8);
+    .85);
 
     /* Modern Accents */
     --neon-cyan: #00D9FF;

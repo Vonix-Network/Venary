@@ -9,10 +9,10 @@
     --bg-primary: #050508;
     --bg-secondary: #0a0a0f;
     --bg-tertiary: #0f1016;
-    --bg-card: rgba(15, 16, 22, 0.6);
-    --bg-card-hover: rgba(20, 22, 30, 0.75);
-    --bg-glass: rgba(5, 5, 8, 0.7);
-    --bg-input: rgba(15, 16, 22, 0.8);
+    .75);
+    .85);
+    .8);
+    .85);
 
     --neon-cyan: #4dc4ff;
     --neon-blue: #1a5cff;

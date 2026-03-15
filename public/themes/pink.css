@@ -9,10 +9,10 @@
     --bg-primary: #120a10;
     --bg-secondary: #1a0f18;
     --bg-tertiary: #20131d;
-    --bg-card: rgba(26, 15, 24, 0.45);
-    --bg-card-hover: rgba(32, 19, 29, 0.6);
-    --bg-glass: rgba(18, 10, 16, 0.5);
-    --bg-input: rgba(26, 15, 24, 0.7);
+    --bg-card: rgba(26, 15, 24, 0.75);
+    --bg-card-hover: rgba(32, 19, 29, 0.85);
+    --bg-glass: rgba(18, 10, 16, 0.8);
+    --bg-input: rgba(26, 15, 24, 0.85);
 
     --neon-cyan: #ff70a6; /* Redefined to pink */
     --neon-magenta: #ff9770;

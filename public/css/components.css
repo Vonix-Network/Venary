@@ -722,11 +722,6 @@ textarea.input-field {
     min-height: 100vh;
     padding: var(--space-xl);
     transition: margin-left var(--transition-normal);
-    
-    /* Enhanced readability backdrop layer */
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
 }
 
 .page-container.full-width {
