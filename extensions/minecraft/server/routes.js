@@ -335,9 +335,66 @@ module.exports = function (extDb) {
         }
     });
 
-    // ══════════════════════════════════════════════════════
-    // MINECRAFT AUTH ENDPOINTS (called by VonixCore mod)
-    // ══════════════════════════════════════════════════════
+    // GET /verify — check if player UUID is registered (called by VonixCore on join)
+    // ?uuid=<uuid>&username=<username>
+    router.get('/verify', async (req, res) => {
+        try {
+            const server = await validateApiKey(req);
+            if (!server) return res.status(403).json({ error: 'Invalid API key' });
+
+            const { uuid, username } = req.query;
+            if (!uuid) return res.status(400).json({ error: 'uuid required' });
+
+            const formattedUuid = formatUUID(uuid);
+
+            // Look up linked account by UUID
+            const link = await extDb.get('SELECT * FROM linked_accounts WHERE minecraft_uuid = ?', [formattedUuid]);
+
+            if (!link) {
+                return res.json({ verified: false, registered: false, message: 'Not registered on this platform.' });
+            }
+
+            // Get platform user
+            const user = await coreDb.get('SELECT id, username, role, level FROM users WHERE id = ?', [link.user_id]);
+            if (!user) {
+                return res.json({ verified: false, registered: false, message: 'Platform account not found.' });
+            }
+
+            // Get donation rank if donations extension loaded
+            let donationRankId = null;
+            let totalDonated = 0;
+            try {
+                const extLoader = require('../../../server/extension-loader');
+                const donExt = extLoader.extensions.get('donations');
+                if (donExt && donExt.enabled && donExt.db) {
+                    const ur = await donExt.db.get(
+                        `SELECT r.id, r.name, r.color FROM user_ranks ur
+                         LEFT JOIN donation_ranks r ON ur.rank_id = r.id
+                         WHERE ur.user_id = ? AND ur.active = 1`, [user.id]);
+                    if (ur) donationRankId = ur.id;
+                    const donated = await donExt.db.get('SELECT SUM(amount) as total FROM donations WHERE user_id = ? AND status = ?', [user.id, 'completed']);
+                    if (donated) totalDonated = donated.total || 0;
+                }
+            } catch (e) { /* ignore if donations ext not loaded */ }
+
+            res.json({
+                verified: true,
+                registered: true,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    minecraft_username: link.minecraft_username,
+                    minecraft_uuid: link.minecraft_uuid,
+                    role: user.role,
+                    total_donated: totalDonated,
+                    donation_rank_id: donationRankId
+                }
+            });
+        } catch (err) {
+            console.error('[MC] Verify error:', err);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
 
     // POST /minecraft/login — in-game /login <password>
     router.post('/minecraft/login', async (req, res) => {
@@ -383,7 +440,9 @@ module.exports = function (extDb) {
                     minecraft_username: link.minecraft_username,
                     minecraft_uuid: link.minecraft_uuid,
                     role: user.role,
-                    level: user.level
+                    level: user.level,
+                    total_donated: 0,
+                    donation_rank_id: null
                 }
             });
         } catch (err) {
@@ -506,7 +565,9 @@ module.exports = function (extDb) {
                     minecraft_username: mcUsername,
                     minecraft_uuid: uuid,
                     role: 'member',
-                    level: 1
+                    level: 1,
+                    total_donated: 0,
+                    donation_rank_id: null
                 }
             });
         } catch (err) {

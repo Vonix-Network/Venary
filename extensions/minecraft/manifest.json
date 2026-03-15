@@ -1,7 +1,7 @@
 {
     "id": "minecraft",
     "name": "Minecraft",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "description": "Full Minecraft integration — server list, pinging, downtime detection, stats leaderboards, account linking, and 3D skin viewer.",
     "author": "Venary",
     "enabled": true,
