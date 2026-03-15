@@ -45,14 +45,33 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
         const limit = 50;
         const offset = (page - 1) * limit;
 
-        const users = await db.all(
-            `SELECT id, username, display_name, email, avatar, role, banned, ban_reason, banned_until,
-                    level, xp, status, created_at, last_seen
-             FROM users
-             ORDER BY created_at DESC
-             LIMIT ? OFFSET ?`,
-            [limit, offset]
-        );
+        const search = req.query.search || '';
+        const roleFilter = req.query.role || 'all';
+        const sort = req.query.sort || 'created_at';
+        const order = req.query.order === 'asc' ? 'ASC' : 'DESC';
+
+        const validSortColumns = ['username', 'email', 'role', 'status', 'level', 'created_at'];
+        const sortColumn = validSortColumns.includes(sort) ? sort : 'created_at';
+
+        let query = `SELECT id, username, display_name, email, avatar, role, banned, ban_reason, banned_until,
+                            level, xp, status, created_at, last_seen
+                     FROM users WHERE 1=1`;
+        const params = [];
+
+        if (search) {
+            query += ` AND (username LIKE ? OR email LIKE ? OR display_name LIKE ?)`;
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        if (roleFilter !== 'all') {
+            query += ` AND role = ?`;
+            params.push(roleFilter);
+        }
+
+        query += ` ORDER BY ${sortColumn} ${order} LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const users = await db.all(query, params);
 
         res.json(users);
     } catch (err) {
@@ -106,6 +125,25 @@ router.post('/users/:id/unban', authenticateToken, requireAdmin, async (req, res
         res.json({ message: 'User unbanned' });
     } catch (err) {
         console.error('Unban user error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Delete user
+router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const targetUser = await db.get('SELECT role FROM users WHERE id = ?', [req.params.id]);
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
+        
+        // Only admins can delete moderators/admins
+        if (targetUser.role === 'admin' || (targetUser.role === 'moderator' && req.userRole !== 'admin')) {
+            return res.status(403).json({ error: 'Cannot delete this user' });
+        }
+
+        await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
+        res.json({ message: 'User deleted successfully' });
+    } catch (err) {
+        console.error('Delete user error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });

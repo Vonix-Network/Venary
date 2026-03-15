@@ -1,0 +1,9 @@
+feat(admin): enhance user management with search, filter, sort, delete, and truncated text
+
+- Updated GET /api/admin/users to support search, role filter, and sorting.
+- Added DELETE /api/admin/users/:id endpoint to allow admins to permanently delete users.
+- Updated public/js/api.js to include filters and 'deleteAdminUser' API method.
+- Added Search, Role filter, and Sort UI dropdowns to Admin Dashboard User tab.
+- Added 'Delete' action button next to other actions in the User table.
+- Added CSS truncating properties to Username and Email columns in the Admin Table to prevent long text from stretching the table layout.
+- Bumped version to 1.3.0 in package.json.

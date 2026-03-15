@@ -87,10 +87,18 @@ const API = {
 
     // Admin
     getAdminStats() { return this.get('/api/admin/stats'); },
-    getAdminUsers(page) { return this.get(`/api/admin/users?page=${page || 1}`); },
+    getAdminUsers(page, filters = {}) {
+        let qs = `page=${page || 1}`;
+        if (filters.search) qs += `&search=${encodeURIComponent(filters.search)}`;
+        if (filters.role) qs += `&role=${encodeURIComponent(filters.role)}`;
+        if (filters.sort) qs += `&sort=${encodeURIComponent(filters.sort)}`;
+        if (filters.order) qs += `&order=${encodeURIComponent(filters.order)}`;
+        return this.get(`/api/admin/users?${qs}`);
+    },
     getAdminReports() { return this.get('/api/admin/reports'); },
     banUser(id, reason) { return this.post(`/api/admin/users/${id}/ban`, { reason }); },
     unbanUser(id) { return this.post(`/api/admin/users/${id}/unban`); },
+    deleteAdminUser(id) { return this.delete(`/api/admin/users/${id}`); },
     resolveReport(id, note) { return this.post(`/api/admin/reports/${id}/resolve`, { note }); },
     promoteUser(id, role) { return this.post(`/api/admin/users/${id}/role`, { role }); },
 };

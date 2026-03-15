@@ -78,33 +78,68 @@ var AdminPage = {
     } catch (err) { console.error('Load admin stats error:', err); }
   },
 
+  userFilters: { page: 1, search: '', role: 'all', sort: 'created_at', order: 'desc' },
+
   async loadUsers() {
     var content = document.getElementById('admin-content');
     content.innerHTML = '<div class="loading-spinner"></div>';
     try {
-      var users = await API.getAdminUsers(1);
-      content.innerHTML = '<div class="card" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Level</th><th>Joined</th><th>Actions</th></tr></thead><tbody>' +
+      var users = await API.getAdminUsers(this.userFilters.page, this.userFilters);
+
+      var filterBarHtml = '<div class="card" style="margin-bottom: var(--space-md); display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">' +
+        '<input type="text" id="admin-search" class="input-field" placeholder="Search username, email..." value="' + App.escapeHtml(this.userFilters.search) + '" style="flex: 1; min-width: 200px;">' +
+        '<select id="admin-role" class="input-field" style="width: auto;">' +
+          '<option value="all" ' + (this.userFilters.role === 'all' ? 'selected' : '') + '>All Roles</option>' +
+          '<option value="user" ' + (this.userFilters.role === 'user' ? 'selected' : '') + '>User</option>' +
+          '<option value="moderator" ' + (this.userFilters.role === 'moderator' ? 'selected' : '') + '>Moderator</option>' +
+          '<option value="admin" ' + (this.userFilters.role === 'admin' ? 'selected' : '') + '>Admin</option>' +
+        '</select>' +
+        '<select id="admin-sort" class="input-field" style="width: auto;">' +
+          '<option value="created_at" ' + (this.userFilters.sort === 'created_at' ? 'selected' : '') + '>Joined Date</option>' +
+          '<option value="level" ' + (this.userFilters.sort === 'level' ? 'selected' : '') + '>Level</option>' +
+          '<option value="username" ' + (this.userFilters.sort === 'username' ? 'selected' : '') + '>Username</option>' +
+        '</select>' +
+        '<select id="admin-order" class="input-field" style="width: auto;">' +
+          '<option value="desc" ' + (this.userFilters.order === 'desc' ? 'selected' : '') + '>Descending</option>' +
+          '<option value="asc" ' + (this.userFilters.order === 'asc' ? 'selected' : '') + '>Ascending</option>' +
+        '</select>' +
+        '<button class="btn btn-primary" onclick="AdminPage.applyUserFilters()">Search & Filter</button>' +
+        '</div>';
+
+      var tableHtml = '<div class="card" style="overflow-x:auto"><table class="admin-table" style="table-layout: fixed; width: 100%;"><thead><tr><th style="width:25%">User</th><th style="width:25%">Email</th><th style="width:10%">Role</th><th style="width:10%">Status</th><th style="width:5%">Level</th><th style="width:10%">Joined</th><th style="width:15%">Actions</th></tr></thead><tbody>' +
         users.map(function (u) {
           var init = (u.display_name || u.username || '?').charAt(0).toUpperCase();
           var statusHtml = u.banned ? '<span class="badge badge-admin">BANNED</span>' : '<span class="badge badge-' + (u.status === 'online' ? 'online' : 'offline') + '">' + u.status + '</span>';
           return '<tr>' +
-            '<td><div class="admin-user-row"><div class="avatar" style="width:28px;height:28px;font-size:0.65rem">' + init + '</div><div><div style="font-weight:600">' + App.escapeHtml(u.display_name || u.username) + '</div><div style="font-size:0.75rem;color:var(--text-muted)">@' + App.escapeHtml(u.username) + '</div></div></div></td>' +
-            '<td style="color:var(--text-secondary)">' + App.escapeHtml(u.email) + '</td>' +
+            '<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><div class="admin-user-row"><div class="avatar" style="width:28px;height:28px;font-size:0.65rem;flex-shrink:0">' + init + '</div><div style="min-width:0;overflow:hidden;"><div style="font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;" title="' + App.escapeHtml(u.display_name || u.username) + '">' + App.escapeHtml(u.display_name || u.username) + '</div><div style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;" title="@' + App.escapeHtml(u.username) + '">@' + App.escapeHtml(u.username) + '</div></div></div></td>' +
+            '<td style="color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + App.escapeHtml(u.email) + '">' + App.escapeHtml(u.email) + '</td>' +
             '<td><select class="input-field" style="padding:4px 8px;font-size:0.8rem;background:var(--bg-tertiary);width:auto" onchange="AdminPage.changeRole(\'' + u.id + '\', this.value)">' +
             '<option value="user"' + (u.role === 'user' ? ' selected' : '') + '>User</option>' +
             '<option value="moderator"' + (u.role === 'moderator' ? ' selected' : '') + '>Moderator</option>' +
             '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Admin</option></select></td>' +
             '<td>' + statusHtml + '</td>' +
             '<td><span class="badge badge-level">LVL ' + u.level + '</span></td>' +
-            '<td style="color:var(--text-muted);font-size:0.8rem">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
-            '<td><div style="display:flex;gap:4px">' +
+            '<td style="color:var(--text-muted);font-size:0.8rem" title="' + new Date(u.created_at).toLocaleString() + '">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
+            '<td style="white-space:nowrap;"><div style="display:flex;gap:4px;flex-wrap:wrap;">' +
             (u.banned ? '<button class="btn btn-sm btn-secondary" onclick="AdminPage.unbanUser(\'' + u.id + '\')">Unban</button>' : '<button class="btn btn-sm btn-danger" onclick="AdminPage.showBanModal(\'' + u.id + '\', \'' + App.escapeHtml(u.username) + '\')">Ban</button>') +
             '<button class="btn btn-sm btn-primary" onclick="AdminPage.assignMinecraftUuid(\'' + u.id + '\')">MC UUID</button>' +
-            '<button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button></div></td></tr>';
+            '<button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button>' +
+            '<button class="btn btn-sm btn-danger" onclick="AdminPage.deleteUser(\'' + u.id + '\')">Delete</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
+      
+      content.innerHTML = filterBarHtml + tableHtml;
     } catch (err) {
       content.innerHTML = '<div class="empty-state"><p>Failed to load users</p></div>';
     }
+  },
+
+  applyUserFilters() {
+    this.userFilters.search = document.getElementById('admin-search').value;
+    this.userFilters.role = document.getElementById('admin-role').value;
+    this.userFilters.sort = document.getElementById('admin-sort').value;
+    this.userFilters.order = document.getElementById('admin-order').value;
+    this.userFilters.page = 1;
+    this.loadUsers();
   },
 
   async loadReports() {
@@ -235,6 +270,16 @@ var AdminPage = {
   },
   async unbanUser(userId) {
     try { await API.unbanUser(userId); App.showToast('User unbanned', 'success'); this.loadUsers(); } catch (err) { App.showToast(err.message, 'error'); }
+  },
+  async deleteUser(userId) {
+    if (!confirm('Are you absolutely sure you want to permanently delete this user? This cannot be undone.')) return;
+    try {
+      await API.deleteAdminUser(userId);
+      App.showToast('User deleted successfully', 'success');
+      this.loadUsers();
+    } catch (err) {
+      App.showToast(err.message || 'Failed to delete user', 'error');
+    }
   },
   async assignMinecraftUuid(userId) {
     var uuid = prompt('Enter Minecraft UUID to assign to this user:');
