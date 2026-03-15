@@ -371,7 +371,9 @@
 
 .mc-leaderboard tr td {
     padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(10, 12, 20, 0.65);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
     font-size: 0.85rem;
 }
 
@@ -384,7 +386,7 @@
 }
 
 .mc-leaderboard tr:hover td {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(18, 21, 32, 0.75);
 }
 
 .mc-rank {
