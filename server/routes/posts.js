@@ -41,10 +41,16 @@ router.post('/', authenticateToken, async (req, res) => {
         await updateLevel(req.user.id);
 
         // Auto-subscribe the author to their own post
-        await db.run(
-            `INSERT OR IGNORE INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
-            [uuidv4(), id, req.user.id, now]
+        const existingSub = await db.get(
+            `SELECT id FROM post_subscriptions WHERE post_id = ? AND user_id = ?`,
+            [id, req.user.id]
         );
+        if (!existingSub) {
+            await db.run(
+                `INSERT INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
+                [uuidv4(), id, req.user.id, now]
+            );
+        }
 
         const post = await db.get(
             `SELECT p.*, u.username, u.display_name, u.avatar, u.level,
@@ -196,10 +202,16 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
                 await createNotification(sub.user_id, 'comment', req.user.id, postId, `${commenterName} commented on a post you're subscribed to.`);
             }
             // Auto-subscribe the commenter if not already subscribed
-            await db.run(
-                `INSERT OR IGNORE INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
-                [uuidv4(), postId, req.user.id, now]
+            const existingComSub = await db.get(
+                `SELECT id FROM post_subscriptions WHERE post_id = ? AND user_id = ?`,
+                [postId, req.user.id]
             );
+            if (!existingComSub) {
+                await db.run(
+                    `INSERT INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
+                    [uuidv4(), postId, req.user.id, now]
+                );
+            }
         } catch (subErr) { console.error('Sub/notify error:', subErr); }
 
         const comment = await db.get(
@@ -274,7 +286,7 @@ router.post('/:id/subscribe', authenticateToken, async (req, res) => {
             res.json({ subscribed: false });
         } else {
             await db.run(
-                `INSERT OR IGNORE INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
+                `INSERT INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
                 [uuidv4(), postId, req.user.id, new Date().toISOString()]
             );
             res.json({ subscribed: true });

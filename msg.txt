@@ -1,4 +1,3 @@
-fix(admin): improve clarity of sort ordering for users list
+fix: removed sqlite specific INSERT OR IGNORE syntax
 
-- Changed order dropdown labels to clearly distinguish what Ascending vs Descending means (A-Z vs Z-A).
-- Added automatic toggling so selecting Username as the sort automatically switches the order to Ascending (A-Z).
+- Replaced INSERT OR IGNORE with SELECT fallback inside post subscription routes to support standard PostgreSQL without syntax errors.
