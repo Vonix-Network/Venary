@@ -7,6 +7,7 @@ const db = require('../db');
 const Config = require('../config');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
 const extensionLoader = require('../extension-loader');
+const Mailer = require('../mail');
 
 function safeParseJSON(val) {
     try { return JSON.parse(val); } catch { return []; }
@@ -138,6 +139,70 @@ router.post('/login', async (req, res) => {
         res.json({ token, user: userObj });
     } catch (err) {
         console.error('Login error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Forgot password
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        // Try both exact DB dialects (NOCASE is SQLite, ILIKE is Postgres, but we can do exact match or lower logic)
+        // Venary seems to use straight SELECT queries, so let's stick to standard parameter
+        const users = await db.all('SELECT * FROM users');
+        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+        
+        if (!user) {
+            // Send 200 to prevent email enumeration
+            return res.status(200).json({ success: true });
+        }
+
+        // Generate a token tied to the user's password hash so it invalidates on reset
+        const secret = JWT_SECRET + user.password;
+        const token = jwt.sign({ id: user.id }, secret, { expiresIn: '1h' });
+
+        const resetLink = `${req.protocol}://${req.get('host')}/#/reset-password?token=${token}&id=${user.id}`;
+
+        await Mailer.notifyPasswordReset(user.email, resetLink);
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.error('Forgot password error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Reset password
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { id, token, newPassword } = req.body;
+        if (!id || !token || !newPassword) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+
+        const user = await db.get('SELECT * FROM users WHERE id = ?', [id]);
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid reset link' });
+        }
+
+        const secret = JWT_SECRET + user.password;
+        try {
+            jwt.verify(token, secret);
+        } catch (err) {
+            return res.status(400).json({ error: 'Invalid or expired reset link' });
+        }
+
+        const hashedPassword = bcrypt.hashSync(newPassword, 10);
+        await db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id]);
+
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.error('Reset password error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });

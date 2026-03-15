@@ -27,7 +27,7 @@ var Router = {
         }
 
         // Check auth
-        var isAuthPage = path === '/login' || path === '/register';
+        var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password';
         if (!API.token && !isAuthPage) {
             window.location.hash = '#/login';
             return;

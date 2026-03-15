@@ -59,6 +59,8 @@ const API = {
     register(data) { return this.post('/api/auth/register', data); },
     login(data) { return this.post('/api/auth/login', data); },
     getMe() { return this.get('/api/auth/me'); },
+    forgotPassword(data) { return this.post('/api/auth/forgot-password', data); },
+    resetPassword(data) { return this.post('/api/auth/reset-password', data); },
 
     // Users
     getUser(id) { return this.get(`/api/users/${id}`); },

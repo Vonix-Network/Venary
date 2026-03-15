@@ -137,6 +137,21 @@ const Mailer = {
         });
     },
 
+    /** Password reset email */
+    async notifyPasswordReset(recipientEmail, resetLink) {
+        const siteName = Config.get('siteName', 'Venary');
+        return this.send({
+            to: recipientEmail,
+            subject: `Password Reset Request for ${siteName}`,
+            html: this._template(siteName, `
+                <h2 style="color:#00d4ff">🔐 Password Reset</h2>
+                <p>We received a request to reset your password. Click the button below to choose a new password. This link will expire in 1 hour.</p>
+                <a href="${resetLink}" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#00d4ff;color:#000;border-radius:8px;text-decoration:none;font-weight:600">Reset Password</a>
+                <p style="margin-top:24px;color:#aaa;font-size:0.85rem">If you did not request this, please ignore this email.</p>
+            `)
+        });
+    },
+
     // ──────────────────────────────────────────────
     // Private helpers
     // ──────────────────────────────────────────────

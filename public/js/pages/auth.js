@@ -2,7 +2,13 @@
    Venary — Auth Pages (Login / Register)
    ======================================= */
 const AuthPage = {
-  render(container, isRegister) {
+  render(container, mode) {
+    let formHtml = '';
+    if (mode === 'register') formHtml = this.registerForm();
+    else if (mode === 'forgot') formHtml = this.forgotForm();
+    else if (mode === 'reset') formHtml = this.resetForm();
+    else formHtml = this.loginForm();
+
     container.innerHTML = '<div class="auth-page"><div class="auth-container">' +
       '<div class="auth-logo">' +
       '<svg width="64" height="64" viewBox="0 0 64 64" fill="none">' +
@@ -17,10 +23,10 @@ const AuthPage = {
       '<p>Next Generation Gaming Social Platform</p>' +
       '</div>' +
       '<div class="auth-card" id="auth-card">' +
-      (isRegister ? this.registerForm() : this.loginForm()) +
+      formHtml +
       '</div>' +
       '</div></div>';
-    this.bindEvents(container, isRegister);
+    this.bindEvents(container, mode);
   },
 
   loginForm() {
@@ -34,6 +40,7 @@ const AuthPage = {
       '<div class="input-group">' +
       '<label for="login-password">Password</label>' +
       '<input type="password" id="login-password" class="input-field" placeholder="Enter your password" required autocomplete="current-password">' +
+      '<div style="text-align:right; margin-top:8px; font-size:0.85rem;"><a href="#/forgot-password">Forgot password?</a></div>' +
       '</div>' +
       '<button type="submit" class="btn btn-primary btn-lg" id="login-btn">ENTER THE ARENA</button>' +
       '</form>' +
@@ -65,9 +72,43 @@ const AuthPage = {
       '<div class="auth-toggle">Already a warrior? <a href="#/login">Sign In</a></div>';
   },
 
-  bindEvents(container, isRegister) {
-    var form = container.querySelector(isRegister ? '#register-form' : '#login-form');
+  forgotForm() {
+    return '<h2>RESET PASSWORD</h2>' +
+      '<div id="auth-error" class="auth-error hidden"></div>' +
+      '<div id="auth-success" class="auth-success hidden" style="color:var(--neon-green); margin-bottom:16px;"></div>' +
+      '<form class="auth-form" id="forgot-form">' +
+      '<div class="input-group">' +
+      '<label for="forgot-email">Email</label>' +
+      '<input type="email" id="forgot-email" class="input-field" placeholder="your@email.com" required autocomplete="email">' +
+      '</div>' +
+      '<button type="submit" class="btn btn-primary btn-lg" id="forgot-btn">SEND RESET LINK</button>' +
+      '</form>' +
+      '<div class="auth-toggle"><a href="#/login">Back to Sign In</a></div>';
+  },
+
+  resetForm() {
+    return '<h2>NEW PASSWORD</h2>' +
+      '<div id="auth-error" class="auth-error hidden"></div>' +
+      '<form class="auth-form" id="reset-form">' +
+      '<div class="input-group">' +
+      '<label for="reset-password">New Password</label>' +
+      '<input type="password" id="reset-password" class="input-field" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">' +
+      '</div>' +
+      '<button type="submit" class="btn btn-primary btn-lg" id="reset-btn">UPDATE PASSWORD</button>' +
+      '</form>' +
+      '<div class="auth-toggle"><a href="#/login">Back to Sign In</a></div>';
+  },
+
+  bindEvents(container, mode) {
+    let formId = '#login-form';
+    if (mode === 'register') formId = '#register-form';
+    else if (mode === 'forgot') formId = '#forgot-form';
+    else if (mode === 'reset') formId = '#reset-form';
+
+    var form = container.querySelector(formId);
+    if (!form) return;
     var errorEl = container.querySelector('#auth-error');
+    var successEl = container.querySelector('#auth-success');
 
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -75,33 +116,75 @@ const AuthPage = {
       var originalText = btn.textContent;
       btn.innerHTML = '<span class="spinner"></span> Processing...';
       btn.disabled = true;
-      errorEl.classList.add('hidden');
+      if (errorEl) errorEl.classList.add('hidden');
+      if (successEl) successEl.classList.add('hidden');
 
       try {
         var result;
-        if (isRegister) {
+        if (mode === 'register') {
           result = await API.register({
             username: document.getElementById('reg-username').value,
             email: document.getElementById('reg-email').value,
             display_name: document.getElementById('reg-display').value || undefined,
             password: document.getElementById('reg-password').value,
           });
-        } else {
+          API.setToken(result.token);
+          App.currentUser = result.user;
+          App.onLogin();
+          window.location.hash = '#/feed';
+        } else if (mode === 'login') {
           result = await API.login({
             username: document.getElementById('login-username').value,
             password: document.getElementById('login-password').value,
           });
+          API.setToken(result.token);
+          App.currentUser = result.user;
+          App.onLogin();
+          window.location.hash = '#/feed';
+        } else if (mode === 'forgot') {
+          result = await API.forgotPassword({
+            email: document.getElementById('forgot-email').value,
+          });
+          if (successEl) {
+            successEl.textContent = 'If the email exists, a password reset link has been sent.';
+            successEl.classList.remove('hidden');
+          }
+        } else if (mode === 'reset') {
+          const urlParams = new URL(window.location.href.replace('#', '?')).searchParams;
+          const token = urlParams.get('token');
+          const uid = urlParams.get('id');
+          if (!token || !uid) throw new Error('Invalid reset link.');
+
+          result = await API.resetPassword({
+            id: uid,
+            token: token,
+            newPassword: document.getElementById('reset-password').value,
+          });
+          App.showToast('Password updated successfully. Please log in.', 'success');
+          window.location.hash = '#/login';
         }
-        API.setToken(result.token);
-        App.currentUser = result.user;
-        App.onLogin();
-        window.location.hash = '#/feed';
       } catch (err) {
-        errorEl.textContent = err.message || 'Something went wrong';
-        errorEl.classList.remove('hidden');
+        if (errorEl) {
+          errorEl.textContent = err.message || 'Something went wrong';
+          errorEl.classList.remove('hidden');
+        }
+      } finally {
         btn.textContent = originalText;
         btn.disabled = false;
       }
     });
+
+    if (mode === 'reset') {
+      const urlParams = new URL(window.location.href.replace('#', '?')).searchParams;
+      const token = urlParams.get('token');
+      const uid = urlParams.get('id');
+      if (!token || !uid) {
+        if (errorEl) {
+          errorEl.textContent = 'Invalid or missing password reset link.';
+          errorEl.classList.remove('hidden');
+        }
+        form.querySelector('button').disabled = true;
+      }
+    }
   }
 };

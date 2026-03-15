@@ -14,8 +14,10 @@ var App = {
         ParticleEngine.init();
 
         // Register core routes
-        Router.register('/login', function (c) { AuthPage.render(c, false); });
-        Router.register('/register', function (c) { AuthPage.render(c, true); });
+        Router.register('/login', function (c) { AuthPage.render(c, 'login'); });
+        Router.register('/register', function (c) { AuthPage.render(c, 'register'); });
+        Router.register('/forgot-password', function (c) { AuthPage.render(c, 'forgot'); });
+        Router.register('/reset-password', function (c) { AuthPage.render(c, 'reset'); });
         Router.register('/feed', function (c) { FeedPage.render(c); });
         Router.register('/profile', function (c, p) { ProfilePage.render(c, p); });
         Router.register('/friends', function (c) { FriendsPage.render(c); });
