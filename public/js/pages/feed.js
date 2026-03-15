@@ -18,11 +18,18 @@ const FeedPage = {
             <textarea class="composer-textarea input-field" id="post-content" placeholder="Share your latest achievement, strategy, or gaming moment..." maxlength="1000"></textarea>
           </div>
           <div class="composer-actions">
-            <span class="char-count" id="char-count">0 / 1000</span>
-            <button class="btn btn-primary" id="post-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              Post
-            </button>
+            <div style="display:flex;align-items:center;gap:15px">
+              <button class="btn btn-ghost btn-sm emoji-btn" onclick="App.toggleEmojiPicker(this, 'post-content')" title="Add emoji">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              </button>
+            </div>
+            <div style="display:flex;align-items:center;gap:15px">
+              <span class="char-count" id="char-count">0 / 1000</span>
+              <button class="btn btn-primary" id="post-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Post
+              </button>
+            </div>
           </div>
         </div>
         <div id="feed-posts" class="stagger-children"></div>
@@ -274,6 +281,8 @@ const FeedPage = {
       }).join('');
       html += '<div class="comment-input-wrapper">' +
         '<input type="text" class="comment-input input-field" placeholder="Write a comment..." id="comment-input-' + postId + '">' +
+        '<button class="btn btn-ghost btn-sm emoji-btn" onclick="App.toggleEmojiPicker(this, \'comment-input-' + postId + '\')" style="padding:0 8px" title="Add emoji">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>' +
         '<button class="btn btn-primary btn-sm" onclick="FeedPage.addComment(\'' + postId + '\')">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>';
       section.innerHTML = html;

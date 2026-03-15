@@ -509,7 +509,7 @@ var App = {
         // Linkify Mentions
         s = s.replace(/@([a-zA-Z0-9_]+)/g, '<a href="#/profile/$1" class="mention social-tag">@$1</a>');
         // Linkify Hashtags
-        s = s.replace(/#([a-zA-Z0-9_]+)/g, '<a href="#/search?q=%23$1" class="hashtag social-tag">#$1</a>');
+        s = s.replace(/(^|\s)#([a-zA-Z0-9_]+)/g, '$1<a href="#/search?q=%23$2" class="hashtag social-tag">#$2</a>');
         // Newlines
         s = s.replace(/\n/g, '<br>');
         return s;
@@ -716,6 +716,62 @@ var App = {
         document.getElementById('theme-settings-modal')?.remove();
         if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme();
         App.showToast('Theme settings applied automatically!', 'success');
+    },
+
+    toggleEmojiPicker(buttonElem, inputId) {
+        let container = document.getElementById('global-emoji-picker');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'global-emoji-picker';
+            container.style.position = 'absolute';
+            container.style.zIndex = '9999';
+            container.style.display = 'none';
+
+            const picker = document.createElement('emoji-picker');
+            picker.classList.add('dark');
+            picker.addEventListener('emoji-click', event => {
+                const targetId = container.dataset.targetInput;
+                const input = document.getElementById(targetId);
+                if (input) {
+                    const start = input.selectionStart || input.value.length;
+                    const end = input.selectionEnd || input.value.length;
+                    input.value = input.value.substring(0, start) + event.detail.unicode + input.value.substring(end);
+                    input.focus();
+                    input.setSelectionRange(start + event.detail.unicode.length, start + event.detail.unicode.length);
+                    // Hide after select? The user might want multi-emoji. We won't hide by default.
+                }
+            });
+            container.appendChild(picker);
+            document.body.appendChild(container);
+
+            document.addEventListener('click', e => {
+                const btn = e.target.closest('.emoji-btn');
+                if (btn) return;
+                if (!container.contains(e.target)) {
+                    container.style.display = 'none';
+                }
+            });
+        }
+
+        if (container.style.display === 'block' && container.dataset.targetInput === inputId) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.dataset.targetInput = inputId;
+        const rect = buttonElem.getBoundingClientRect();
+        
+        container.style.display = 'block';
+        let leftPx = rect.left + window.scrollX - 250;
+        if (leftPx < 10) leftPx = 10;
+        if (leftPx + 320 > window.innerWidth) leftPx = window.innerWidth - 320;
+        container.style.left = leftPx + 'px';
+        
+        let topPx = rect.bottom + window.scrollY + 10;
+        if (topPx + 400 > window.scrollY + window.innerHeight) {
+            topPx = rect.top + window.scrollY - 400; // open upward if clipping bottom
+        }
+        container.style.top = topPx + 'px';
     }
 };
 
