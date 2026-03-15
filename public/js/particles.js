@@ -32,6 +32,7 @@ const ParticleEngine = {
         this.theme = document.documentElement.getAttribute('data-theme') || 'default';
         this.entities = []; // Reset entities
         this.time = 0;
+        this.canvas.style.filter = 'none';
 
         switch (this.theme) {
             case 'vonix':
@@ -51,6 +52,7 @@ const ParticleEngine = {
                 break;
             }
             case 'lavalamp':
+                this.canvas.style.filter = 'blur(18px) contrast(30)';
                 this.initLava();
                 break;
             case 'warp':
@@ -185,13 +187,13 @@ const ParticleEngine = {
     },
 
     initLava() {
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 20; i++) {
             this.entities.push({
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                radius: 40 + Math.random() * 80,
-                vx: (Math.random() - 0.5) * 2,
-                vy: (Math.random() - 0.5) * 2,
+                radius: 50 + Math.random() * 80,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: (Math.random() - 0.5) * 3, // slightly faster vertically
                 mass: Math.random() * 10 + 5
             });
         }
@@ -418,7 +420,7 @@ const ParticleEngine = {
             
             // Basic blob physics
             b.x += b.vx;
-            b.y += b.vy;
+            b.y += Math.sin(this.time + i) * 0.5 + b.vy; // wiggle vertically
 
             // Bounce off walls
             if (b.x < b.radius) { b.x = b.radius; b.vx *= -1; }
@@ -426,23 +428,31 @@ const ParticleEngine = {
             if (b.y < b.radius) { b.y = b.radius; b.vy *= -1; }
             if (b.y > this.canvas.height - b.radius) { b.y = this.canvas.height - b.radius; b.vy *= -1; }
 
-            // Mouse interaction
+            // Mouse interaction (repel)
             if (mouse.x !== -1000) {
                 const dx = b.x - mouse.x;
                 const dy = b.y - mouse.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 200) {
-                    const force = (200 - dist) / 200;
-                    b.vx += (dx / dist) * force * 0.5;
-                    b.vy += (dy / dist) * force * 0.5;
+                if (dist < 250) {
+                    const force = (250 - dist) / 250;
+                    b.vx += (dx / dist) * force * 1.2;
+                    b.vy += (dy / dist) * force * 1.2;
                 }
             }
 
-            // Draw glowing lava blob
+            // Draw metaball gradient - softer edges for the contrast filter
             const grad = this.ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
-            grad.addColorStop(0, `rgba(${primary.r}, ${primary.g}, ${primary.b}, 0.8)`);
-            grad.addColorStop(0.5, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, 0.4)`);
-            grad.addColorStop(1, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, 0)`);
+            // Mix the two colors dynamically based on particle index
+            const mix = (Math.sin(i * 123.45) * 0.5 + 0.5); 
+            const blobColor = {
+                r: Math.round(primary.r * mix + secondary.r * (1 - mix)),
+                g: Math.round(primary.g * mix + secondary.g * (1 - mix)),
+                b: Math.round(primary.b * mix + secondary.b * (1 - mix))
+            };
+
+            grad.addColorStop(0, `rgba(${blobColor.r}, ${blobColor.g}, ${blobColor.b}, 1)`);
+            grad.addColorStop(0.5, `rgba(${blobColor.r}, ${blobColor.g}, ${blobColor.b}, 0.8)`);
+            grad.addColorStop(1, `rgba(${blobColor.r}, ${blobColor.g}, ${blobColor.b}, 0)`);
             
             this.ctx.beginPath();
             this.ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);

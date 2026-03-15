@@ -692,8 +692,10 @@ var App = {
             let html = '<div class="modal-overlay" id="theme-settings-modal"><div class="modal" style="width:400px; max-width:90vw;"><div class="modal-header"><div class="modal-title">⚙ Lava Lamp Settings</div><button class="btn btn-ghost modal-close" onclick="document.getElementById(\'theme-settings-modal\').remove()">✕</button></div><div class="modal-body auth-form">';
             html += '<div class="input-group"><label>Lava Color 1</label><input type="color" id="ts-lava-c1" class="input-field" value="' + cfg.primary + '"></div>';
             html += '<div class="input-group"><label>Lava Color 2</label><input type="color" id="ts-lava-c2" class="input-field" value="' + cfg.secondary + '"></div>';
-            html += '<button class="btn btn-primary" onclick="App.saveThemeSettings(\'lavalamp\')" style="margin-top: 20px;">Save Settings</button>';
-            html += '</div></div></div>';
+            html += '<div style="display:flex;gap:10px;margin-top:20px;">';
+            html += '<button class="btn btn-primary" onclick="App.saveThemeSettings(\'lavalamp\')" style="flex:1;">Save Settings</button>';
+            html += '<button class="btn btn-secondary" onclick="localStorage.removeItem(\'venary_bg_lavalamp\'); if(typeof ParticleEngine !== \'undefined\') ParticleEngine.refreshTheme(); document.getElementById(\'theme-settings-modal\').remove(); App.showToast(\'Reset to Default\',\'success\');" title="Reset to Defaults">Reset</button>';
+            html += '</div></div></div></div>';
             document.body.insertAdjacentHTML('beforeend', html);
         }
     },
