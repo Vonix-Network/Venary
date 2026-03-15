@@ -94,14 +94,14 @@ var AdminPage = {
           '<option value="moderator" ' + (this.userFilters.role === 'moderator' ? 'selected' : '') + '>Moderator</option>' +
           '<option value="admin" ' + (this.userFilters.role === 'admin' ? 'selected' : '') + '>Admin</option>' +
         '</select>' +
-        '<select id="admin-sort" class="input-field" style="width: auto;">' +
+        '<select id="admin-sort" class="input-field" style="width: auto;" onchange="if(this.value === \'username\'){document.getElementById(\'admin-order\').value=\'asc\'}else{document.getElementById(\'admin-order\').value=\'desc\'}">' +
           '<option value="created_at" ' + (this.userFilters.sort === 'created_at' ? 'selected' : '') + '>Joined Date</option>' +
           '<option value="level" ' + (this.userFilters.sort === 'level' ? 'selected' : '') + '>Level</option>' +
           '<option value="username" ' + (this.userFilters.sort === 'username' ? 'selected' : '') + '>Username</option>' +
         '</select>' +
         '<select id="admin-order" class="input-field" style="width: auto;">' +
-          '<option value="desc" ' + (this.userFilters.order === 'desc' ? 'selected' : '') + '>Descending</option>' +
-          '<option value="asc" ' + (this.userFilters.order === 'asc' ? 'selected' : '') + '>Ascending</option>' +
+          '<option value="desc" ' + (this.userFilters.order === 'desc' ? 'selected' : '') + '>Descending (Z-A / Newest / Highest)</option>' +
+          '<option value="asc" ' + (this.userFilters.order === 'asc' ? 'selected' : '') + '>Ascending (A-Z / Oldest / Lowest)</option>' +
         '</select>' +
         '<button class="btn btn-primary" onclick="AdminPage.applyUserFilters()">Search & Filter</button>' +
         '</div>';
