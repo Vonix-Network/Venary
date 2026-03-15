@@ -1,0 +1,58 @@
+/*
+ * Name: Purple
+ * Description: Deep amethyst and violet glassmorphism.
+ * Author: Antigravity
+ * Version: 1.0.0
+ */
+
+:root {
+    --bg-primary: #0a0512;
+    --bg-secondary: #10081c;
+    --bg-tertiary: #160b26;
+    --bg-card: rgba(16, 8, 28, 0.45);
+    --bg-card-hover: rgba(22, 11, 38, 0.6);
+    --bg-glass: rgba(10, 5, 18, 0.5);
+    --bg-input: rgba(16, 8, 28, 0.7);
+
+    --neon-cyan: #b28dff;
+    --neon-magenta: #c5a3ff;
+    --neon-pink: #d5b8ff;
+    
+    --gradient-primary: linear-gradient(135deg, #b28dff 0%, #d5b8ff 100%);
+    --gradient-secondary: linear-gradient(135deg, #c5a3ff 0%, #e2cfff 100%);
+    --gradient-accent: linear-gradient(135deg, #b28dff 0%, #e2cfff 100%);
+    
+    --text-primary: #f8f5ff;
+    --text-secondary: #b7a9cc;
+    --text-muted: rgba(183, 169, 204, 0.7);
+    --text-highlight: #b28dff;
+
+    --border-subtle: rgba(178, 141, 255, 0.1);
+    --border-light: rgba(178, 141, 255, 0.2);
+    --border-accent: rgba(178, 141, 255, 0.4);
+
+    --shadow-neon: 0 0 20px rgba(178, 141, 255, 0.3);
+    --shadow-neon-strong: 0 0 20px rgba(178, 141, 255, 0.5);
+}
+
+.btn-primary {
+    background: linear-gradient(to right, #b28dff, #c5a3ff) !important;
+    box-shadow: 0 0 20px rgba(178, 141, 255, 0.3) !important;
+    color: #10081c !important;
+    border: none !important;
+    font-weight: 700 !important;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 0 30px rgba(178, 141, 255, 0.5) !important;
+    transform: translateY(-2px) !important;
+}
+
+.nav-link.active {
+    color: var(--neon-cyan);
+}
+
+.nav-link.active::before {
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px var(--neon-cyan);
+}

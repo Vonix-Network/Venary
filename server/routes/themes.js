@@ -36,10 +36,10 @@ router.get('/', (req, res) => {
                     if (headerMatch) {
                         const lines = headerMatch[1].split('\n');
                         for (const line of lines) {
-                            if (line.match(/name:/i)) name = line.split(':')[1].trim();
-                            if (line.match(/description:/i)) description = line.split(':')[1].replace(/\*\/?/, '').trim();
-                            if (line.match(/author:/i)) author = line.split(':')[1].replace(/\*\/?/, '').trim();
-                            if (line.match(/version:/i)) version = line.split(':')[1].replace(/\*\/?/, '').trim();
+                            if (line.match(/Name:/i)) name = line.split(':')[1].replace(/\*\/?/, '').trim();
+                            if (line.match(/Description:/i)) description = line.substring(line.indexOf(':') + 1).replace(/\*\/?/, '').trim();
+                            if (line.match(/Author:/i)) author = line.substring(line.indexOf(':') + 1).replace(/\*\/?/, '').trim();
+                            if (line.match(/Version:/i)) version = line.split(':')[1].replace(/\*\/?/, '').trim();
                         }
                     }
 

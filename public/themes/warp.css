@@ -1,0 +1,61 @@
+/*
+ * Name: Warp
+ * Description: Hyperdrive lightspeed space aesthetics with high contrast neon cyan and magenta.
+ * Author: Antigravity
+ * Version: 1.0.0
+ */
+
+:root {
+    --bg-primary: #020005;
+    --bg-secondary: #05000a;
+    --bg-tertiary: #08000f;
+    --bg-card: rgba(8, 0, 15, 0.6);
+    --bg-card-hover: rgba(12, 0, 20, 0.75);
+    --bg-glass: rgba(2, 0, 5, 0.7);
+    --bg-input: rgba(8, 0, 15, 0.8);
+
+    --neon-cyan: #00ffff;
+    --neon-magenta: #ff00ff;
+    --neon-pink: #ff1493;
+    
+    --gradient-primary: linear-gradient(135deg, #00ffff 0%, #ff00ff 100%);
+    --gradient-secondary: linear-gradient(135deg, #ff00ff 0%, #ff1493 100%);
+    --gradient-accent: linear-gradient(135deg, #00ffff 0%, #ff1493 100%);
+    
+    --text-primary: #ffffff;
+    --text-secondary: #a09eb0;
+    --text-muted: rgba(160, 158, 176, 0.7);
+    --text-highlight: #00ffff;
+
+    --border-subtle: rgba(255, 0, 255, 0.15);
+    --border-light: rgba(0, 255, 255, 0.25);
+    --border-accent: rgba(255, 0, 255, 0.5);
+
+    --shadow-neon: 0 0 20px rgba(0, 255, 255, 0.4);
+    --shadow-neon-strong: 0 0 30px rgba(255, 0, 255, 0.6);
+}
+
+.btn-primary {
+    background: linear-gradient(to right, #00ffff, #ff00ff) !important;
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.4) !important;
+    color: #000 !important;
+    border: none !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.6) !important;
+    transform: translateY(-2px) scale(1.02) !important;
+}
+
+.nav-link.active {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.nav-link.active::before {
+    background: var(--neon-cyan);
+    box-shadow: 0 0 15px var(--neon-cyan);
+}

@@ -1,0 +1,61 @@
+/*
+ * Name: Prism
+ * Description: Vibrant intersection of RGB luminous lines.
+ * Author: Antigravity
+ * Version: 1.0.0
+ */
+
+:root {
+    --bg-primary: #000000;
+    --bg-secondary: #080808;
+    --bg-tertiary: #101010;
+    --bg-card: rgba(16, 16, 16, 0.5);
+    --bg-card-hover: rgba(24, 24, 24, 0.7);
+    --bg-glass: rgba(0, 0, 0, 0.6);
+    --bg-input: rgba(16, 16, 16, 0.8);
+
+    --neon-cyan: #00e1ff;
+    --neon-red: #ff3333;
+    --neon-yellow: #ffff33;
+    --neon-green: #33ff33;
+    --neon-blue: #3333ff;
+    
+    --gradient-primary: linear-gradient(135deg, #ff3333 0%, #ffff33 50%, #00e1ff 100%);
+    --gradient-secondary: linear-gradient(135deg, #00e1ff 0%, #3333ff 100%);
+    --gradient-accent: linear-gradient(135deg, #ff3333 0%, #3333ff 100%);
+    
+    --text-primary: #ffffff;
+    --text-secondary: #888888;
+    --text-muted: rgba(136, 136, 136, 0.7);
+    --text-highlight: #ffffff;
+
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-light: rgba(255, 255, 255, 0.2);
+    --border-accent: rgba(0, 225, 255, 0.4);
+
+    --shadow-neon: 0 0 20px rgba(255, 255, 255, 0.1);
+    --shadow-neon-strong: 0 0 30px rgba(0, 225, 255, 0.3);
+}
+
+.btn-primary {
+    background: linear-gradient(to right, #ff3333, #00e1ff) !important;
+    box-shadow: 0 0 20px rgba(0, 225, 255, 0.3) !important;
+    color: #fff !important;
+    border: none !important;
+    font-weight: 700 !important;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.4) !important;
+    transform: translateY(-2px) !important;
+}
+
+.nav-link.active {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.nav-link.active::before {
+    background: linear-gradient(to bottom, #ff3333, #ffff33, #00e1ff);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
