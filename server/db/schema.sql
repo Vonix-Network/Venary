@@ -90,6 +90,29 @@ CREATE TABLE IF NOT EXISTS reports (
     FOREIGN KEY (reported_user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    actor_id TEXT,
+    reference_id TEXT,
+    message TEXT NOT NULL,
+    read INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (actor_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS post_subscriptions (
+    id TEXT PRIMARY KEY,
+    post_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(post_id, user_id)
+);
+
 -- Indices for performance
 CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
@@ -101,4 +124,8 @@ CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_likes_post ON likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_likes_user ON likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, read);
+CREATE INDEX IF NOT EXISTS idx_post_subs_post ON post_subscriptions(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_subs_user ON post_subscriptions(user_id);
 

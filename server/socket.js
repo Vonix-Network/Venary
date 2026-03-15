@@ -5,8 +5,10 @@ const db = require('./db');
 
 // Track online users: { userId: Set<socketId> }
 const onlineUsers = new Map();
+let ioInstance;
 
 function initializeSocket(io) {
+    ioInstance = io;
     // Auth middleware for socket connections
     io.use((socket, next) => {
         const token = socket.handshake.auth.token;
@@ -134,4 +136,8 @@ function getOnlineUsers() {
     return Array.from(onlineUsers.keys());
 }
 
-module.exports = { initializeSocket, getOnlineUsers };
+function getIo() {
+    return ioInstance;
+}
+
+module.exports = { initializeSocket, getOnlineUsers, getIo };

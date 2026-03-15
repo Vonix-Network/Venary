@@ -126,6 +126,29 @@
             <span class="status-dot online"></span>
           </div>
         </div>
+
+        <!-- Notification Bell -->
+        <div style="position: relative;">
+          <button class="nav-logout-btn" id="notifications-btn" title="Notifications" style="margin-right:8px" onclick="App.toggleNotifications(event)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="nav-badge hidden" id="notification-badge" style="position: absolute; top: -5px; right: 0;">0</span>
+          </button>
+          
+          <!-- Notifications Dropdown -->
+          <div id="notifications-dropdown" class="notifications-dropdown hidden">
+            <div class="notifications-header">
+              <h3>Notifications</h3>
+              <button class="settings-action-btn" onclick="App.markAllNotificationsRead()" style="padding: 4px 8px; font-size: 0.75rem;">Mark All Read</button>
+            </div>
+            <div id="notifications-list" class="notifications-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
         <button class="nav-logout-btn" id="theme-btn" title="Themes Menu" style="margin-right:8px"
           onclick="App.showThemesModal()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

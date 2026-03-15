@@ -267,6 +267,7 @@ var App = {
 
         // Set up presence listeners
         SocketClient.on('new_message', function () { App.updateUnreadBadge(); });
+        SocketClient.on('new_notification', function () { App.updateUnreadBadge(); });
         this.updateUnreadBadge();
         this.updateFriendRequestBadge();
     },
@@ -287,15 +288,27 @@ var App = {
 
     async updateUnreadBadge() {
         try {
-            var conversations = await API.getConversations();
-            var totalUnread = conversations.reduce(function (sum, c) { return sum + (c.unread_count || 0); }, 0);
-            var badge = document.getElementById('unread-badge');
-            if (badge) {
-                if (totalUnread > 0) {
-                    badge.textContent = totalUnread > 99 ? '99+' : totalUnread;
-                    badge.classList.remove('hidden');
+            var counts = await API.get('/api/notifications/counts');
+            
+            // Chat Message Badge
+            var chatBadge = document.getElementById('unread-badge');
+            if (chatBadge) {
+                if (counts.unread_messages > 0) {
+                    chatBadge.textContent = counts.unread_messages > 99 ? '99+' : counts.unread_messages;
+                    chatBadge.classList.remove('hidden');
                 } else {
-                    badge.classList.add('hidden');
+                    chatBadge.classList.add('hidden');
+                }
+            }
+
+            // Notification Bell Badge
+            var notifBadge = document.getElementById('notification-badge');
+            if (notifBadge) {
+                if (counts.unread_notifications > 0) {
+                    notifBadge.textContent = counts.unread_notifications > 99 ? '99+' : counts.unread_notifications;
+                    notifBadge.classList.remove('hidden');
+                } else {
+                    notifBadge.classList.add('hidden');
                 }
             }
         } catch (e) { /* ignore */ }
@@ -314,6 +327,112 @@ var App = {
                 }
             }
         } catch (e) { /* ignore */ }
+    },
+
+    // ===========================================
+    // Notifications Dropdown System
+    // ===========================================
+    isNotificationsOpen: false,
+
+    async toggleNotifications(e) {
+        if (e) e.stopPropagation();
+        const dropdown = document.getElementById('notifications-dropdown');
+        if (!dropdown) return;
+
+        this.isNotificationsOpen = !this.isNotificationsOpen;
+        
+        if (this.isNotificationsOpen) {
+            dropdown.classList.remove('hidden');
+            await this.fetchNotifications();
+        } else {
+            dropdown.classList.add('hidden');
+        }
+    },
+
+    async fetchNotifications() {
+        const list = document.getElementById('notifications-list');
+        if (!list) return;
+        list.innerHTML = '<div style="padding: 20px; text-align: center;"><div class="loading-spinner"></div></div>';
+
+        try {
+            const data = await API.get('/api/notifications');
+            // Update badges behind the scenes since we have the data
+            this.updateUnreadBadgeFromData(data);
+
+            if (!data.notifications || data.notifications.length === 0) {
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No recent notifications</div>';
+                return;
+            }
+
+            let html = '';
+            data.notifications.forEach(n => {
+                const unreadClass = n.read ? '' : 'unread';
+                const avatar = n.actor_avatar 
+                    ? `<img src="${this.escapeHtml(n.actor_avatar)}" class="notification-avatar">`
+                    : '<div class="avatar-placeholder notification-avatar" style="font-size:12px">?</div>';
+
+                html += `
+                    <div class="notification-item ${unreadClass}" onclick="App.handleNotificationClick('${n.id}', '${n.type}', '${n.reference_id}')">
+                        ${avatar}
+                        <div class="notification-content">
+                            <div>${this.escapeHtml(n.message)}</div>
+                            <div class="notification-time">${this.timeAgo(n.created_at)}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+        } catch (err) {
+            list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--neon-magenta);">Failed to load notifications</div>';
+        }
+    },
+
+    updateUnreadBadgeFromData(counts) {
+        // Chat Message Badge
+        var chatBadge = document.getElementById('unread-badge');
+        if (chatBadge) {
+            if (counts.unread_messages > 0) {
+                chatBadge.textContent = counts.unread_messages > 99 ? '99+' : counts.unread_messages;
+                chatBadge.classList.remove('hidden');
+            } else {
+                chatBadge.classList.add('hidden');
+            }
+        }
+        // Notification Bell Badge
+        var notifBadge = document.getElementById('notification-badge');
+        if (notifBadge) {
+            if (counts.unread_notifications > 0) {
+                notifBadge.textContent = counts.unread_notifications > 99 ? '99+' : counts.unread_notifications;
+                notifBadge.classList.remove('hidden');
+            } else {
+                notifBadge.classList.add('hidden');
+            }
+        }
+    },
+
+    async handleNotificationClick(id, type, referenceId) {
+        try {
+            await API.post('/api/notifications/read', { id });
+            this.updateUnreadBadge(); // refresh badges
+            this.isNotificationsOpen = false;
+            document.getElementById('notifications-dropdown').classList.add('hidden');
+
+            if (type === 'comment' || type === 'like') {
+                window.location.hash = '#/feed';
+                // Note: a more complex app would jump straight to the specific post or thread.
+            }
+        } catch (err) {
+            console.error('Failed marking read:', err);
+        }
+    },
+
+    async markAllNotificationsRead() {
+        try {
+            await API.post('/api/notifications/read', {});
+            this.fetchNotifications(); // re-render list
+        } catch (err) {
+            this.showToast('Failed to mark all as read', 'error');
+        }
     },
 
     // Utilities
@@ -520,3 +639,15 @@ var App = {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function () { App.init(); });
+
+// Global click handler for closing dropdowns
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('notifications-dropdown');
+    const btn = document.getElementById('notifications-btn');
+    if (App.isNotificationsOpen && dropdown && btn) {
+        if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.classList.add('hidden');
+            App.isNotificationsOpen = false;
+        }
+    }
+});

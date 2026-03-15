@@ -169,6 +169,11 @@ const FeedPage = {
       }
     }
 
+    var isSubscribed = post.is_subscribed > 0;
+    var subFill = isSubscribed ? 'var(--neon-magenta)' : 'none';
+    var subIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + subFill + '" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>';
+    var subBtn = !isOwn && App.currentUser ? '<button class="btn btn-ghost btn-sm sub-btn" onclick="FeedPage.toggleSubscribe(\'' + post.id + '\', this)" title="' + (isSubscribed ? 'Unsubscribe' : 'Subscribe to notifications') + '">' + subIcon + '</button>' : '';
+
     return '<div class="post-card" style="animation-delay: ' + (index * 0.05) + 's" data-post-id="' + post.id + '">' +
       '<div class="post-header">' +
       '<div class="avatar" onclick="window.location.hash=\'#/profile/' + post.user_id + '\'" style="cursor:pointer">' + avatarContent + '</div>' +
@@ -177,7 +182,7 @@ const FeedPage = {
       App.renderRankBadge(post.donation_rank) +
       '<span class="badge badge-level">LVL ' + (post.level || 1) + '</span>' +
       '<div class="post-time">' + timeAgo + '</div>' +
-      '</div>' + deleteBtn +
+      '</div>' + subBtn + deleteBtn +
       '</div>' +
       '<div class="post-content">' + App.renderContent(post.content, true) + '</div>' +
       imageHtml +
@@ -211,6 +216,24 @@ const FeedPage = {
       }
     } catch (err) {
       App.showToast('Failed to like post', 'error');
+    }
+  },
+
+  async toggleSubscribe(postId, btn) {
+    try {
+      var result = await API.toggleSubscribe(postId);
+      var svg = btn.querySelector('svg');
+      if (result.subscribed) {
+        svg.setAttribute('fill', 'var(--neon-magenta)');
+        btn.setAttribute('title', 'Unsubscribe');
+        App.showToast('Subscribed to post notifications', 'success');
+      } else {
+        svg.setAttribute('fill', 'none');
+        btn.setAttribute('title', 'Subscribe to notifications');
+        App.showToast('Unsubscribed from post', 'info');
+      }
+    } catch (err) {
+      App.showToast('Failed to toggle subscription', 'error');
     }
   },
 

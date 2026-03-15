@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const Config = require('../config');
 const { authenticateToken } = require('../middleware/auth');
+const { createNotification } = require('./notifications');
 
 // Helper: recalculate and update user level from XP
 async function updateLevel(userId) {
@@ -39,6 +40,12 @@ router.post('/', authenticateToken, async (req, res) => {
         await db.run('UPDATE users SET xp = xp + ? WHERE id = ?', [xpPerPost, req.user.id]);
         await updateLevel(req.user.id);
 
+        // Auto-subscribe the author to their own post
+        await db.run(
+            `INSERT OR IGNORE INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
+            [uuidv4(), id, req.user.id, now]
+        );
+
         const post = await db.get(
             `SELECT p.*, u.username, u.display_name, u.avatar, u.level,
                 0 as like_count, 0 as comment_count, 0 as liked
@@ -64,11 +71,12 @@ router.get('/feed', authenticateToken, async (req, res) => {
           SELECT p.*, u.username, u.display_name, u.avatar, u.level,
             (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
             (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
-            (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as liked
+            (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as liked,
+            (SELECT COUNT(*) FROM post_subscriptions WHERE post_id = p.id AND user_id = ?) as is_subscribed
           FROM posts p
           JOIN users u ON p.user_id = u.id
         `;
-        const params = [req.user.id];
+        const params = [req.user.id, req.user.id];
 
         if (before) {
             query += ' WHERE p.created_at < ?';
@@ -136,6 +144,10 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
             if (post.user_id !== req.user.id) {
                 await db.run('UPDATE users SET xp = xp + ? WHERE id = ?', [xpPerLike, post.user_id]);
                 await updateLevel(post.user_id);
+                // Notify post owner
+                const liker = await db.get('SELECT display_name, username FROM users WHERE id = ?', [req.user.id]);
+                const likerName = liker ? (liker.display_name || liker.username) : 'Someone';
+                await createNotification(post.user_id, 'like', req.user.id, postId, `${likerName} liked your post.`);
             }
             res.json({ liked: true });
         }
@@ -171,6 +183,24 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
         const xpPerComment = Config.get('xpPerComment', 5);
         await db.run('UPDATE users SET xp = xp + ? WHERE id = ?', [xpPerComment, req.user.id]);
         await updateLevel(req.user.id);
+
+        // Notify all subscribers of this post (except the commenter)
+        try {
+            const commenter = await db.get('SELECT display_name, username FROM users WHERE id = ?', [req.user.id]);
+            const commenterName = commenter ? (commenter.display_name || commenter.username) : 'Someone';
+            const subscribers = await db.all(
+                `SELECT user_id FROM post_subscriptions WHERE post_id = ? AND user_id != ?`,
+                [postId, req.user.id]
+            );
+            for (const sub of subscribers) {
+                await createNotification(sub.user_id, 'comment', req.user.id, postId, `${commenterName} commented on a post you're subscribed to.`);
+            }
+            // Auto-subscribe the commenter if not already subscribed
+            await db.run(
+                `INSERT OR IGNORE INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
+                [uuidv4(), postId, req.user.id, now]
+            );
+        } catch (subErr) { console.error('Sub/notify error:', subErr); }
 
         const comment = await db.get(
             `SELECT c.*, u.username, u.display_name, u.avatar, u.level
@@ -217,11 +247,53 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         // Delete associated records first (Foreign Key protection)
         await db.run('DELETE FROM comments WHERE post_id = ?', [req.params.id]);
         await db.run('DELETE FROM likes WHERE post_id = ?', [req.params.id]);
-        
+        await db.run('DELETE FROM post_subscriptions WHERE post_id = ?', [req.params.id]);
+
         await db.run('DELETE FROM posts WHERE id = ?', [req.params.id]);
         res.json({ message: 'Post deleted' });
     } catch (err) {
         console.error('Delete post error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Toggle post subscription
+router.post('/:id/subscribe', authenticateToken, async (req, res) => {
+    try {
+        const postId = req.params.id;
+        const post = await db.get('SELECT id FROM posts WHERE id = ?', [postId]);
+        if (!post) return res.status(404).json({ error: 'Post not found' });
+
+        const existing = await db.get(
+            `SELECT id FROM post_subscriptions WHERE post_id = ? AND user_id = ?`,
+            [postId, req.user.id]
+        );
+
+        if (existing) {
+            await db.run('DELETE FROM post_subscriptions WHERE id = ?', [existing.id]);
+            res.json({ subscribed: false });
+        } else {
+            await db.run(
+                `INSERT OR IGNORE INTO post_subscriptions (id, post_id, user_id, created_at) VALUES (?, ?, ?, ?)`,
+                [uuidv4(), postId, req.user.id, new Date().toISOString()]
+            );
+            res.json({ subscribed: true });
+        }
+    } catch (err) {
+        console.error('Subscribe toggle error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Check subscription state for a post
+router.get('/:id/subscribe', authenticateToken, async (req, res) => {
+    try {
+        const row = await db.get(
+            `SELECT id FROM post_subscriptions WHERE post_id = ? AND user_id = ?`,
+            [req.params.id, req.user.id]
+        );
+        res.json({ subscribed: !!row });
+    } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
 });

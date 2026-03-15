@@ -80,6 +80,7 @@ const API = {
     createPost(data) { return this.post('/api/posts', data); },
     getFeed(before) { return this.get(`/api/posts/feed${before ? `?before=${before}` : ''}`); },
     toggleLike(id) { return this.post(`/api/posts/${id}/like`); },
+    toggleSubscribe(id) { return this.post(`/api/posts/${id}/subscribe`); },
     addComment(postId, content) { return this.post(`/api/posts/${postId}/comments`, { content }); },
     getComments(postId) { return this.get(`/api/posts/${postId}/comments`); },
     deletePost(id) { return this.delete(`/api/posts/${id}`); },

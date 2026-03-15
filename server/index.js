@@ -81,6 +81,7 @@ async function start() {
         app.use('/api/friends', require('./routes/friends'));
         app.use('/api/messages', require('./routes/messages'));
         app.use('/api/posts', require('./routes/posts'));
+        app.use('/api/notifications', require('./routes/notifications'));
         app.use('/api/admin', require('./routes/admin'));
         app.use('/api/themes', require('./routes/themes'));
 
