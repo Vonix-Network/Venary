@@ -12,7 +12,11 @@ var Router = {
     },
 
     async navigate(hash) {
-        var path = hash.replace('#', '') || '/login';
+        var fullPath = hash.replace('#', '') || '/login';
+        
+        // Separate path and query string for correct routing
+        var queryIndex = fullPath.indexOf('?');
+        var path = queryIndex !== -1 ? fullPath.substring(0, queryIndex) : fullPath;
 
         // 1. Try exact match first (e.g. /admin/images)
         var handler = this.routes[path];
