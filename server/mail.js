@@ -15,7 +15,7 @@ const Mailer = {
         const smtp = Config.get('smtp', {});
         if (!smtp.enabled || !smtp.host) return null;
 
-        return nodemailer.createTransporter({
+        return nodemailer.createTransport({
             host: smtp.host,
             port: smtp.port || 587,
             secure: smtp.secure || false,   // true for 465, false for other ports
