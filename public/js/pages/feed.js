@@ -129,7 +129,11 @@ const FeedPage = {
       ? '<img src="' + App.escapeHtml(post.avatar) + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'
       : initials;
     var isOwn = post.user_id === (App.currentUser ? App.currentUser.id : null);
-    var deleteBtn = isOwn ? '<button class="btn btn-ghost btn-sm" onclick="FeedPage.deletePost(\'' + post.id + '\')" title="Delete post"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '';
+    var isAdminOrMod = App.currentUser && (App.currentUser.role === 'admin' || App.currentUser.role === 'moderator');
+    var isDeleteable = isOwn || isAdminOrMod;
+    var deleteBtn = isDeleteable ? '<button class="btn btn-ghost btn-sm" onclick="FeedPage.deletePost(\'' + post.id + '\')" title="Delete post"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '';
+    
+    var reportBtn = !isOwn && App.currentUser ? '<button class="btn btn-ghost btn-sm text-danger" onclick="FeedPage.reportPost(\'' + post.id + '\')" title="Report post" style="color: var(--neon-magenta)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></button>' : '';
     var fill = liked ? 'currentColor' : 'none';
     var likedClass = liked ? 'liked' : '';
 
@@ -182,7 +186,7 @@ const FeedPage = {
       App.renderRankBadge(post.donation_rank) +
       '<span class="badge badge-level">LVL ' + (post.level || 1) + '</span>' +
       '<div class="post-time">' + timeAgo + '</div>' +
-      '</div>' + subBtn + deleteBtn +
+      '</div>' + subBtn + reportBtn + deleteBtn +
       '</div>' +
       '<div class="post-content">' + App.renderContent(post.content, true) + '</div>' +
       imageHtml +
@@ -234,6 +238,17 @@ const FeedPage = {
       }
     } catch (err) {
       App.showToast('Failed to toggle subscription', 'error');
+    }
+  },
+
+  async reportPost(postId) {
+    var reason = prompt('Reason for reporting this post:');
+    if (!reason) return;
+    try {
+      await API.reportPost(postId, reason);
+      App.showToast('Post reported to moderators.', 'success');
+    } catch (err) {
+      App.showToast(err.message || 'Failed to report post', 'error');
     }
   },
 

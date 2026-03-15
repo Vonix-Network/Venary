@@ -251,9 +251,17 @@ router.get('/:id/comments', authenticateToken, async (req, res) => {
 // Delete post
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
-        const post = await db.get('SELECT * FROM posts WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+        const post = await db.get('SELECT * FROM posts WHERE id = ?', [req.params.id]);
         if (!post) {
-            return res.status(404).json({ error: 'Post not found or not authorized' });
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        
+        // Ensure user is author, or an admin/moderator
+        if (post.user_id !== req.user.id) {
+            const currentUser = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
+            if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+                return res.status(403).json({ error: 'Not authorized' });
+            }
         }
 
         // Delete associated records first (Foreign Key protection)
@@ -293,6 +301,24 @@ router.post('/:id/subscribe', authenticateToken, async (req, res) => {
         }
     } catch (err) {
         console.error('Subscribe toggle error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Report a post
+router.post('/:id/report', authenticateToken, async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const post = await db.get('SELECT user_id FROM posts WHERE id = ?', [req.params.id]);
+        if (!post) return res.status(404).json({ error: 'Post not found' });
+        
+        await db.run(
+            `INSERT INTO reports (id, reporter_id, reported_user_id, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+            [uuidv4(), req.user.id, post.user_id, `Reported Post (${req.params.id})\nReason: ${reason || 'Inappropriate code/behavior'}`, 'pending', new Date().toISOString()]
+        );
+        res.json({ message: 'Report submitted' });
+    } catch (err) {
+        console.error('Report post error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });

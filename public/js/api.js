@@ -81,6 +81,7 @@ const API = {
     getFeed(before) { return this.get(`/api/posts/feed${before ? `?before=${before}` : ''}`); },
     toggleLike(id) { return this.post(`/api/posts/${id}/like`); },
     toggleSubscribe(id) { return this.post(`/api/posts/${id}/subscribe`); },
+    reportPost(id, reason) { return this.post(`/api/posts/${id}/report`, { reason }); },
     addComment(postId, content) { return this.post(`/api/posts/${postId}/comments`, { content }); },
     getComments(postId) { return this.get(`/api/posts/${postId}/comments`); },
     deletePost(id) { return this.delete(`/api/posts/${id}`); },

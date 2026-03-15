@@ -79,13 +79,10 @@ const ProfilePage = {
       statsHtml += '<div class="stat-card"><div class="stat-value">' + (profile.level || 1) + '</div><div class="stat-label">Level</div></div>' +
         '<div class="stat-card"><div class="stat-value">' + (profile.xp || 0) + '</div><div class="stat-label">Site XP</div></div>';
 
-      if (profile.minecraft_xp !== undefined && (profile.minecraft_xp > 0 || profile.minecraft_uuid)) {
-        statsHtml += '<div class="stat-card"><div class="stat-value" style="color:#22c55e">' + (profile.minecraft_xp || 0) + '</div><div class="stat-label">MC XP</div></div>' +
-          '<div class="stat-card"><div class="stat-value" style="color:var(--neon-cyan)">' + (profile.total_xp || 0) + '</div><div class="stat-label">Total XP</div></div>';
-      }
-
-      statsHtml += '<div class="stat-card"><div class="stat-value">' + (profile.friend_count || 0) + '</div><div class="stat-label">Friends</div></div>' +
-        '<div class="stat-card"><div class="stat-value">' + (profile.post_count || 0) + '</div><div class="stat-label">Posts</div></div>';
+      statsHtml += '<div style="grid-column: 1 / -1; display: flex; justify-content: center; gap: var(--space-md);">' +
+        '<div class="stat-card" style="flex: 1; max-width: calc(50% - var(--space-md)/2);"><div class="stat-value">' + (profile.friend_count || 0) + '</div><div class="stat-label">Friends</div></div>' +
+        '<div class="stat-card" style="flex: 1; max-width: calc(50% - var(--space-md)/2);"><div class="stat-value">' + (profile.post_count || 0) + '</div><div class="stat-label">Posts</div></div>' +
+        '</div>';
 
       // Build the skin viewer — positioned on the RIGHT side of the profile header
       var skinViewerHtml = '';

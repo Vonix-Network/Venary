@@ -1,3 +1,7 @@
-fix: removed sqlite specific INSERT OR IGNORE syntax
+feat: layout cleanups and post reporting
 
-- Replaced INSERT OR IGNORE with SELECT fallback inside post subscription routes to support standard PostgreSQL without syntax errors.
+- Removed outdated MC XP and Total XP boxes from user profile pages.
+- Centered the remaining Friends and Posts stat boxes on profiles for a cleaner layout.
+- Added POST /api/posts/:id/report endpoint.
+- Added Report button to feed posts for regular users.
+- Granted admins and moderators the ability to delete any post in the feed directly.
