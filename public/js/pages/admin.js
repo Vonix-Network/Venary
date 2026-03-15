@@ -666,6 +666,7 @@ var AdminPage = {
           '<h4 style="margin-bottom:1rem;color:var(--neon-cyan)">Minecraft Server Alerts</h4>' +
           this._field('Manager Uptime Notification Role ID', 'discord-uptimeRolePing', s.discord.uptimeRolePing, 'text', 'Numeric Role ID to fetch managers to DM. e.g. 1234567890') +
           this._field('Offline Strike Threshold', 'discord-uptimeStrikeThreshold', s.discord.uptimeStrikeThreshold, 'number', 'Number of consecutive offline pings before triggering an alert (Default 5).') +
+          this._field('Offline Strike Repeat Interval', 'discord-uptimeStrikeRepeat', s.discord.uptimeStrikeRepeat, 'number', 'Number of pings after first alert before sending another (Default 10).') +
           '</div>';
       } else {
         html += '<div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border-primary);opacity:0.5;pointer-events:none">' +
@@ -690,15 +691,17 @@ var AdminPage = {
 
       var rolePingEl = document.getElementById('s-discord-uptimeRolePing');
       var thresholdEl = document.getElementById('s-discord-uptimeStrikeThreshold');
+      var repeatEl = document.getElementById('s-discord-uptimeStrikeRepeat');
 
       var payload = { discord: { webhookUrl: webhookUrl, guildId: guildId } };
       if (botToken && botToken !== '••••••••') {
         payload.discord.botToken = botToken;
       }
 
-      if (rolePingEl && thresholdEl) {
+      if (rolePingEl && thresholdEl && repeatEl) {
         payload.discord.uptimeRolePing = rolePingEl.value;
         payload.discord.uptimeStrikeThreshold = thresholdEl.value;
+        payload.discord.uptimeStrikeRepeat = repeatEl.value;
       }
 
       await API.post('/api/admin/settings', payload);

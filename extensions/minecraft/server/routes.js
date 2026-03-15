@@ -917,12 +917,38 @@ module.exports = function (extDb) {
     async function sendDiscordOfflineAlert(server, strikes) {
         const cfg = Config.load() || {};
         const discord = cfg.discord || {};
-        let content = `🚨 **Server Offline Alert** 🚨\nMinecraft Server \`${server.name}\` (\`${server.address}\`) has been detected offline **${strikes} times in a row**.`;
+
+        const embed = {
+            color: 0xff0000,
+            title: '🚨 Server Downtime Alert',
+            description: `**${server.name}** has been detected as offline ${strikes} times in a row.`,
+            fields: [
+                {
+                    name: '🔧 Action Required',
+                    value: 'Please check the server status and investigate the issue.'
+                },
+                {
+                    name: '⏰ Detected At',
+                    value: new Date().toLocaleString(),
+                    inline: true
+                },
+                {
+                    name: '📊 Consecutive Failures',
+                    value: String(strikes),
+                    inline: true
+                }
+            ],
+            footer: {
+                text: 'Vonix Network Server Monitor • ' + new Date().toLocaleString()
+            }
+        };
+
+        const payload = { embeds: [embed] };
 
         // DM Role logic via centralized Bot
         if (discord.uptimeRolePing && discord.botToken && discord.guildId) {
             const discordBot = require('../../../server/discordBot');
-            const success = await discordBot.dmMembersByRole(discord.guildId, discord.uptimeRolePing, content);
+            const success = await discordBot.dmMembersByRole(discord.guildId, discord.uptimeRolePing, payload);
             if (success) {
                 return; // Successfully DMed, skip webhook payload
             } else {
@@ -930,16 +956,16 @@ module.exports = function (extDb) {
             }
         }
         // Fallback or Webhook mode
-        else if (discord.webhookUrl) {
+        if (discord.webhookUrl) {
             if (discord.uptimeRolePing && !discord.botToken) {
-                content += `\n**Attention:** <@&${discord.uptimeRolePing.replace(/[^0-9]/g, '')}>`;
+                payload.content = `**Attention:** <@&${discord.uptimeRolePing.replace(/[^0-9]/g, '')}>`;
             }
 
             try {
                 await fetch(discord.webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content })
+                    body: JSON.stringify(payload)
                 });
             } catch (err) {
                 console.error('[MC] Discord webhook alert failed:', err);
@@ -963,9 +989,11 @@ module.exports = function (extDb) {
                     offlineStrikes.set(s.id, currentStrikes);
 
                     const cfg = Config.load() || {};
-                    const threshold = (cfg.discord && cfg.discord.uptimeStrikeThreshold) || 5;
+                    const discordCfg = cfg.discord || {};
+                    const threshold = parseInt(discordCfg.uptimeStrikeThreshold) || 5;
+                    const repeat = parseInt(discordCfg.uptimeStrikeRepeat) || 10;
 
-                    if (currentStrikes === threshold) {
+                    if (currentStrikes === threshold || (currentStrikes > threshold && (currentStrikes - threshold) % repeat === 0)) {
                         await sendDiscordOfflineAlert(s, currentStrikes);
                     }
                 } else {
