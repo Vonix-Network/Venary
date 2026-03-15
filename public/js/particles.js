@@ -411,10 +411,7 @@ const ParticleEngine = {
             this.ctx.beginPath();
             this.ctx.arc(x, y, p.size, 0, Math.PI * 2);
             this.ctx.fillStyle = p.color;
-            this.ctx.shadowColor = p.color;
-            this.ctx.shadowBlur = 10;
             this.ctx.fill();
-            this.ctx.shadowBlur = 0;
         }
     },
 
