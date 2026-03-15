@@ -182,7 +182,7 @@ const FeedPage = {
       '<div class="post-header">' +
       '<div class="avatar" onclick="window.location.hash=\'#/profile/' + post.user_id + '\'" style="cursor:pointer">' + avatarContent + '</div>' +
       '<div class="post-user-info">' +
-      '<span class="username" onclick="window.location.hash=\'#/profile/' + post.user_id + '\'">' + App.escapeHtml(post.display_name || post.username) + '</span> ' +
+      '<div style="cursor:pointer; display:inline-flex; align-items:center;" onclick="window.location.hash=\'#/profile/' + post.user_id + '\'">' + App.renderUsername(post) + '</div> ' +
       App.renderRankBadge(post.donation_rank) +
       '<span class="badge badge-level">LVL ' + (post.level || 1) + '</span>' +
       '<div class="post-time">' + timeAgo + '</div>' +
@@ -269,7 +269,7 @@ const FeedPage = {
           ? '<img src="' + App.escapeHtml(c.avatar) + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'
           : cInitials;
         return '<div class="comment"><div class="avatar">' + cAvatar + '</div>' +
-          '<div class="comment-body"><span class="username">' + App.escapeHtml(c.display_name || c.username) + '</span>' +
+          '<div class="comment-body"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">' + App.renderUsername(c) + ' ' + App.renderRankBadge(c.donation_rank) + '</div>' +
           '<div class="content">' + App.renderContent(c.content, true) + '</div></div></div>';
       }).join('');
       html += '<div class="comment-input-wrapper">' +

@@ -41,8 +41,17 @@ const ParticleEngine = {
             case 'purple':
                 this.initRibbons();
                 break;
-            case 'pink':
-                this.initBubbles();
+            case 'pink': {
+                const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { style: 'bubbles' };
+                if (cfg.style === 'ribbons') {
+                    this.initRibbons();
+                } else {
+                    this.initBubbles();
+                }
+                break;
+            }
+            case 'lavalamp':
+                this.initLava();
                 break;
             case 'warp':
                 this.initWarpFlow();
@@ -122,6 +131,21 @@ const ParticleEngine = {
                 { r: 178, g: 141, b: 255 }, { r: 197, g: 163, b: 255 },
                 { r: 138, g: 82, b: 255 }, { r: 106, g: 13, b: 173 }, { r: 213, g: 184, b: 255 }
             ];
+        } else if (this.theme === 'pink') {
+            const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { preset: 'pink' };
+            if (cfg.preset === 'purple') {
+                colors = [
+                    { r: 178, g: 141, b: 255 }, { r: 197, g: 163, b: 255 },
+                    { r: 138, g: 82, b: 255 }, { r: 106, g: 13, b: 173 }, { r: 213, g: 184, b: 255 }
+                ];
+            } else if (cfg.preset === 'custom' && cfg.colors) {
+                colors = cfg.colors.map(c => this.hexToRgb(c));
+            } else {
+                colors = [
+                    { r: 255, g: 112, b: 166 }, { r: 255, g: 151, b: 112 },
+                    { r: 255, g: 80, b: 150 }, { r: 255, g: 120, b: 90 }, { r: 255, g: 60, b: 140 }
+                ];
+            }
         } else { // default
             colors = [
                 { r: 176, g: 38, b: 255 }, { r: 0, g: 240, b: 255 },
@@ -146,6 +170,7 @@ const ParticleEngine = {
     },
 
     initBubbles() {
+        const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { preset: 'pink' };
         for (let i = 0; i < 50; i++) {
             this.entities.push({
                 x: Math.random() * this.canvas.width,
@@ -155,6 +180,19 @@ const ParticleEngine = {
                 vy: (Math.random() - 0.5) * 0.5 - 0.5,
                 opacity: Math.random() * 0.5 + 0.1,
                 phase: Math.random() * Math.PI * 2
+            });
+        }
+    },
+
+    initLava() {
+        for (let i = 0; i < 15; i++) {
+            this.entities.push({
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                radius: 40 + Math.random() * 80,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                mass: Math.random() * 10 + 5
             });
         }
     },
@@ -194,7 +232,11 @@ const ParticleEngine = {
         let bgColor = '#000000';
         if (this.theme === 'default') bgColor = '#0a0e17';
         else if (this.theme === 'ocean') bgColor = '#000810';
-        else if (this.theme === 'pink') bgColor = '#120a10';
+        else if (this.theme === 'pink') {
+            const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { preset: 'pink' };
+            bgColor = cfg.preset === 'purple' ? '#0a0512' : '#120a10';
+        }
+        else if (this.theme === 'lavalamp') bgColor = '#120302';
         else if (this.theme === 'purple') bgColor = '#0a0512';
         else if (this.theme === 'warp') bgColor = '#020005';
         else if (this.theme === 'galaxy') bgColor = '#050508';
@@ -217,8 +259,17 @@ const ParticleEngine = {
             case 'purple':
                 this.renderRibbons(mouseObj);
                 break;
-            case 'pink':
-                this.renderBubbles(mouseObj);
+            case 'pink': {
+                const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { style: 'bubbles' };
+                if (cfg.style === 'ribbons') {
+                    this.renderRibbons(mouseObj);
+                } else {
+                    this.renderBubbles(mouseObj);
+                }
+                break;
+            }
+            case 'lavalamp':
+                this.renderLava(mouseObj);
                 break;
             case 'warp':
                 this.renderWarpFlow(mouseObj);
@@ -334,9 +385,64 @@ const ParticleEngine = {
             if (b.x < -50) b.x = this.canvas.width + 50;
             if (b.x > this.canvas.width + 50) b.x = -50;
 
+            const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { preset: 'pink' };
+            let primary = { r: 255, g: 112, b: 166 };
+            let secondary = { r: 255, g: 151, b: 112 };
+
+            if (cfg.preset === 'purple') {
+                primary = { r: 178, g: 141, b: 255 };
+                secondary = { r: 197, g: 163, b: 255 };
+            } else if (cfg.preset === 'custom' && cfg.colors && cfg.colors.length >= 2) {
+                primary = this.hexToRgb(cfg.colors[0]);
+                secondary = this.hexToRgb(cfg.colors[1]);
+            }
+
             const grad = this.ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
-            grad.addColorStop(0, `rgba(255, 112, 166, ${b.opacity})`);
-            grad.addColorStop(1, `rgba(255, 151, 112, 0)`);
+            grad.addColorStop(0, `rgba(${primary.r}, ${primary.g}, ${primary.b}, ${b.opacity})`);
+            grad.addColorStop(1, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, 0)`);
+            
+            this.ctx.beginPath();
+            this.ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            this.ctx.fillStyle = grad;
+            this.ctx.fill();
+        }
+    },
+
+    renderLava(mouse) {
+        const cfg = JSON.parse(localStorage.getItem('venary_bg_lavalamp')) || {};
+        let primary = cfg.primary ? this.hexToRgb(cfg.primary) : { r: 255, g: 51, b: 0 };
+        let secondary = cfg.secondary ? this.hexToRgb(cfg.secondary) : { r: 255, g: 153, b: 0 };
+
+        for (let i = 0; i < this.entities.length; i++) {
+            const b = this.entities[i];
+            
+            // Basic blob physics
+            b.x += b.vx;
+            b.y += b.vy;
+
+            // Bounce off walls
+            if (b.x < b.radius) { b.x = b.radius; b.vx *= -1; }
+            if (b.x > this.canvas.width - b.radius) { b.x = this.canvas.width - b.radius; b.vx *= -1; }
+            if (b.y < b.radius) { b.y = b.radius; b.vy *= -1; }
+            if (b.y > this.canvas.height - b.radius) { b.y = this.canvas.height - b.radius; b.vy *= -1; }
+
+            // Mouse interaction
+            if (mouse.x !== -1000) {
+                const dx = b.x - mouse.x;
+                const dy = b.y - mouse.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 200) {
+                    const force = (200 - dist) / 200;
+                    b.vx += (dx / dist) * force * 0.5;
+                    b.vy += (dy / dist) * force * 0.5;
+                }
+            }
+
+            // Draw glowing lava blob
+            const grad = this.ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
+            grad.addColorStop(0, `rgba(${primary.r}, ${primary.g}, ${primary.b}, 0.8)`);
+            grad.addColorStop(0.5, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, 0.4)`);
+            grad.addColorStop(1, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, 0)`);
             
             this.ctx.beginPath();
             this.ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
@@ -421,6 +527,15 @@ const ParticleEngine = {
             this.ctx.globalAlpha = 1.0;
             this.ctx.fill();
         }
+    },
+
+    hexToRgb(hex) {
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 255, g: 0, b: 0 };
     },
 
     destroy() {

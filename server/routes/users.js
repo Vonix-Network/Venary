@@ -46,7 +46,7 @@ router.get('/search', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
         const user = await db.get(
-            `SELECT id, username, display_name, avatar, bio, gaming_tags, level, xp,
+            `SELECT id, username, display_name, avatar, bio, gaming_tags, level, xp, role,
                     games_played, achievements, status, created_at, last_seen, skin_animation
              FROM users WHERE id = ?`,
             [req.params.id]

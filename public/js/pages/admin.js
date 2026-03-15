@@ -466,15 +466,14 @@ var AdminPage = {
       '</div>';
   },
 
-  // Helper: toggle switch
   _toggle(label, id, checked, hint) {
     return '<div class="form-group" style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-primary);margin-bottom:var(--space-sm)">' +
       '<div><strong style="font-size:0.9rem">' + label + '</strong>' +
       (hint ? '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">' + hint + '</div>' : '') + '</div>' +
-      '<label style="cursor:pointer;position:relative;display:inline-block;width:48px;height:26px">' +
+      '<label class="custom-toggle" style="cursor:pointer;position:relative;display:inline-block;width:48px;height:26px">' +
       '<input type="checkbox" id="s-' + id + '"' + (checked ? ' checked' : '') + ' style="opacity:0;width:0;height:0">' +
-      '<span style="position:absolute;inset:0;background:' + (checked ? 'var(--neon-cyan)' : 'var(--bg-tertiary)') + ';border-radius:26px;transition:0.2s"></span>' +
-      '<span style="position:absolute;top:3px;left:' + (checked ? '25px' : '3px') + ';width:20px;height:20px;background:#fff;border-radius:50%;transition:0.2s"></span>' +
+      '<span class="toggle-bg"></span>' +
+      '<span class="toggle-knob"></span>' +
       '</label>' +
       '</div>';
   },

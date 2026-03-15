@@ -947,3 +947,9 @@ textarea.input-field {
     font-size: 0.75rem;
     color: var(--text-muted);
 }
+
+/* Custom Toggle for Settings */
+.custom-toggle input:checked ~ .toggle-bg { background: var(--neon-cyan); }
+.custom-toggle input:checked ~ .toggle-knob { left: 25px; }
+.custom-toggle .toggle-bg { position: absolute; inset: 0; background: var(--bg-tertiary); border-radius: 26px; transition: 0.2s; }
+.custom-toggle .toggle-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }

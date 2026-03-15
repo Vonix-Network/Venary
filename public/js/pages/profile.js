@@ -103,7 +103,7 @@ const ProfilePage = {
         '<div class="profile-actions">' + actionsHtml + '</div>' +
         '</div>' +
         '<div class="profile-details">' +
-        '<h1>' + App.escapeHtml(profile.display_name || profile.username) + App.renderRankBadge(profile.donation_rank) + '</h1>' +
+        '<h1>' + App.renderUsername(profile, true) + ' ' + App.renderRankBadge(profile.donation_rank) + '</h1>' +
         '<p class="username">@' + App.escapeHtml(profile.username) + ' · <span class="badge badge-level">LVL ' + (profile.level || 1) + '</span></p>' +
         (profile.bio ? '<p class="profile-bio">' + App.escapeHtml(profile.bio) + '</p>' : '') +
         tagsHtml +

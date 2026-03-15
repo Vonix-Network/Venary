@@ -74,7 +74,7 @@ router.get('/feed', authenticateToken, async (req, res) => {
         const { before, limit = 20 } = req.query;
 
         let query = `
-          SELECT p.*, u.username, u.display_name, u.avatar, u.level,
+          SELECT p.*, u.username, u.display_name, u.avatar, u.level, u.role,
             (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
             (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
             (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as liked,
@@ -233,13 +233,33 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
 router.get('/:id/comments', authenticateToken, async (req, res) => {
     try {
         const comments = await db.all(
-            `SELECT c.*, u.username, u.display_name, u.avatar, u.level
+            `SELECT c.*, u.username, u.display_name, u.avatar, u.level, u.role
              FROM comments c
              JOIN users u ON c.user_id = u.id
              WHERE c.post_id = ?
              ORDER BY c.created_at ASC`,
             [req.params.id]
         );
+
+        // Enrich comments with donation rank badges
+        try {
+            const extLoader = require('../extension-loader');
+            const donDb = extLoader.getExtensionDb('donations');
+            if (donDb) {
+                const userIds = [...new Set(comments.map(c => c.user_id))];
+                for (const uid of userIds) {
+                    const ur = await donDb.get(
+                        `SELECT r.name, r.color, r.icon FROM user_ranks ur
+                         LEFT JOIN donation_ranks r ON ur.rank_id = r.id
+                         WHERE ur.user_id = ? AND ur.active = 1`, [uid]);
+                    if (ur) {
+                        comments.filter(c => c.user_id === uid).forEach(c => {
+                            c.donation_rank = { name: ur.name, color: ur.color, icon: ur.icon };
+                        });
+                    }
+                }
+            }
+        } catch { /* donations ext not loaded */ }
 
         res.json(comments);
     } catch (err) {

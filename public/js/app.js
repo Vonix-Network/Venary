@@ -449,7 +449,31 @@ var App = {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+            .replace(/'/g, '&#39;');
+    },
+
+    /**
+     * Renders a username, applying rank-specific glow or color.
+     */
+    renderUsername(userObj, noClass = false) {
+        if (!userObj) return 'Unknown';
+        
+        let color = '';
+        let glow = '';
+        if (userObj.donation_rank && userObj.donation_rank.color) {
+            color = this.escapeHtml(userObj.donation_rank.color);
+        } else if (userObj.role === 'admin') {
+            color = 'var(--neon-magenta)';
+        } else if (userObj.role === 'moderator') {
+            color = 'var(--neon-cyan)';
+        }
+
+        let name = this.escapeHtml(userObj.display_name || userObj.username);
+        if (color) {
+            glow = 'text-shadow: 0 0 8px ' + color + '; color: ' + color + '; font-weight: bold;';
+        }
+
+        return '<span ' + (noClass ? '' : 'class="username"') + ' style="' + glow + '">' + name + '</span>';
     },
 
     parseBBCode(str) {
@@ -595,13 +619,17 @@ var App = {
 
             themes.forEach(t => {
                 const isActive = t.id === themeId;
+                const supportsSettings = t.id === 'pink' || t.id === 'lavalamp';
+                const settingsBtn = supportsSettings ? '<button class="btn btn-secondary btn-sm" onclick="App.openThemeSettings(\'' + t.id + '\')" title="Theme Settings" style="padding: 0 8px;">⚙</button>' : '';
+                const actionBtn = isActive ? '' : '<button class="btn btn-primary btn-sm" onclick="App.setTheme(\'' + t.id + '\')">Apply</button>';
+                
                 listHtml += '<div class="card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;' + (isActive ? 'border-color:var(--neon-cyan);box-shadow:0 0 10px rgba(0,217,255,0.2)' : '') + '">' +
                     '<div>' +
                     '<div style="font-weight:bold;margin-bottom:4px">' + this.escapeHtml(t.name) + ' ' + (isActive ? '<span class="badge" style="background:var(--neon-cyan);color:#000">Active</span>' : '') + '</div>' +
                     '<div style="font-size:0.8rem;color:var(--text-muted)">' + this.escapeHtml(t.description) + '</div>' +
                     '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px">By ' + this.escapeHtml(t.author) + '</div>' +
                     '</div>' +
-                    (isActive ? '' : '<button class="btn btn-primary btn-sm" onclick="App.setTheme(\'' + t.id + '\')">Apply</button>') +
+                    '<div style="display:flex;gap:8px">' + settingsBtn + actionBtn + '</div>' +
                     '</div>';
             });
             listHtml += '</div>';
@@ -632,8 +660,62 @@ var App = {
         this.showToast('Theme updated to ' + themeId, 'success');
 
         if (typeof ParticleEngine !== 'undefined') {
-            ParticleEngine.createRibbons();
+            if (themeId === 'default' || themeId === 'warp' || themeId === 'galaxy' || themeId === 'vonix' || themeId === 'ocean' || themeId === 'prism' || themeId === 'purple' || themeId === 'pink' || themeId === 'lavalamp') {
+                ParticleEngine.refreshTheme();
+            }
         }
+    },
+
+    openThemeSettings(themeId) {
+        if (themeId === 'pink') {
+            const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { preset: 'pink', style: 'bubbles', colors: ['#ff70a6', '#ff9770'] };
+            if (!cfg.colors || cfg.colors.length < 2) cfg.colors = ['#ff70a6', '#ff9770'];
+            
+            let html = '<div class="modal-overlay" id="theme-settings-modal"><div class="modal" style="width:400px; max-width:90vw;"><div class="modal-header"><div class="modal-title">⚙ Pink Theme Settings</div><button class="btn btn-ghost modal-close" onclick="document.getElementById(\'theme-settings-modal\').remove()">✕</button></div><div class="modal-body auth-form">';
+            html += '<div class="input-group"><label>Particle Style</label><select id="ts-style" class="input-field"><option value="bubbles"' + (cfg.style === 'bubbles' ? ' selected' : '') + '>Bubbles</option><option value="ribbons"' + (cfg.style === 'ribbons' ? ' selected' : '') + '>Neon Ribbons</option></select></div>';
+            html += '<div class="input-group"><label>Color Preset</label><select id="ts-preset" class="input-field"><option value="pink"' + (cfg.preset === 'pink' ? ' selected' : '') + '>Original Pink</option><option value="purple"' + (cfg.preset === 'purple' ? ' selected' : '') + '>Purple (Legacy)</option><option value="custom"' + (cfg.preset === 'custom' ? ' selected' : '') + '>Custom Colors</option></select></div>';
+            
+            html += '<div id="ts-custom-colors" style="display:' + (cfg.preset === 'custom' ? 'block' : 'none') + '; margin-top: 10px;">';
+            html += '<div class="input-group"><label>Primary Particle Color</label><input type="color" id="ts-c1" class="input-field" value="' + cfg.colors[0] + '"></div>';
+            html += '<div class="input-group"><label>Secondary Particle Color</label><input type="color" id="ts-c2" class="input-field" value="' + cfg.colors[1] + '"></div>';
+            html += '</div>';
+
+            html += '<button class="btn btn-primary" onclick="App.saveThemeSettings(\'pink\')" style="margin-top: 20px;">Save Settings</button>';
+            html += '</div></div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+            
+            document.getElementById('ts-preset').onchange = (e) => {
+                document.getElementById('ts-custom-colors').style.display = e.target.value === 'custom' ? 'block' : 'none';
+            };
+        } else if (themeId === 'lavalamp') {
+            const cfg = JSON.parse(localStorage.getItem('venary_bg_lavalamp')) || { primary: '#ff3300', secondary: '#ff9900' };
+            let html = '<div class="modal-overlay" id="theme-settings-modal"><div class="modal" style="width:400px; max-width:90vw;"><div class="modal-header"><div class="modal-title">⚙ Lava Lamp Settings</div><button class="btn btn-ghost modal-close" onclick="document.getElementById(\'theme-settings-modal\').remove()">✕</button></div><div class="modal-body auth-form">';
+            html += '<div class="input-group"><label>Lava Color 1</label><input type="color" id="ts-lava-c1" class="input-field" value="' + cfg.primary + '"></div>';
+            html += '<div class="input-group"><label>Lava Color 2</label><input type="color" id="ts-lava-c2" class="input-field" value="' + cfg.secondary + '"></div>';
+            html += '<button class="btn btn-primary" onclick="App.saveThemeSettings(\'lavalamp\')" style="margin-top: 20px;">Save Settings</button>';
+            html += '</div></div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+    },
+
+    saveThemeSettings(themeId) {
+        if (themeId === 'pink') {
+            const cfg = {
+                style: document.getElementById('ts-style').value,
+                preset: document.getElementById('ts-preset').value,
+                colors: [document.getElementById('ts-c1').value, document.getElementById('ts-c2').value]
+            };
+            localStorage.setItem('venary_bg_pink', JSON.stringify(cfg));
+        } else if (themeId === 'lavalamp') {
+            const cfg = {
+                primary: document.getElementById('ts-lava-c1').value,
+                secondary: document.getElementById('ts-lava-c2').value
+            };
+            localStorage.setItem('venary_bg_lavalamp', JSON.stringify(cfg));
+        }
+        document.getElementById('theme-settings-modal')?.remove();
+        if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme();
+        App.showToast('Theme settings applied automatically!', 'success');
     }
 };
 
