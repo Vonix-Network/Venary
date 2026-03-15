@@ -1,6 +1,6 @@
 {
   "name": "venary",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "Next Generation Gaming Social Platform",
   "main": "server/index.js",
   "scripts": {

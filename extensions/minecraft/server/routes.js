@@ -834,6 +834,12 @@ module.exports = function (extDb) {
             await extDb.run('DELETE FROM uptime_history WHERE server_id = ?', [req.params.id]);
             await extDb.run('DELETE FROM player_stats WHERE server_id = ?', [req.params.id]);
             await extDb.run('DELETE FROM link_codes WHERE server_id = ?', [req.params.id]);
+            
+            // Clean up any potential orphaned foreign keys from deleted extensions (e.g. xpsync)
+            try {
+                await extDb.run('DELETE FROM server_xp WHERE server_id = ?', [req.params.id]);
+            } catch (ignore) { /* Table might not exist, which is fine */ }
+
             await extDb.run('DELETE FROM mc_servers WHERE id = ?', [req.params.id]);
             res.json({ message: 'Server deleted' });
         } catch (err) {
