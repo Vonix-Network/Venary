@@ -837,7 +837,8 @@ module.exports = function (extDb) {
             await extDb.run('DELETE FROM mc_servers WHERE id = ?', [req.params.id]);
             res.json({ message: 'Server deleted' });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[MC] Delete server error:', err);
+            res.status(500).json({ error: 'Server error: ' + err.message });
         }
     });
 
