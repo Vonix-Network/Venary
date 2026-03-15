@@ -408,9 +408,17 @@ const ParticleEngine = {
             }
             p.radius += (targetRadius - p.radius) * 0.05;
 
+            // Draw fake high-performance glow
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, p.size * 4, 0, Math.PI * 2);
+            this.ctx.fillStyle = p.color;
+            this.ctx.globalAlpha = 0.2;
+            this.ctx.fill();
+
+            // Draw bright core
             this.ctx.beginPath();
             this.ctx.arc(x, y, p.size, 0, Math.PI * 2);
-            this.ctx.fillStyle = p.color;
+            this.ctx.globalAlpha = 1.0;
             this.ctx.fill();
         }
     },
