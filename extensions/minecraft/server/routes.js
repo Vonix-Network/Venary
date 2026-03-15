@@ -975,7 +975,7 @@ module.exports = function (extDb) {
 
     router._pingAll = async function () {
         try {
-            const servers = await extDb.all('SELECT id, address, port, is_bedrock FROM mc_servers');
+            const servers = await extDb.all('SELECT id, name, address, port, is_bedrock FROM mc_servers');
             for (const s of servers) {
                 const status = await smartPing(s.address, s.port, !!s.is_bedrock);
                 await extDb.run(
