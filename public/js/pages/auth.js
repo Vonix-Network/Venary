@@ -150,7 +150,9 @@ const AuthPage = {
             successEl.classList.remove('hidden');
           }
         } else if (mode === 'reset') {
-          const urlParams = new URL(window.location.href.replace('#', '?')).searchParams;
+          let hashParts = window.location.hash.split('?');
+          let qs = hashParts.length > 1 ? hashParts[1] : '';
+          let urlParams = new URLSearchParams(qs);
           const token = urlParams.get('token');
           const uid = urlParams.get('id');
           if (!token || !uid) throw new Error('Invalid reset link.');
@@ -175,7 +177,9 @@ const AuthPage = {
     });
 
     if (mode === 'reset') {
-      const urlParams = new URL(window.location.href.replace('#', '?')).searchParams;
+      let hashParts = window.location.hash.split('?');
+      let qs = hashParts.length > 1 ? hashParts[1] : '';
+      let urlParams = new URLSearchParams(qs);
       const token = urlParams.get('token');
       const uid = urlParams.get('id');
       if (!token || !uid) {
