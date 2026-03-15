@@ -36,7 +36,8 @@ var Router = {
             window.location.hash = '#/login';
             return;
         }
-        if (API.token && isAuthPage) {
+        var isLoginRegister = path === '/login' || path === '/register';
+        if (API.token && isLoginRegister) {
             window.location.hash = '#/feed';
             return;
         }

@@ -44,7 +44,10 @@ const API = {
         } catch (err) {
             if (err.status === 401 || err.status === 403) {
                 this.setToken(null);
-                window.location.hash = '#/login';
+                var currentPath = window.location.hash.split('?')[0];
+                if (currentPath !== '#/login' && currentPath !== '#/register' && currentPath !== '#/forgot-password' && currentPath !== '#/reset-password') {
+                    window.location.hash = '#/login';
+                }
             }
             throw err;
         }
