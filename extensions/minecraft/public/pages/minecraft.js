@@ -15,46 +15,44 @@ var MinecraftPage = {
     leaderboardMeta: null,
 
     async render(container, params) {
-        if (params && params.length > 0) {
+        if (params && params.length > 0 && !window.location.hash.includes('leaderboard') && !window.location.hash.includes('link')) {
             return this.renderServerDetail(container, params[0]);
+        }
+
+        const hash = window.location.hash || '';
+        let title = 'Minecraft Network';
+        let subtitle = 'Explore servers and track your progress.';
+
+        if (hash.includes('/mc-leaderboard')) {
+            this.currentTab = 'leaderboard';
+            title = 'Network Leaderboard';
+            subtitle = 'See the top players across all tracked statistics.';
+        } else if (hash.includes('/mc-link')) {
+            this.currentTab = 'link';
+            title = 'Link Account';
+            subtitle = 'Connect your Minecraft account to Venary.';
+        } else {
+            this.currentTab = 'servers';
+            title = 'Network Servers';
+            subtitle = 'View live status and online players.';
         }
 
         container.innerHTML = `
             <div class="minecraft-page">
-                <div class="mc-header">
-                    <h1 class="mc-title">Minecraft Integration</h1>
-                    <p class="mc-subtitle">Connect, link, and track your progress across our network.</p>
+                <div class="mc-header" style="margin-bottom: 2rem;">
+                    <h1 class="mc-title">${title}</h1>
+                    <p class="mc-subtitle">${subtitle}</p>
                 </div>
-
-                <div class="mc-tabs">
-                    <button class="mc-tab ${this.currentTab === 'servers' ? 'active' : ''}" onclick="MinecraftPage.switchTab('servers', this)">
-                        <span>\uD83D\uDDA5\uFE0F</span> Servers
-                    </button>
-                    <button class="mc-tab ${this.currentTab === 'leaderboard' ? 'active' : ''}" onclick="MinecraftPage.switchTab('leaderboard', this)">
-                        <span>\uD83C\uDFC6</span> Leaderboard
-                    </button>
-                    <button class="mc-tab ${this.currentTab === 'link' ? 'active' : ''}" onclick="MinecraftPage.switchTab('link', this)">
-                        <span>\uD83D\uDD17</span> Link Account
-                    </button>
-                </div>
-
-                <div id="mc-tab-content" class="animate-fade-in">
-                    <!-- Tab content injected here -->
+                <div id="mc-page-content" class="animate-fade-in">
+                    <!-- content injected here -->
                 </div>
             </div>
         `;
 
-        this.renderTab(document.getElementById('mc-tab-content'));
+        this.renderCurrentPage(document.getElementById('mc-page-content'));
     },
 
-    switchTab(tab, btn) {
-        this.currentTab = tab;
-        document.querySelectorAll('.mc-tab').forEach(b => b.classList.remove('active'));
-        if (btn) btn.classList.add('active');
-        this.renderTab(document.getElementById('mc-tab-content'));
-    },
-
-    renderTab(container) {
+    renderCurrentPage(container) {
         switch (this.currentTab) {
             case 'servers': return this.renderServers(container);
             case 'leaderboard': return this.renderLeaderboard(container);
@@ -262,13 +260,7 @@ var MinecraftPage = {
 
     viewServerLeaderboard(serverId) {
         this.leaderboardServer = serverId;
-        this.currentTab = 'leaderboard';
-        document.querySelectorAll('.mc-tab').forEach(b => {
-            b.classList.remove('active');
-            if (b.innerText.includes('Leaderboard')) b.classList.add('active');
-        });
-        window.location.hash = '#/servers';
-        this.renderTab(document.getElementById('mc-tab-content'));
+        window.location.hash = '#/mc-leaderboard';
     },
 
     setChartMetric(metric, btn, serverId) {
@@ -408,7 +400,7 @@ var MinecraftPage = {
                 `).join('')}
             </select>
             
-            <button class="btn btn-secondary" style="margin-left:auto" onclick="MinecraftPage.renderLeaderboard(document.getElementById('mc-tab-content'))">
+            <button class="btn btn-secondary" style="margin-left:auto" onclick="MinecraftPage.renderLeaderboard(document.getElementById('mc-page-content'))">
                 \uD83D\uDD04 Refresh
             </button>
         </div>`;
@@ -478,12 +470,12 @@ var MinecraftPage = {
         if (type === 'server') this.leaderboardServer = value;
         if (type === 'stat') this.leaderboardStat = value;
         this.leaderboardPage = 1;
-        this.renderLeaderboard(document.getElementById('mc-tab-content'));
+        this.renderLeaderboard(document.getElementById('mc-page-content'));
     },
 
     changeLeaderboardPage(delta) {
         this.leaderboardPage += delta;
-        this.renderLeaderboard(document.getElementById('mc-tab-content'));
+        this.renderLeaderboard(document.getElementById('mc-page-content'));
         // Scroll to top of leaderboard
         document.querySelector('.mc-tabs').scrollIntoView({ behavior: 'smooth' });
     },
@@ -576,7 +568,7 @@ var MinecraftPage = {
         try {
             const res = await API.post('/api/ext/minecraft/link', { code });
             resultEl.innerHTML = '<span style="color:var(--neon-green)">\u2713 ' + (res.message || 'Linked!') + '</span>';
-            setTimeout(() => this.renderLink(document.getElementById('mc-tab-content')), 1500);
+            setTimeout(() => this.renderLink(document.getElementById('mc-page-content')), 1500);
         } catch (err) {
             resultEl.innerHTML = '<span style="color:var(--neon-magenta)">\u2717 ' + (err.message || 'Failed') + '</span>';
         }
@@ -612,7 +604,7 @@ var MinecraftPage = {
         try {
             await API.delete('/api/ext/minecraft/link');
             App.showToast('Minecraft account unlinked', 'success');
-            this.renderLink(document.getElementById('mc-tab-content'));
+            this.renderLink(document.getElementById('mc-page-content'));
         } catch (err) {
             App.showToast(err.message || 'Failed', 'error');
         }

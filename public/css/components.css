@@ -143,6 +143,48 @@
     animation: pulse 2s ease-in-out infinite;
 }
 
+/* ========== Nav Dropdowns ========== */
+.nav-dropdown-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.dropdown-toggle {
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.dropdown-chevron {
+    margin-left: auto;
+    transition: transform var(--transition-fast);
+}
+
+.nav-dropdown-group.open .dropdown-chevron {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    display: none;
+    flex-direction: column;
+    padding-left: var(--space-xl);
+    gap: var(--space-xs);
+    margin-top: var(--space-xs);
+}
+
+.nav-dropdown-group.open .dropdown-menu {
+    display: flex;
+    animation: fadeInDown var(--transition-fast) ease-out;
+}
+
+.dropdown-item {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.85rem;
+}
+.dropdown-item svg {
+    width: 16px;
+    height: 16px;
+}
+
 .nav-user {
     padding: var(--space-md) var(--space-lg);
     border-top: 1px solid var(--border-subtle);

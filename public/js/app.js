@@ -204,18 +204,36 @@ var App = {
 
         extensions.forEach(function (ext) {
             (ext.nav || []).forEach(function (nav) {
-                allNavItems.push({ label: nav.label, route: nav.route, icon: nav.icon, position: nav.position || 99, extId: ext.id });
+                var item = { ...nav, extId: ext.id };
+                allNavItems.push(item);
             });
         });
 
         // Sort by position
-        allNavItems.sort(function (a, b) { return a.position - b.position; });
+        allNavItems.sort(function (a, b) { return (a.position || 99) - (b.position || 99); });
 
         allNavItems.forEach(function (nav) {
             var iconSvg = App._getNavIcon(nav.icon);
-            var page = nav.route.replace('/', '');
-            html += '<a href="#' + nav.route + '" class="nav-link" data-page="' + page + '" id="nav-' + nav.extId + '">' +
-                iconSvg + '<span>' + nav.label + '</span></a>';
+            
+            if (nav.dropdown && nav.children) {
+                html += '<div class="nav-dropdown-group">';
+                html += '<button class="nav-link dropdown-toggle" onclick="this.parentElement.classList.toggle(\'open\')">' +
+                    iconSvg + '<span>' + nav.label + '</span>' +
+                    '<svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+                    '</button>';
+                html += '<div class="dropdown-menu">';
+                nav.children.forEach(function (child) {
+                    var childIcon = App._getNavIcon(child.icon);
+                    var page = child.route.replace('/', '');
+                    html += '<a href="#' + child.route + '" class="nav-link dropdown-item" data-page="' + page + '" id="nav-' + nav.extId + '-' + page + '">' +
+                        childIcon + '<span>' + child.label + '</span></a>';
+                });
+                html += '</div></div>';
+            } else {
+                var page = nav.route ? nav.route.replace('/', '') : '';
+                html += '<a href="#' + nav.route + '" class="nav-link" data-page="' + page + '" id="nav-' + nav.extId + '">' +
+                    iconSvg + '<span>' + nav.label + '</span></a>';
+            }
         });
 
         navContainer.innerHTML = html;

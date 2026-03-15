@@ -8,9 +8,26 @@
     "nav": [
         {
             "label": "Minecraft",
-            "icon": "server",
-            "route": "/servers",
-            "position": 2
+            "icon": "grid",
+            "position": 2,
+            "dropdown": true,
+            "children": [
+                {
+                    "label": "Servers",
+                    "route": "/servers",
+                    "icon": "server"
+                },
+                {
+                    "label": "Leaderboard",
+                    "route": "/mc-leaderboard",
+                    "icon": "users"
+                },
+                {
+                    "label": "Link Account",
+                    "route": "/mc-link",
+                    "icon": "settings"
+                }
+            ]
         }
     ],
     "routes": {
@@ -21,6 +38,16 @@
     "pages": [
         {
             "route": "/servers",
+            "file": "public/pages/minecraft.js",
+            "global": "MinecraftPage"
+        },
+        {
+            "route": "/mc-leaderboard",
+            "file": "public/pages/minecraft.js",
+            "global": "MinecraftPage"
+        },
+        {
+            "route": "/mc-link",
             "file": "public/pages/minecraft.js",
             "global": "MinecraftPage"
         },
