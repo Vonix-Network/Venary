@@ -21,7 +21,7 @@ async function updateLevel(userId) {
 // Create post
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { content, image, post_type } = req.body;
+        const { content, image, post_type, visibility } = req.body;
 
         if (!content || content.trim().length === 0) {
             return res.status(400).json({ error: 'Content is required' });
@@ -30,9 +30,9 @@ router.post('/', authenticateToken, async (req, res) => {
         const id = uuidv4();
         const now = new Date().toISOString();
         await db.run(
-            `INSERT INTO posts (id, user_id, content, image, post_type, created_at)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, req.user.id, content.trim(), image || null, post_type || 'text', now]
+            `INSERT INTO posts (id, user_id, content, image, post_type, visibility, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, req.user.id, content.trim(), image || null, post_type || 'text', visibility || 'public', now]
         );
 
         // Add XP for posting — use configured value
@@ -81,11 +81,16 @@ router.get('/feed', authenticateToken, async (req, res) => {
             (SELECT COUNT(*) FROM post_subscriptions WHERE post_id = p.id AND user_id = ?) as is_subscribed
           FROM posts p
           JOIN users u ON p.user_id = u.id
+          WHERE (p.visibility = 'public' OR p.user_id = ? OR EXISTS (
+            SELECT 1 FROM friendships f 
+            WHERE f.status = 'accepted' AND 
+            ((f.user_id = p.user_id AND f.friend_id = ?) OR (f.friend_id = p.user_id AND f.user_id = ?))
+          ))
         `;
-        const params = [req.user.id, req.user.id];
+        const params = [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id];
 
         if (before) {
-            query += ' WHERE p.created_at < ?';
+            query += ' AND p.created_at < ?';
             params.push(before);
         }
 

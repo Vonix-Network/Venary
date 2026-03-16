@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS posts (
     content TEXT NOT NULL,
     image TEXT,
     post_type TEXT DEFAULT 'text',
+    visibility TEXT DEFAULT 'public',
     created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );

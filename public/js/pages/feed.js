@@ -25,6 +25,10 @@ const FeedPage = {
             </div>
             <div style="display:flex;align-items:center;gap:15px">
               <span class="char-count" id="char-count">0 / 1000</span>
+              <select id="post-visibility" class="input-field" style="padding: 4px 8px; font-size: 0.9em; height: 32px; min-width: 100px;">
+                <option value="public">Public</option>
+                <option value="friends_only">Friends Only</option>
+              </select>
               <button class="btn btn-primary" id="post-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 Post
@@ -70,6 +74,8 @@ const FeedPage = {
     if (!content) return;
     var postBtn = document.getElementById('post-btn');
     var composer = textarea.closest('.post-composer');
+    var visibilitySelect = document.getElementById('post-visibility');
+    var visibility = visibilitySelect ? visibilitySelect.value : 'public';
     postBtn.disabled = true;
     postBtn.innerHTML = '<span class="spinner"></span>';
 
@@ -80,7 +86,7 @@ const FeedPage = {
     }
 
     try {
-      var post = await API.createPost({ content: content, image: image });
+      var post = await API.createPost({ content: content, image: image, visibility: visibility });
       textarea.value = '';
       textarea.style.height = 'auto';
       document.getElementById('char-count').textContent = '0 / 1000';
