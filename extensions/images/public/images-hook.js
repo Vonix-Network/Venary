@@ -82,6 +82,7 @@ var ImagesHook = {
                 padding: 12px;
                 border-top: 1px solid var(--border-subtle);
                 display: flex;
+                flex-direction: column;
                 gap: 8px;
             }
             .media-type-badge {
@@ -250,8 +251,14 @@ var ImagesHook = {
         const linkInput = document.createElement('div');
         linkInput.className = 'composer-link-input-area hidden';
         linkInput.innerHTML = `
-            <input type="text" class="input-field img-link-input" placeholder="Paste URL..." style="flex:1">
-            <button class="btn btn-primary btn-sm btn-add-link">Add</button>
+            <div style="display:flex; gap:8px; width:100%;">
+                <input type="text" class="input-field img-link-input" placeholder="Paste URL..." style="flex:1">
+                <button class="btn btn-primary btn-sm btn-add-link">Add</button>
+            </div>
+            <div class="image-guide-info hidden" style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Need an image link? <a href="#" onclick="if(window.FeedPage && FeedPage.showImageGuide) FeedPage.showImageGuide(event); else { event.preventDefault(); alert('Guide only available in Feed.'); }" style="color: var(--neon-cyan); text-decoration: none;">Click here for Guide</a></span>
+            </div>
         `;
         composer.appendChild(linkInput);
     },
@@ -259,8 +266,13 @@ var ImagesHook = {
     toggleLinkInput(composer, type) {
         const area = composer.querySelector('.composer-link-input-area');
         const input = area.querySelector('.img-link-input');
+        const guide = area.querySelector('.image-guide-info');
         input.placeholder = type === 'youtube' ? 'Paste YouTube link...' : 'Paste image URL...';
         input.dataset.type = type;
+        if (guide) {
+            if (type === 'image') guide.classList.remove('hidden');
+            else guide.classList.add('hidden');
+        }
         area.querySelector('.btn-add-link').onclick = () => this.addLinkFromInput(composer);
         area.classList.toggle('hidden');
         if (!area.classList.contains('hidden')) input.focus();

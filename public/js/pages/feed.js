@@ -17,10 +17,6 @@ const FeedPage = {
             <div class="avatar">${App.currentUser && App.currentUser.avatar ? `<img src="${App.escapeHtml(App.currentUser.avatar)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : App.getInitials()}</div>
             <textarea class="composer-textarea input-field" id="post-content" placeholder="Share your latest achievement, strategy, or gaming moment..." maxlength="1000"></textarea>
           </div>
-          <div style="padding-bottom: 8px; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <span>You can embed images or videos by pasting the link! <a href="#" onclick="FeedPage.showImageGuide(event)" style="color: var(--neon-cyan); text-decoration: none;">Click here for a guide on uploading permanent images.</a></span>
-          </div>
           <div class="composer-actions">
             <div style="display:flex;align-items:center;gap:15px">
               <button class="btn btn-ghost btn-sm emoji-btn" onclick="App.toggleEmojiPicker(this, 'post-content')" title="Add emoji">
