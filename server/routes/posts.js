@@ -302,6 +302,35 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Update post
+router.put('/:id', authenticateToken, async (req, res) => {
+    try {
+        const { content, image } = req.body;
+        const post = await db.get('SELECT * FROM posts WHERE id = ?', [req.params.id]);
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        // Ensure user is author, or an admin/moderator
+        if (post.user_id !== req.user.id) {
+            const currentUser = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
+            if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+                return res.status(403).json({ error: 'Not authorized' });
+            }
+        }
+
+        await db.run(
+            'UPDATE posts SET content = ?, image = ? WHERE id = ?',
+            [content, image, req.params.id]
+        );
+        
+        res.json({ message: 'Post updated' });
+    } catch (err) {
+        console.error('Update post error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // Toggle post subscription
 router.post('/:id/subscribe', authenticateToken, async (req, res) => {
     try {

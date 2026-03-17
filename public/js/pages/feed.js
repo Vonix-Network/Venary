@@ -144,6 +144,8 @@ const FeedPage = {
     var isOwn = post.user_id === (App.currentUser ? App.currentUser.id : null);
     var isAdminOrMod = App.currentUser && (App.currentUser.role === 'admin' || App.currentUser.role === 'moderator');
     var isDeleteable = isOwn || isAdminOrMod;
+    var isEditable = isOwn || isAdminOrMod;
+    var editBtn = isEditable ? '<button class="btn btn-ghost btn-sm" onclick="FeedPage.editPost(\'' + post.id + '\')" title="Edit post"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '';
     var deleteBtn = isDeleteable ? '<button class="btn btn-ghost btn-sm" onclick="FeedPage.deletePost(\'' + post.id + '\')" title="Delete post"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '';
     
     var reportBtn = !isOwn && App.currentUser ? '<button class="btn btn-ghost btn-sm text-danger" onclick="FeedPage.reportPost(\'' + post.id + '\')" title="Report post" style="color: var(--neon-magenta)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></button>' : '';
@@ -199,7 +201,7 @@ const FeedPage = {
       App.renderRankBadge(post.donation_rank) +
       '<span class="badge badge-level">LVL ' + (post.level || 1) + '</span>' +
       '<div class="post-time">' + timeAgo + '</div>' +
-      '</div>' + subBtn + reportBtn + deleteBtn +
+      '</div>' + subBtn + reportBtn + editBtn + deleteBtn +
       '</div>' +
       '<div class="post-content">' + App.renderContent(post.content, true) + '</div>' +
       imageHtml +
@@ -341,6 +343,27 @@ const FeedPage = {
       App.showToast('Post deleted', 'success');
     } catch (err) {
       App.showToast('Failed to delete post', 'error');
+    }
+  },
+
+  async editPost(postId) {
+    var post = this.posts.find(p => p.id === postId);
+    if (!post) return;
+
+    var newContent = prompt('Edit your post content:', post.content);
+    if (newContent === null) return; // Cancelled
+
+    var newImage = prompt('Edit image JSON array (or leave empty):', post.image || '');
+    if (newImage === null) return; // Cancelled
+    
+    if (newImage.trim() === '') newImage = null;
+
+    try {
+      await API.updatePost(postId, { content: newContent, image: newImage });
+      App.showToast('Post updated successfully', 'success');
+      this.loadFeed(); // Reload feed to show changes
+    } catch (err) {
+      App.showToast(err.message || 'Failed to update post', 'error');
     }
   },
 

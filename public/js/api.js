@@ -92,6 +92,7 @@ const API = {
     deleteComment(commentId) { return this.delete(`/api/posts/comments/${commentId}`); },
     reportComment(commentId, reason) { return this.post(`/api/posts/comments/${commentId}/report`, { reason }); },
     deletePost(id) { return this.delete(`/api/posts/${id}`); },
+    updatePost(id, data) { return this.put(`/api/posts/${id}`, data); },
 
     // Admin
     getAdminStats() { return this.get('/api/admin/stats'); },
