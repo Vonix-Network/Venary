@@ -588,6 +588,84 @@ var App = {
         );
     },
 
+    confirm(title, message) {
+        return new Promise((resolve) => {
+            this.showModal(title, `
+                <div style="display:flex; flex-direction: column; gap: 15px;">
+                    <div style="color: var(--text-primary); line-height: 1.5;">${this.escapeHtml(message)}</div>
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+                        <button class="btn btn-ghost" id="app-confirm-cancel">Cancel</button>
+                        <button class="btn btn-primary" id="app-confirm-ok">OK</button>
+                    </div>
+                </div>
+            `);
+            document.getElementById('app-confirm-cancel').onclick = () => { this.closeModal(); resolve(false); };
+            document.getElementById('app-confirm-ok').onclick = () => { this.closeModal(); resolve(true); };
+            
+            // Override close behavior to resolve false
+            const overlay = document.getElementById('app-modal-overlay');
+            overlay.onclick = (e) => {
+                if (e.target.id === 'app-modal-overlay') { this.closeModal(); resolve(false); }
+            };
+            const closeBtn = document.querySelector('#app-modal-overlay .modal-close');
+            if (closeBtn) closeBtn.onclick = () => { this.closeModal(); resolve(false); };
+        });
+    },
+
+    prompt(title, message, defaultValue = '') {
+        return new Promise((resolve) => {
+            this.showModal(title, `
+                <div style="display:flex; flex-direction: column; gap: 15px;">
+                    <div style="color: var(--text-primary); line-height: 1.5;">${this.escapeHtml(message)}</div>
+                    <input type="text" class="input-field" id="app-prompt-input" value="${this.escapeHtml(defaultValue)}" style="width: 100%;">
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+                        <button class="btn btn-ghost" id="app-prompt-cancel">Cancel</button>
+                        <button class="btn btn-primary" id="app-prompt-ok">OK</button>
+                    </div>
+                </div>
+            `);
+            const input = document.getElementById('app-prompt-input');
+            input.focus();
+            
+            document.getElementById('app-prompt-cancel').onclick = () => { this.closeModal(); resolve(null); };
+            document.getElementById('app-prompt-ok').onclick = () => { this.closeModal(); resolve(input.value); };
+            
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') { this.closeModal(); resolve(input.value); }
+            };
+
+            // Override close behavior to resolve null
+            const overlay = document.getElementById('app-modal-overlay');
+            overlay.onclick = (e) => {
+                if (e.target.id === 'app-modal-overlay') { this.closeModal(); resolve(null); }
+            };
+            const closeBtn = document.querySelector('#app-modal-overlay .modal-close');
+            if (closeBtn) closeBtn.onclick = () => { this.closeModal(); resolve(null); };
+        });
+    },
+
+    alert(title, message) {
+        return new Promise((resolve) => {
+            this.showModal(title, `
+                <div style="display:flex; flex-direction: column; gap: 15px;">
+                    <div style="color: var(--text-primary); line-height: 1.5;">${this.escapeHtml(message)}</div>
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+                        <button class="btn btn-primary" id="app-alert-ok">OK</button>
+                    </div>
+                </div>
+            `);
+            document.getElementById('app-alert-ok').onclick = () => { this.closeModal(); resolve(); };
+            
+            // Override close behavior to resolve
+            const overlay = document.getElementById('app-modal-overlay');
+            overlay.onclick = (e) => {
+                if (e.target.id === 'app-modal-overlay') { this.closeModal(); resolve(); }
+            };
+            const closeBtn = document.querySelector('#app-modal-overlay .modal-close');
+            if (closeBtn) closeBtn.onclick = () => { this.closeModal(); resolve(); };
+        });
+    },
+
     closeModal() {
         const modal = document.getElementById('app-modal-overlay');
         if (modal) modal.remove();

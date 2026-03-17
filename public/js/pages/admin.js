@@ -264,7 +264,7 @@ var AdminPage = {
   },
   async banUser(userId) {
     // Legacy fallback
-    var reason = prompt('Reason for ban:');
+    var reason = await App.prompt('Ban User', 'Reason for ban:');
     if (reason === null) return;
     try { await API.banUser(userId, reason); App.showToast('User banned', 'success'); this.loadUsers(); } catch (err) { App.showToast(err.message, 'error'); }
   },
@@ -272,7 +272,8 @@ var AdminPage = {
     try { await API.unbanUser(userId); App.showToast('User unbanned', 'success'); this.loadUsers(); } catch (err) { App.showToast(err.message, 'error'); }
   },
   async deleteUser(userId) {
-    if (!confirm('Are you absolutely sure you want to permanently delete this user? This cannot be undone.')) return;
+    var confirmed = await App.confirm('Delete User', 'Are you absolutely sure you want to permanently delete this user? This cannot be undone.');
+    if (!confirmed) return;
     try {
       await API.deleteAdminUser(userId);
       App.showToast('User deleted successfully', 'success');
@@ -282,7 +283,7 @@ var AdminPage = {
     }
   },
   async assignMinecraftUuid(userId) {
-    var uuid = prompt('Enter Minecraft UUID to assign to this user:');
+    var uuid = await App.prompt('Assign UUID', 'Enter Minecraft UUID to assign to this user:');
     if (!uuid) return;
     try {
       await API.put('/api/ext/minecraft/admin/users/' + userId + '/minecraft', { minecraft_uuid: uuid });
@@ -293,8 +294,9 @@ var AdminPage = {
     }
   },
   async resolveReport(reportId) {
-    var note = prompt('Admin note (optional):') || '';
-    try { await API.resolveReport(reportId, note); App.showToast('Report resolved', 'success'); this.loadReports(); this.loadStats(); } catch (err) { App.showToast(err.message, 'error'); }
+    var note = await App.prompt('Resolve Report', 'Admin note (optional):');
+    if (note === null) return;
+    try { await API.resolveReport(reportId, note || ''); App.showToast('Report resolved', 'success'); this.loadReports(); this.loadStats(); } catch (err) { App.showToast(err.message, 'error'); }
   },
 
   // ==========================================

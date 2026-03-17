@@ -445,7 +445,8 @@ const ProfilePage = {
     try { await API.acceptFriendRequest(id); App.showToast('Friend request accepted!', 'success'); Router.navigate(window.location.hash); } catch (err) { App.showToast(err.message, 'error'); }
   },
   async removeFriend(id) {
-    if (!confirm('Remove this friend?')) return;
+    var confirmed = await App.confirm('Remove Friend', 'Remove this friend?');
+    if (!confirmed) return;
     try { await API.removeFriend(id); App.showToast('Friend removed', 'info'); Router.navigate(window.location.hash); } catch (err) { App.showToast(err.message, 'error'); }
   },
 

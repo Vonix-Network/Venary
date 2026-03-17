@@ -257,7 +257,7 @@ const FeedPage = {
   },
 
   async reportPost(postId) {
-    var reason = prompt('Reason for reporting this post:');
+    var reason = await App.prompt('Report Post', 'Reason for reporting this post:');
     if (!reason) return;
     try {
       await API.reportPost(postId, reason);
@@ -331,7 +331,8 @@ const FeedPage = {
   },
 
   async deletePost(postId) {
-    if (!confirm('Delete this post?')) return;
+    var confirmed = await App.confirm('Delete Post', 'Delete this post?');
+    if (!confirmed) return;
     try {
       await API.deletePost(postId);
       var el = document.querySelector('[data-post-id="' + postId + '"]');
@@ -402,7 +403,8 @@ const FeedPage = {
   },
 
   async deleteComment(postId, commentId) {
-    if (!confirm('Delete this comment?')) return;
+    var confirmed = await App.confirm('Delete Comment', 'Delete this comment?');
+    if (!confirmed) return;
     try {
       await API.deleteComment(commentId);
       var el = document.getElementById('comment-' + commentId);
@@ -417,7 +419,7 @@ const FeedPage = {
   },
 
   async reportComment(commentId) {
-    var reason = prompt('Reason for reporting this comment:');
+    var reason = await App.prompt('Report Comment', 'Reason for reporting this comment:');
     if (!reason) return;
     try {
       await API.reportComment(commentId, reason);

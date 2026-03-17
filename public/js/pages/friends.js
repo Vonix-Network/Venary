@@ -138,7 +138,8 @@ const FriendsPage = {
     try { await API.removeFriend(userId); App.showToast('Request cancelled', 'info'); this.loadRequests(); } catch (err) { App.showToast(err.message, 'error'); }
   },
   async removeFriend(userId) {
-    if (!confirm('Remove this friend from your squad?')) return;
+    var confirmed = await App.confirm('Remove Friend', 'Remove this friend from your squad?');
+    if (!confirmed) return;
     try { await API.removeFriend(userId); App.showToast('Friend removed', 'info'); this.loadFriends(); } catch (err) { App.showToast(err.message, 'error'); }
   }
 };

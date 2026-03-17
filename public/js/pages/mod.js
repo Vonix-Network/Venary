@@ -132,7 +132,8 @@ var ModPage = {
     },
 
     async deleteFeedPost(postId) {
-        if (!confirm('Are you sure you want to PERMANENTLY delete this feed post and all its comments?')) return;
+        var confirmed = await App.confirm('Delete Post', 'Are you sure you want to PERMANENTLY delete this feed post and all its comments?');
+        if (!confirmed) return;
         try {
             await API.delete('/api/admin/posts/' + postId);
             this.showToast('Post deleted', 'success');
@@ -143,7 +144,7 @@ var ModPage = {
     showToast(message, type) {
         // Use App.showToast for consistency
         if (App && App.showToast) App.showToast(message, type);
-        else alert(message);
+        else App.alert('Alert', message);
     },
 
     async loadForumMod() {
@@ -204,7 +205,8 @@ var ModPage = {
     },
 
     async deleteForumThread(threadId) {
-        if (!confirm('Are you sure you want to PERMANENTLY delete this thread?')) return;
+        var confirmed = await App.confirm('Delete Thread', 'Are you sure you want to PERMANENTLY delete this thread?');
+        if (!confirmed) return;
         try {
             await API.delete('/api/ext/forum/threads/' + threadId);
             App.showToast('Thread deleted', 'success');
@@ -213,7 +215,7 @@ var ModPage = {
     },
 
     async banUser(userId) {
-        var reason = prompt('Reason for ban:');
+        var reason = await App.prompt('Ban User', 'Reason for ban:');
         if (reason === null) return;
         try { await API.banUser(userId, reason); App.showToast('User banned', 'success'); this.loadUsers(); } catch (err) { App.showToast(err.message, 'error'); }
     },
@@ -221,7 +223,8 @@ var ModPage = {
         try { await API.unbanUser(userId); App.showToast('User unbanned', 'success'); this.loadUsers(); } catch (err) { App.showToast(err.message, 'error'); }
     },
     async resolveReport(reportId) {
-        var note = prompt('Moderator note (optional):') || '';
-        try { await API.resolveReport(reportId, note); App.showToast('Report resolved', 'success'); this.loadReports(); } catch (err) { App.showToast(err.message, 'error'); }
+        var note = await App.prompt('Resolve Report', 'Moderator note (optional):');
+        if (note === null) return;
+        try { await API.resolveReport(reportId, note || ''); App.showToast('Report resolved', 'success'); this.loadReports(); } catch (err) { App.showToast(err.message, 'error'); }
     }
 };
