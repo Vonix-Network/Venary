@@ -281,8 +281,11 @@ const FeedPage = {
         var cAvatar = c.avatar
           ? '<img src="' + App.escapeHtml(c.avatar) + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'
           : cInitials;
+        var roleBadge = '';
+        if (c.role === 'admin') roleBadge = '<span class="badge badge-admin">ADMIN</span>';
+        else if (c.role === 'moderator') roleBadge = '<span class="badge badge-mod">MOD</span>';
         return '<div class="comment"><div class="avatar">' + cAvatar + '</div>' +
-          '<div class="comment-body"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">' + App.renderUsername(c) + ' ' + App.renderRankBadge(c.donation_rank) + '</div>' +
+          '<div class="comment-body"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">' + App.renderUsername(c) + ' ' + App.renderRankBadge(c.donation_rank) + (roleBadge ? ' ' + roleBadge : '') + '</div>' +
           '<div class="content">' + App.renderContent(c.content, true) + '</div></div></div>';
       }).join('');
       html += '<div class="comment-input-wrapper">' +
