@@ -17,6 +17,10 @@ const FeedPage = {
             <div class="avatar">${App.currentUser && App.currentUser.avatar ? `<img src="${App.escapeHtml(App.currentUser.avatar)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : App.getInitials()}</div>
             <textarea class="composer-textarea input-field" id="post-content" placeholder="Share your latest achievement, strategy, or gaming moment..." maxlength="1000"></textarea>
           </div>
+          <div style="padding-bottom: 8px; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span>You can embed images or videos by pasting the link! <a href="#" onclick="FeedPage.showImageGuide(event)" style="color: var(--neon-cyan); text-decoration: none;">Click here for a guide on uploading permanent images.</a></span>
+          </div>
           <div class="composer-actions">
             <div style="display:flex;align-items:center;gap:15px">
               <button class="btn btn-ghost btn-sm emoji-btn" onclick="App.toggleEmojiPicker(this, 'post-content')" title="Add emoji">
@@ -368,5 +372,24 @@ const FeedPage = {
     } catch (err) {
       App.showToast(err.message || 'Failed to report comment', 'error');
     }
+  },
+
+  showImageGuide(e) {
+    e.preventDefault();
+    App.showModal('🖼️ Image Upload Guide',
+      '<div style="line-height: 1.6; color: var(--text-primary);">' +
+      '<p style="margin-bottom: var(--space-md);">To share images in the Battle Feed, you need to provide a <strong>direct link</strong> to the image.</p>' +
+      '<ol style="margin-left: var(--space-lg); margin-bottom: var(--space-md);">' +
+      '<li style="margin-bottom: var(--space-sm);">Go to a free image hosting site like <a href="https://postimages.org/" target="_blank" style="color: var(--neon-cyan);">Postimages</a> or <a href="https://imgbb.com/" target="_blank" style="color: var(--neon-cyan);">ImgBB</a>.</li>' +
+      '<li style="margin-bottom: var(--space-sm);">Upload your image.</li>' +
+      '<li style="margin-bottom: var(--space-sm);">Copy the <strong>Direct Link</strong> (it should end in .png, .jpg, or .gif). <em>Note: Imgur album links (like imgur.com/a/...) will not embed directly.</em></li>' +
+      '<li style="margin-bottom: var(--space-sm);">Paste the link directly into the post text box.</li>' +
+      '</ol>' +
+      '<p>The image will automatically be embedded when you post!</p>' +
+      '<div style="margin-top: var(--space-lg); text-align: right;">' +
+      '<button class="btn btn-primary" onclick="App.closeModal()">Got it</button>' +
+      '</div>' +
+      '</div>'
+    );
   }
 };
