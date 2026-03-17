@@ -284,8 +284,17 @@ const FeedPage = {
         var roleBadge = '';
         if (c.role === 'admin') roleBadge = '<span class="badge badge-admin">ADMIN</span>';
         else if (c.role === 'moderator') roleBadge = '<span class="badge badge-mod">MOD</span>';
-        return '<div class="comment"><div class="avatar">' + cAvatar + '</div>' +
-          '<div class="comment-body"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">' + App.renderUsername(c) + ' ' + App.renderRankBadge(c.donation_rank) + (roleBadge ? ' ' + roleBadge : '') + '</div>' +
+        
+        var isOwnComment = c.user_id === (App.currentUser ? App.currentUser.id : null);
+        var isAdminOrMod = App.currentUser && (App.currentUser.role === 'admin' || App.currentUser.role === 'moderator');
+        var isDeleteable = isOwnComment || isAdminOrMod;
+        
+        var deleteBtn = isDeleteable ? '<button class="btn btn-ghost btn-sm" onclick="FeedPage.deleteComment(\'' + postId + '\', \'' + c.id + '\')" title="Delete comment" style="padding: 0 4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '';
+        var reportBtn = !isOwnComment && App.currentUser ? '<button class="btn btn-ghost btn-sm text-danger" onclick="FeedPage.reportComment(\'' + c.id + '\')" title="Report comment" style="padding: 0 4px; color: var(--neon-magenta)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></button>' : '';
+
+        return '<div class="comment" id="comment-' + c.id + '"><div class="avatar">' + cAvatar + '</div>' +
+          '<div class="comment-body"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;"><div style="display:flex;align-items:center;gap:6px;">' + App.renderUsername(c) + ' ' + App.renderRankBadge(c.donation_rank) + (roleBadge ? ' ' + roleBadge : '') + '</div>' +
+          '<div style="display:flex;align-items:center;gap:4px">' + reportBtn + deleteBtn + '</div></div>' +
           '<div class="content">' + App.renderContent(c.content, true) + '</div></div></div>';
       }).join('');
       html += '<div class="comment-input-wrapper">' +
@@ -332,6 +341,32 @@ const FeedPage = {
       App.showToast('Post deleted', 'success');
     } catch (err) {
       App.showToast('Failed to delete post', 'error');
+    }
+  },
+
+  async deleteComment(postId, commentId) {
+    if (!confirm('Delete this comment?')) return;
+    try {
+      await API.deleteComment(commentId);
+      var el = document.getElementById('comment-' + commentId);
+      if (el) {
+        el.remove();
+      }
+      // Reload comments to refresh counts or state if needed, or rely on UI removal
+      App.showToast('Comment deleted', 'success');
+    } catch (err) {
+      App.showToast('Failed to delete comment', 'error');
+    }
+  },
+
+  async reportComment(commentId) {
+    var reason = prompt('Reason for reporting this comment:');
+    if (!reason) return;
+    try {
+      await API.reportComment(commentId, reason);
+      App.showToast('Comment reported to moderators.', 'success');
+    } catch (err) {
+      App.showToast(err.message || 'Failed to report comment', 'error');
     }
   }
 };

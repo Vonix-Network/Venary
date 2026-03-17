@@ -361,4 +361,46 @@ router.get('/:id/subscribe', authenticateToken, async (req, res) => {
     }
 });
 
+// Delete a comment
+router.delete('/comments/:commentId', authenticateToken, async (req, res) => {
+    try {
+        const comment = await db.get('SELECT * FROM comments WHERE id = ?', [req.params.commentId]);
+        if (!comment) {
+            return res.status(404).json({ error: 'Comment not found' });
+        }
+        
+        if (comment.user_id !== req.user.id) {
+            const currentUser = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
+            if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+                return res.status(403).json({ error: 'Not authorized' });
+            }
+        }
+
+        // Decrement comment count? The feed does a left join and counts the comments, so deleting the row is enough.
+        await db.run('DELETE FROM comments WHERE id = ?', [req.params.commentId]);
+        res.json({ message: 'Comment deleted' });
+    } catch (err) {
+        console.error('Delete comment error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Report a comment
+router.post('/comments/:commentId/report', authenticateToken, async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const comment = await db.get('SELECT user_id, post_id FROM comments WHERE id = ?', [req.params.commentId]);
+        if (!comment) return res.status(404).json({ error: 'Comment not found' });
+        
+        await db.run(
+            `INSERT INTO reports (id, reporter_id, reported_user_id, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+            [uuidv4(), req.user.id, comment.user_id, `Reported Comment (${req.params.commentId}) on Post (${comment.post_id})\nReason: ${reason || 'Inappropriate behavior'}`, 'pending', new Date().toISOString()]
+        );
+        res.json({ message: 'Report submitted' });
+    } catch (err) {
+        console.error('Report comment error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 module.exports = router;

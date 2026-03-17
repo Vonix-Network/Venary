@@ -89,6 +89,8 @@ const API = {
     reportPost(id, reason) { return this.post(`/api/posts/${id}/report`, { reason }); },
     addComment(postId, content) { return this.post(`/api/posts/${postId}/comments`, { content }); },
     getComments(postId) { return this.get(`/api/posts/${postId}/comments`); },
+    deleteComment(commentId) { return this.delete(`/api/posts/comments/${commentId}`); },
+    reportComment(commentId, reason) { return this.post(`/api/posts/comments/${commentId}/report`, { reason }); },
     deletePost(id) { return this.delete(`/api/posts/${id}`); },
 
     // Admin
