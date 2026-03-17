@@ -350,20 +350,54 @@ const FeedPage = {
     var post = this.posts.find(p => p.id === postId);
     if (!post) return;
 
-    var newContent = prompt('Edit your post content:', post.content);
-    if (newContent === null) return; // Cancelled
+    var html = `
+      <div style="display:flex; flex-direction: column; gap: 15px;">
+        <div class="input-group">
+          <label style="margin-bottom: 5px; display: block; color: var(--text-secondary);">Post Content</label>
+          <textarea id="edit-post-content-${postId}" class="input-field" rows="4" style="width: 100%; resize: vertical;">${App.escapeHtml(post.content)}</textarea>
+        </div>
+        <div class="input-group">
+          <label style="margin-bottom: 5px; display: block; color: var(--text-secondary);">Image URL or JSON Array (optional)</label>
+          <input type="text" id="edit-post-image-${postId}" class="input-field" value="${App.escapeHtml(post.image || '')}" style="width: 100%;">
+        </div>
+        <div style="text-align: right; margin-top: 10px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="FeedPage.saveEdit('${postId}')">Save Changes</button>
+        </div>
+      </div>
+    `;
 
-    var newImage = prompt('Edit image JSON array (or leave empty):', post.image || '');
-    if (newImage === null) return; // Cancelled
-    
-    if (newImage.trim() === '') newImage = null;
+    App.showModal('✏️ Edit Post', html);
+  },
+
+  async saveEdit(postId) {
+    var contentEl = document.getElementById('edit-post-content-' + postId);
+    var imageEl = document.getElementById('edit-post-image-' + postId);
+    if (!contentEl || !imageEl) return;
+
+    var newContent = contentEl.value.trim();
+    if (!newContent) {
+        App.showToast('Content cannot be empty', 'error');
+        return;
+    }
+
+    var newImage = imageEl.value.trim();
+    if (newImage === '') newImage = null;
+
+    var saveBtn = event.target;
+    var originalText = saveBtn.innerText;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner"></span>';
 
     try {
       await API.updatePost(postId, { content: newContent, image: newImage });
+      App.closeModal();
       App.showToast('Post updated successfully', 'success');
       this.loadFeed(); // Reload feed to show changes
     } catch (err) {
       App.showToast(err.message || 'Failed to update post', 'error');
+      saveBtn.disabled = false;
+      saveBtn.innerText = originalText;
     }
   },
 
