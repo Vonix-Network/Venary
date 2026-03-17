@@ -42,19 +42,22 @@ router.get('/search', authenticateToken, async (req, res) => {
     }
 });
 
-// Get user profile by ID
+// Get user profile by ID or username
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
+        const identifier = req.params.id;
         const user = await db.get(
             `SELECT id, username, display_name, avatar, bio, gaming_tags, level, xp, role,
                     games_played, achievements, status, created_at, last_seen, skin_animation
-             FROM users WHERE id = ?`,
-            [req.params.id]
+             FROM users WHERE id = ? OR username = ? COLLATE NOCASE`,
+            [identifier, identifier]
         );
 
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
+
+        const userId = user.id;
 
         user.gaming_tags = safeParseJSON(user.gaming_tags);
         user.skin_animation = safeParseJSON(user.skin_animation);
@@ -63,21 +66,21 @@ router.get('/:id', authenticateToken, async (req, res) => {
         const friendship = await db.get(
             `SELECT * FROM friendships
              WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)`,
-            [req.user.id, req.params.id, req.params.id, req.user.id]
+            [req.user.id, userId, userId, req.user.id]
         );
 
         user.friendship_status = friendship ? friendship.status : 'none';
         user.friendship_direction = friendship ? (friendship.user_id === req.user.id ? 'sent' : 'received') : null;
 
         // Get post count
-        const postCount = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.params.id]);
+        const postCount = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [userId]);
         user.post_count = postCount.count;
 
         // Get friend count
         const friendCount = await db.get(
             `SELECT COUNT(*) as count FROM friendships
              WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'`,
-            [req.params.id, req.params.id]
+            [userId, userId]
         );
         user.friend_count = friendCount.count;
 

@@ -26,6 +26,10 @@ const ProfilePage = {
       if (!profile) throw new Error('User not found');
       ProfilePage._currentProfile = profile;
 
+      // Normalize userId and isOwnProfile in case user was accessed by username
+      userId = profile.id;
+      isOwnProfile = userId === (App.currentUser ? App.currentUser.id : null);
+
       var initials = (profile.display_name || profile.username || '?').charAt(0).toUpperCase();
       var avatarContent = profile.avatar
         ? '<img src="' + App.escapeHtml(profile.avatar) + '" alt="Avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'
