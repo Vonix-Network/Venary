@@ -368,24 +368,5 @@ const FeedPage = {
     } catch (err) {
       App.showToast(err.message || 'Failed to report comment', 'error');
     }
-  },
-
-  showImageGuide(e) {
-    e.preventDefault();
-    App.showModal('🖼️ Image Upload Guide',
-      '<div style="line-height: 1.6; color: var(--text-primary);">' +
-      '<p style="margin-bottom: var(--space-md);">To share images in the Battle Feed, you need to provide a <strong>direct link</strong> to the image.</p>' +
-      '<ol style="margin-left: var(--space-lg); margin-bottom: var(--space-md);">' +
-      '<li style="margin-bottom: var(--space-sm);">Go to a free image hosting site like <a href="https://postimages.org/" target="_blank" style="color: var(--neon-cyan);">Postimages</a> or <a href="https://imgbb.com/" target="_blank" style="color: var(--neon-cyan);">ImgBB</a>.</li>' +
-      '<li style="margin-bottom: var(--space-sm);">Upload your image.</li>' +
-      '<li style="margin-bottom: var(--space-sm);">Copy the <strong>Direct Link</strong> (it should end in .png, .jpg, or .gif). <em>Note: Imgur album links (like imgur.com/a/...) will not embed directly.</em></li>' +
-      '<li style="margin-bottom: var(--space-sm);">Paste the link directly into the post text box.</li>' +
-      '</ol>' +
-      '<p>The image will automatically be embedded when you post!</p>' +
-      '<div style="margin-top: var(--space-lg); text-align: right;">' +
-      '<button class="btn btn-primary" onclick="App.closeModal()">Got it</button>' +
-      '</div>' +
-      '</div>'
-    );
   }
 };

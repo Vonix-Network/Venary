@@ -570,6 +570,24 @@ var App = {
         });
     },
 
+    showImageGuide(e) {
+        if (e) e.preventDefault();
+        this.showModal('🖼️ Image Upload Guide',
+          '<div style="line-height: 1.6; color: var(--text-primary);">' +
+          '<p style="margin-bottom: var(--space-md);">To share images, you need to provide a <strong>direct link</strong> to the image.</p>' +
+          '<ol style="margin-left: var(--space-lg); margin-bottom: var(--space-md);">' +
+          '<li style="margin-bottom: var(--space-sm);">Go to a free image hosting site like <a href="https://postimg.cc/" target="_blank" style="color: var(--neon-cyan);">Postimg.cc</a>.</li>' +
+          '<li style="margin-bottom: var(--space-sm);">Upload your image.</li>' +
+          '<li style="margin-bottom: var(--space-sm);">Copy the <strong>Direct Link</strong> (it should end in .png, .jpg, or .gif). <em>Note: Imgur album links (like imgur.com/a/...) will not embed directly.</em></li>' +
+          '<li style="margin-bottom: var(--space-sm);">Paste the link directly into the text box.</li>' +
+          '</ol>' +
+          '<div style="margin-top: var(--space-lg); text-align: right;">' +
+          '<button class="btn btn-primary" onclick="App.closeModal()">Got it</button>' +
+          '</div>' +
+          '</div>'
+        );
+    },
+
     closeModal() {
         const modal = document.getElementById('app-modal-overlay');
         if (modal) modal.remove();

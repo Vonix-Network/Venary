@@ -257,7 +257,7 @@ var ImagesHook = {
             </div>
             <div class="image-guide-info hidden" style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-top: 4px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <span>Need an image link? <a href="#" onclick="if(window.FeedPage && FeedPage.showImageGuide) FeedPage.showImageGuide(event); else { event.preventDefault(); alert('Guide only available in Feed.'); }" style="color: var(--neon-cyan); text-decoration: none;">Click here for Guide</a></span>
+                <span>Need an image link? <a href="#" onclick="App.showImageGuide(event)" style="color: var(--neon-cyan); text-decoration: none;">Click here for Guide</a></span>
             </div>
         `;
         composer.appendChild(linkInput);
