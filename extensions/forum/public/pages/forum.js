@@ -151,16 +151,18 @@ var ForumPage = {
                 }
 
                 html += `
-                    <div class=\"card forum-post animate-fade-up\" id=\"post-${p.id}\">
-                        <div class=\"forum-post-user\">
+                    <div class=\"forum-post animate-fade-up\" id=\"post-${p.id}\">
+                        <div class=\"forum-post-sidebar\">
                             <div class=\"avatar\">${avatar}</div>
-                            <div class=\"username\">${App.escapeHtml(p.display_name || p.username)}</div>
-                            <div class=\"badge badge-level\">LVL ${p.level}</div>
-                            ${App.renderRankBadge({ name: p.role, color: p.role === 'admin' ? '#ff0000' : '#00d4ff' })}
                         </div>
                         <div class=\"forum-post-content\">
-                            <div class=\"post-time\">${App.timeAgo(p.created_at)}${p.edited_at ? ' (Edited)' : ''}</div>
-                            <div class=\"content\">${App.renderContent(p.content)}</div>
+                            <div class=\"forum-post-header\">
+                                <span class=\"forum-post-author\">${App.escapeHtml(p.display_name || p.username)}</span>
+                                <span class=\"forum-post-role\">${App.renderRankBadge({ name: p.role, color: p.role === 'admin' ? '#ff0000' : '#5865F2' })}</span>
+                                <span class=\"badge badge-level\" style=\"margin-left: 4px; font-size: 0.7rem;\">LVL ${p.level}</span>
+                                <span class=\"forum-post-time\">${App.timeAgo(p.created_at)}${p.edited_at ? ' (Edited)' : ''}</span>
+                            </div>
+                            <div class=\"forum-post-body\">${App.renderContent(p.content)}</div>
                             ${mediaHtml}
                         </div>
                     </div>

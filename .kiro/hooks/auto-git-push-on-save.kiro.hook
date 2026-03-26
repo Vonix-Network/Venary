@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Auto-commit and push on file save",
+  "description": "Automatically stages, commits, and pushes changes to GitHub when code files are saved. Skips if no changes detected.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.js",
+      "**/*.ts",
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.css",
+      "**/*.sql",
+      "**/*.md"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "powershell -Command \"\n  \\$status = git status --porcelain\n  if (\\$status) {\n    git add -A\n    \\$msg = 'chore: auto-commit changes from IDE'\n    git commit -m \\\"\\$msg\\\" 2>&1 | Out-Null\n    git push origin master 2>&1 | Out-Null\n    Write-Host '✅ Changes pushed to GitHub'\n  } else {\n    Write-Host '⏭️  No changes to commit'\n  }\n\"",
+    "timeout": 30
+  }
+}

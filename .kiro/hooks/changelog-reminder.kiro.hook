@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Remind to update CHANGELOG",
+  "description": "Reminds you to update CHANGELOG.md when code files are modified, ensuring documentation stays current with features and fixes.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.js",
+      "**/*.ts",
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.sql",
+      "extensions/**/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A code file was just edited. Check if CHANGELOG.md needs updating with the changes made. If yes, update the [Unreleased] section with a brief description of what was added/fixed/improved. Keep entries concise and organized by category (Added, Fixed, Improved, etc)."
+  }
+}

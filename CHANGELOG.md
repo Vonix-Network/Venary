@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-03-25
+
+### Changed
+- **Forum Extension Redesign**
+  - Redesigned public areas to match a Discord + PlayStation Edition aesthetic.
+  - Updated category cards, thread lists, and post layouts for a modern gaming feel.
+  - Replaced generic styles with deep dark grays, Discord Blurple, and PlayStation blue accents.
+  - Refactored forum CSS to use global theme variables (`--bg-card`, `--neon-cyan`, etc.) to ensure full compatibility with all custom themes.
+
 ### Added
 - **Donations Extension Enhancements**
   - Rank conversion system: Users can convert between ranks with prorated time credit (e.g., 15 days on $10 rank → ~10 days on $15 rank)
