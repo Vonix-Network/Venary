@@ -399,3 +399,27 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Rank Conversion Panel ── */
+.donate-convert-area {
+    margin-bottom: var(--space-lg);
+}
+
+/* ── Profile donation button ── */
+#profile-donation-btn-area .btn {
+    font-size: 0.78rem;
+    padding: 6px 12px;
+}
+
+/* ── Convert button variant ── */
+.donate-rank-btn.convert {
+    background: rgba(234, 179, 8, 0.1);
+    border-color: #eab308;
+    color: #eab308;
+}
+
+.donate-rank-btn.convert:hover {
+    background: #eab308;
+    color: #000;
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.3);
+}

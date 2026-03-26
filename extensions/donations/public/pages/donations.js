@@ -3,6 +3,7 @@
    ======================================= */
 window.DonationsPage = {
     currentRank: null,
+    allRanks: [],
 
     async render(container) {
         container.innerHTML = `
@@ -10,16 +11,16 @@ window.DonationsPage = {
                 <h1 style="text-align:center;margin-bottom:4px">Donation Ranks</h1>
                 <p style="text-align:center;color:var(--text-secondary);margin-bottom:2rem">Purchase rank time to unlock exclusive perks!</p>
                 <div id="donate-current-rank-area"></div>
+                <div id="donate-convert-area"></div>
                 <div id="donate-ranks-area"><div class="loading-spinner" style="text-align:center;padding:3rem">Loading ranks...</div></div>
                 <h2 style="margin-top:2.5rem;margin-bottom:0.5rem;font-size:1.1rem;color:var(--text-secondary)">Recent Donations</h2>
                 <div id="donate-recent-area"><div class="loading-spinner" style="text-align:center;padding:1rem;font-size:0.85rem;color:var(--text-muted)">Loading...</div></div>
             </div>`;
 
-        this.loadCurrentRank();
+        await this.loadCurrentRank();
         this.loadRanks();
         this.loadRecent();
 
-        // Handle success redirect from Stripe
         const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
         if (params.get('status') === 'success' && params.get('session_id')) {
             this.verifySession(params.get('session_id'));
@@ -41,10 +42,11 @@ window.DonationsPage = {
             area.innerHTML = `
                 <div class="donate-current-rank" style="--rank-accent:${App.escapeHtml(rank.rank_color)}">
                     <div class="rank-badge">${rank.rank_icon || '⭐'}</div>
-                    <div class="rank-info">
+                    <div class="rank-info" style="flex:1">
                         <h3 style="color:${App.escapeHtml(rank.rank_color)}">Active Rank: ${App.escapeHtml(rank.rank_name)}</h3>
                         <p>${daysLeft === '∞' ? 'Permanent' : daysLeft + ' days remaining'}</p>
                     </div>
+                    <button class="donate-rank-btn" style="width:auto;padding:8px 18px;font-size:0.8rem" onclick="DonationsPage.showConvertModal()">🔄 Convert Rank</button>
                 </div>`;
         } catch { area.innerHTML = ''; }
     },
@@ -55,6 +57,7 @@ window.DonationsPage = {
 
         try {
             const ranks = await API.get('/api/ext/donations/ranks');
+            this.allRanks = ranks;
             if (!ranks.length) { area.innerHTML = '<p style="text-align:center;color:var(--text-muted)">No ranks available yet.</p>'; return; }
 
             let html = '<div class="donate-ranks-grid">';
@@ -88,12 +91,80 @@ window.DonationsPage = {
         if (!App.currentUser) {
             return `<button class="donate-rank-btn" onclick="App.showAuthModal('login')">Login to Purchase</button>`;
         }
+        // If user has a rank already, show convert option
+        if (this.currentRank && this.currentRank.active) {
+            return `<button class="donate-rank-btn" onclick="DonationsPage.showConvertConfirm('${rank.id}', '${App.escapeHtml(rank.name)}', ${rank.price})">Convert to This</button>`;
+        }
         return `<button class="donate-rank-btn" onclick="DonationsPage.purchase('${rank.id}', this)">Purchase</button>`;
+    },
+
+    async showConvertModal() {
+        if (!this.currentRank || !this.currentRank.active) return;
+        const ranks = this.allRanks.filter(r => r.id !== this.currentRank.rank_id);
+        if (!ranks.length) { App.showToast('No other ranks available to convert to.', 'info'); return; }
+
+        const daysLeft = this.currentRank.expires_at
+            ? Math.max(0, Math.ceil((new Date(this.currentRank.expires_at) - Date.now()) / (1000 * 60 * 60 * 24)))
+            : 0;
+
+        let html = `<p style="color:var(--text-secondary);margin-bottom:1rem;font-size:0.9rem">
+            You have <strong style="color:var(--text-primary)">${daysLeft} days</strong> remaining on <strong style="color:${App.escapeHtml(this.currentRank.rank_color)}">${App.escapeHtml(this.currentRank.rank_name)}</strong>.
+            Your remaining time will be converted to the new rank at a prorated rate.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:10px">`;
+
+        for (const r of ranks) {
+            const oldPrice = this.currentRank.rank_price || 0;
+            const proratedValue = daysLeft * (oldPrice / 30);
+            const newDays = r.price > 0 ? Math.floor(proratedValue / (r.price / 30)) : daysLeft;
+            html += `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md)">
+                    <div>
+                        <span style="color:${App.escapeHtml(r.color)};font-weight:700">${r.icon || '⭐'} ${App.escapeHtml(r.name)}</span>
+                        <span style="color:var(--text-muted);font-size:0.8rem;margin-left:8px">→ ~${newDays} days</span>
+                    </div>
+                    <button class="donate-rank-btn" style="width:auto;padding:6px 14px;font-size:0.8rem" onclick="DonationsPage.convertRank('${r.id}', this)">Convert</button>
+                </div>`;
+        }
+        html += '</div>';
+        App.showModal('🔄 Convert Rank', html);
+    },
+
+    async showConvertConfirm(rankId, rankName, rankPrice) {
+        if (!this.currentRank || !this.currentRank.active) {
+            return this.purchase(rankId, null);
+        }
+        const daysLeft = this.currentRank.expires_at
+            ? Math.max(0, Math.ceil((new Date(this.currentRank.expires_at) - Date.now()) / (1000 * 60 * 60 * 24)))
+            : 0;
+        const oldPrice = this.currentRank.rank_price || 0;
+        const proratedValue = daysLeft * (oldPrice / 30);
+        const newDays = rankPrice > 0 ? Math.floor(proratedValue / (rankPrice / 30)) : daysLeft;
+
+        const confirmed = await App.confirm(
+            `Convert to ${rankName}?`,
+            `Your ${daysLeft} remaining days on ${this.currentRank.rank_name} will convert to approximately ${newDays} days on ${rankName}. This cannot be undone.`
+        );
+        if (!confirmed) return;
+        await this.convertRank(rankId, null);
+    },
+
+    async convertRank(rankId, btn) {
+        if (btn) { btn.disabled = true; btn.textContent = 'Converting...'; }
+        try {
+            const result = await API.post('/api/ext/donations/convert-rank', { new_rank_id: rankId });
+            App.closeModal();
+            App.showToast(`✅ Converted to ${result.to_rank}! You have ${result.new_days} days remaining.`, 'success');
+            await this.loadCurrentRank();
+            this.loadRanks();
+        } catch (err) {
+            App.showToast(err.message || 'Conversion failed', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Convert'; }
+        }
     },
 
     async purchase(rankId, btn) {
         if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
-
         try {
             const result = await API.post('/api/ext/donations/checkout', { rank_id: rankId });
             if (result.url) {
@@ -113,22 +184,19 @@ window.DonationsPage = {
             const result = await API.post('/api/ext/donations/verify-session', { session_id: sessionId });
             if (result.success) {
                 App.showToast('🎉 Thank you for your donation!', 'success');
-                // Reload ranks to update state
-                this.loadCurrentRank();
+                await this.loadCurrentRank();
                 this.loadRanks();
                 this.loadRecent();
             }
         } catch {
             App.showToast('Payment verification in progress...', 'info');
         }
-        // Clean URL
         window.location.hash = '#/donate';
     },
 
     async loadRecent() {
         const area = document.getElementById('donate-recent-area');
         if (!area) return;
-
         try {
             const donations = await API.get('/api/ext/donations/recent?limit=5');
             if (!donations.length) { area.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted)">No donations yet. Be the first!</p>'; return; }
@@ -161,7 +229,6 @@ window.DonationsPage = {
         if (mins < 60) return mins + 'm ago';
         const hours = Math.floor(mins / 60);
         if (hours < 24) return hours + 'h ago';
-        const days = Math.floor(hours / 24);
-        return days + 'd ago';
+        return Math.floor(hours / 24) + 'd ago';
     }
 };

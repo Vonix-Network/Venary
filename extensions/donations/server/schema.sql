@@ -60,9 +60,20 @@ VALUES
     ('rank_omega',      'Omega',     14.99, '#eab308', '⭐', 'Premium experience upgrade.',      '["All Patron perks","Particle effects","5 /sethome slots","Nickname colors","Exclusive channels"]',                     'omega',      3),
     ('rank_legend',     'Legend',    19.99, '#f97316', '⭐', 'The ultimate rank.',               '["All Omega perks","Custom prefix","Unlimited /sethome","Priority support","Exclusive cosmetics","Legend badge on site"]','legend',     4);
 
+-- Rank conversion log
+CREATE TABLE IF NOT EXISTS rank_conversions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    from_rank_id TEXT,
+    to_rank_id TEXT NOT NULL,
+    days_remaining INTEGER DEFAULT 0,
+    converted_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+);
+
 -- Indices
 CREATE INDEX IF NOT EXISTS idx_donations_user ON donations(user_id);
 CREATE INDEX IF NOT EXISTS idx_donations_status ON donations(status);
 CREATE INDEX IF NOT EXISTS idx_donations_stripe ON donations(stripe_session_id);
 CREATE INDEX IF NOT EXISTS idx_user_ranks_user ON user_ranks(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_ranks_active ON user_ranks(active);
+CREATE INDEX IF NOT EXISTS idx_rank_conversions_user ON rank_conversions(user_id);

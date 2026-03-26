@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Donations Extension Enhancements**
+  - Rank conversion system: Users can convert between ranks with prorated time credit (e.g., 15 days on $10 rank → ~10 days on $15 rank)
+  - Donation history modal on user profiles (visible to own profile only) showing transaction history and rank conversions
+  - Stripe-style HTML receipt emails on donation completion with rank badge, perks list, and themed styling
+  - Rank conversion confirmation emails with before/after rank comparison
+  - `rank_conversions` table to audit all rank changes with timestamps
+  - `/my-history` endpoint returning user's donations and conversions
+  - `/convert-rank` endpoint with prorated credit calculation
+  - Fixed missing `heart` icon in nav icon map (donations nav was silently falling back to grid icon)
+  - Enhanced `completeDonation` function to chain receipt emails automatically
+  - Dynamic site name in Discord webhook footer
+
+### Added (Previous)
 - **Database**
   - Added support for SQLite and PostgreSQL databases.
   - Automatic migration from legacy JSON data store to relational database.

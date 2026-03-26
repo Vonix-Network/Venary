@@ -104,6 +104,7 @@ const ProfilePage = {
         '<div class="profile-avatar-section">' +
         '<div class="profile-avatar">' + avatarContent + '</div>' +
         roleBadge +
+        '<div id="profile-donation-btn-area"></div>' +
         '<div class="profile-actions">' + actionsHtml + '</div>' +
         '</div>' +
         '<div class="profile-details">' +
@@ -129,6 +130,9 @@ const ProfilePage = {
       }
 
       this.loadUserPosts(userId);
+
+      // Load donation rank button (visible to all users)
+      ProfilePage._loadDonationButton(profile.id, isOwnProfile);
 
       if (isOwnProfile) {
         var editBtn = document.getElementById('edit-profile-btn');
@@ -418,6 +422,109 @@ const ProfilePage = {
     if (ProfilePage._previewViewer) {
       try { ProfilePage._previewViewer.dispose(); } catch (e) { }
       ProfilePage._previewViewer = null;
+    }
+  },
+
+  // ──────────────────────────────────────────────
+  //  Donation History
+  // ──────────────────────────────────────────────
+
+  async _loadDonationButton(userId, isOwnProfile) {
+    const area = document.getElementById('profile-donation-btn-area');
+    if (!area) return;
+
+    // Check if donations extension is enabled
+    const donationsEnabled = App.extensions && App.extensions.some(function(e) { return e.id === 'donations' && e.enabled; });
+    if (!donationsEnabled) return;
+
+    try {
+      // Fetch rank for this user via the public rank endpoint
+      // We show the button for everyone; history only for own profile
+      if (isOwnProfile) {
+        area.innerHTML = '<button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%" onclick="ProfilePage.showDonationHistory()">💰 Donation History</button>';
+      } else {
+        // For other users, just show their rank badge if they have one
+        // (already shown via App.renderRankBadge in the header)
+        area.innerHTML = '';
+      }
+    } catch (e) {
+      area.innerHTML = '';
+    }
+  },
+
+  async showDonationHistory() {
+    App.showModal('💰 Donation History', '<div style="text-align:center;padding:20px"><div class="loading-spinner"></div></div>');
+
+    try {
+      const data = await API.get('/api/ext/donations/my-history');
+      const { donations, conversions } = data;
+
+      let html = '';
+
+      // Current rank summary
+      try {
+        const rank = await API.get('/api/ext/donations/my-rank');
+        if (rank && rank.active && rank.rank_name) {
+          const daysLeft = rank.expires_at
+            ? Math.max(0, Math.ceil((new Date(rank.expires_at) - Date.now()) / (1000 * 60 * 60 * 24)))
+            : '∞';
+          html += `<div style="background:var(--bg-card);border:1px solid ${App.escapeHtml(rank.rank_color || 'var(--border-subtle)')};border-radius:var(--radius-md);padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+            <span style="font-size:1.5rem">${rank.rank_icon || '⭐'}</span>
+            <div>
+              <div style="font-weight:700;color:${App.escapeHtml(rank.rank_color)}">${App.escapeHtml(rank.rank_name)}</div>
+              <div style="font-size:0.8rem;color:var(--text-muted)">${daysLeft === '∞' ? 'Permanent' : daysLeft + ' days remaining'}</div>
+            </div>
+            <a href="#/donate" onclick="App.closeModal()" style="margin-left:auto;font-size:0.8rem;color:var(--neon-cyan);text-decoration:none">Manage →</a>
+          </div>`;
+        }
+      } catch { /* no rank */ }
+
+      // Donations table
+      if (donations && donations.length > 0) {
+        html += '<div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Transaction History</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto">';
+        for (const d of donations) {
+          const statusColor = d.status === 'completed' ? '#22c55e' : d.status === 'pending' ? '#eab308' : '#ef4444';
+          const typeIcon = d.payment_type === 'manual' ? '📝' : '💳';
+          html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm)">
+            <div>
+              <span style="font-size:0.85rem;font-weight:600;color:${App.escapeHtml(d.rank_color || 'var(--text-primary)')}">${d.rank_icon || typeIcon} ${App.escapeHtml(d.rank_name || 'Donation')}</span>
+              <div style="font-size:0.75rem;color:var(--text-muted)">${new Date(d.created_at).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'})}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:700;color:#22c55e">$${parseFloat(d.amount).toFixed(2)}</div>
+              <div style="font-size:0.7rem;color:${statusColor}">${d.status}</div>
+            </div>
+          </div>`;
+        }
+        html += '</div>';
+      } else {
+        html += '<p style="color:var(--text-muted);font-size:0.9rem;text-align:center;padding:20px 0">No donation history yet.</p>';
+      }
+
+      // Conversions
+      if (conversions && conversions.length > 0) {
+        html += '<div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 8px 0">Rank Conversions</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:6px">';
+        for (const c of conversions) {
+          html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm)">
+            <div style="font-size:0.85rem">
+              <span style="color:${App.escapeHtml(c.from_rank_color || '#888')}">${App.escapeHtml(c.from_rank_name || '?')}</span>
+              <span style="color:var(--text-muted);margin:0 6px">→</span>
+              <span style="color:${App.escapeHtml(c.to_rank_color || 'var(--neon-cyan)')}">${App.escapeHtml(c.to_rank_name || '?')}</span>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">${new Date(c.converted_at).toLocaleDateString()}</div>
+          </div>`;
+        }
+        html += '</div>';
+      }
+
+      // Update modal body
+      const modalBody = document.querySelector('#app-modal-overlay .modal-body');
+      if (modalBody) modalBody.innerHTML = html;
+    } catch (err) {
+      const modalBody = document.querySelector('#app-modal-overlay .modal-body');
+      if (modalBody) modalBody.innerHTML = '<p style="color:var(--neon-magenta);text-align:center">Failed to load donation history.</p>';
     }
   },
 

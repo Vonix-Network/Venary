@@ -1,7 +1,5 @@
 /* =======================================
    Donations & Ranks Extension — API Routes
-   Stripe payment gateway, Discord webhooks,
-   rank management, and mod API.
    ======================================= */
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
@@ -11,8 +9,8 @@ module.exports = function (extDb) {
     const coreDb = require('../../../server/db');
     const { authenticateToken, optionalAuth } = require('../../../server/middleware/auth');
     const Config = require('../../../server/config');
+    const Mailer = require('../../../server/mail');
 
-    // ── Helpers ──────────────────────────────────────────
     function requireAdmin(req, res, next) {
         coreDb.get('SELECT role FROM users WHERE id = ?', [req.user.id]).then(u => {
             if (!u || u.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
@@ -30,7 +28,6 @@ module.exports = function (extDb) {
     // PUBLIC ENDPOINTS
     // ══════════════════════════════════════════════════════
 
-    // GET /ranks — list active donation ranks
     router.get('/ranks', async (req, res) => {
         try {
             const ranks = await extDb.all('SELECT id, name, price, color, icon, description, perks, sort_order FROM donation_ranks WHERE active = 1 ORDER BY sort_order ASC');
@@ -42,7 +39,6 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /recent — recent donations (public, anonymized opt)
     router.get('/recent', async (req, res) => {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 10, 50);
@@ -55,7 +51,6 @@ module.exports = function (extDb) {
                  ORDER BY d.created_at DESC LIMIT ?`,
                 [limit]
             );
-            // Get usernames from core DB
             for (const d of donations) {
                 const user = await coreDb.get('SELECT username, display_name, avatar FROM users WHERE id = ?', [d.user_id || '']);
                 d.username = user?.display_name || user?.username || d.minecraft_username || 'Anonymous';
@@ -73,7 +68,6 @@ module.exports = function (extDb) {
     // AUTHENTICATED ENDPOINTS
     // ══════════════════════════════════════════════════════
 
-    // GET /my-rank — get current user's active rank
     router.get('/my-rank', authenticateToken, async (req, res) => {
         try {
             const userRank = await extDb.get(
@@ -90,6 +84,101 @@ module.exports = function (extDb) {
         }
     });
 
+    // GET /my-history — user's own donation history + receipts
+    router.get('/my-history', authenticateToken, async (req, res) => {
+        try {
+            const donations = await extDb.all(
+                `SELECT d.id, d.amount, d.currency, d.payment_type, d.status, d.created_at, d.expires_at,
+                        r.name as rank_name, r.color as rank_color, r.icon as rank_icon
+                 FROM donations d
+                 LEFT JOIN donation_ranks r ON d.rank_id = r.id
+                 WHERE d.user_id = ?
+                 ORDER BY d.created_at DESC LIMIT 50`,
+                [req.user.id]
+            );
+            const conversions = await extDb.all(
+                `SELECT rc.*, 
+                        fr.name as from_rank_name, fr.color as from_rank_color,
+                        tr.name as to_rank_name, tr.color as to_rank_color
+                 FROM rank_conversions rc
+                 LEFT JOIN donation_ranks fr ON rc.from_rank_id = fr.id
+                 LEFT JOIN donation_ranks tr ON rc.to_rank_id = tr.id
+                 WHERE rc.user_id = ?
+                 ORDER BY rc.converted_at DESC LIMIT 20`,
+                [req.user.id]
+            );
+            res.json({ donations, conversions });
+        } catch (err) {
+            console.error('[Donations] My history error:', err);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
+    // POST /convert-rank — convert to a different rank using remaining time
+    router.post('/convert-rank', authenticateToken, async (req, res) => {
+        try {
+            const { new_rank_id } = req.body;
+            if (!new_rank_id) return res.status(400).json({ error: 'new_rank_id required' });
+
+            const currentRank = await extDb.get(
+                'SELECT * FROM user_ranks WHERE user_id = ? AND active = 1',
+                [req.user.id]
+            );
+            if (!currentRank) return res.status(400).json({ error: 'No active rank to convert from' });
+            if (currentRank.rank_id === new_rank_id) return res.status(400).json({ error: 'Already on this rank' });
+
+            const newRank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ? AND active = 1', [new_rank_id]);
+            if (!newRank) return res.status(404).json({ error: 'Target rank not found' });
+
+            const oldRank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [currentRank.rank_id]);
+
+            // Calculate remaining days on current rank
+            let daysRemaining = 0;
+            if (currentRank.expires_at) {
+                const msLeft = new Date(currentRank.expires_at) - Date.now();
+                daysRemaining = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+            }
+
+            // Prorated value: days_remaining * (old_price / 30)
+            const proratedValue = daysRemaining * ((oldRank?.price || 0) / 30);
+            // New days from prorated value at new rank price
+            const newDays = newRank.price > 0 ? Math.floor(proratedValue / (newRank.price / 30)) : daysRemaining;
+            const newExpiry = newDays > 0
+                ? new Date(Date.now() + newDays * 24 * 60 * 60 * 1000).toISOString()
+                : new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(); // min 1 day
+
+            // Log conversion
+            await extDb.run(
+                'INSERT INTO rank_conversions (id, user_id, from_rank_id, to_rank_id, days_remaining) VALUES (?, ?, ?, ?, ?)',
+                [uuidv4(), req.user.id, currentRank.rank_id, new_rank_id, daysRemaining]
+            );
+
+            // Update user rank
+            await extDb.run(
+                'UPDATE user_ranks SET rank_id = ?, expires_at = ?, started_at = ? WHERE user_id = ?',
+                [new_rank_id, newExpiry, new Date().toISOString(), req.user.id]
+            );
+
+            // Send conversion email
+            const user = await coreDb.get('SELECT username, display_name, email FROM users WHERE id = ?', [req.user.id]);
+            if (user && user.email) {
+                sendConversionEmail(user, oldRank, newRank, daysRemaining, newDays, newExpiry).catch(() => {});
+            }
+
+            res.json({
+                success: true,
+                from_rank: oldRank?.name,
+                to_rank: newRank.name,
+                days_remaining: daysRemaining,
+                new_days: newDays,
+                new_expiry: newExpiry
+            });
+        } catch (err) {
+            console.error('[Donations] Convert rank error:', err);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
     // POST /checkout — create Stripe checkout session
     router.post('/checkout', authenticateToken, async (req, res) => {
         try {
@@ -102,13 +191,11 @@ module.exports = function (extDb) {
             const rank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ? AND active = 1', [rank_id]);
             if (!rank) return res.status(404).json({ error: 'Rank not found' });
 
-            // Get user info
             const user = await coreDb.get('SELECT username, email FROM users WHERE id = ?', [req.user.id]);
             if (!user) return res.status(401).json({ error: 'User not found' });
 
             const siteUrl = Config.get('siteUrl', 'http://localhost:3000');
 
-            // Create Stripe checkout session (one-time payment for 30 days)
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card'],
                 line_items: [{
@@ -118,7 +205,7 @@ module.exports = function (extDb) {
                             name: rank.name + ' Rank',
                             description: rank.description || `${rank.name} rank — 30 day access`,
                         },
-                        unit_amount: Math.round(rank.price * 100), // cents
+                        unit_amount: Math.round(rank.price * 100),
                     },
                     quantity: 1,
                 }],
@@ -133,10 +220,7 @@ module.exports = function (extDb) {
                 },
             });
 
-            // Create pending donation record
             const donationId = uuidv4();
-
-            // Try to get MC link
             let mcUuid = null, mcUsername = null;
             try {
                 const extLoader = require('../../../server/extension-loader');
@@ -161,7 +245,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /verify-session — verify a completed Stripe session (called by frontend after redirect)
+    // POST /verify-session
     router.post('/verify-session', authenticateToken, async (req, res) => {
         try {
             const stripe = getStripe();
@@ -175,9 +259,7 @@ module.exports = function (extDb) {
                 return res.json({ success: false, status: session.payment_status });
             }
 
-            // Mark donation as completed
             await completeDonation(session.id);
-
             res.json({ success: true });
         } catch (err) {
             console.error('[Donations] Verify session error:', err);
@@ -219,17 +301,13 @@ module.exports = function (extDb) {
     });
 
     // ══════════════════════════════════════════════════════
-    // MOD / SERVER API (API key protected)
+    // MOD / SERVER API
     // ══════════════════════════════════════════════════════
-
-    // GET /rank-check — check a player's rank by MC UUID (for mod on join)
     router.get('/rank-check', async (req, res) => {
         try {
-            // Accept API key from minecraft ext servers OR from auth header
             const apiKey = req.headers['x-api-key'] || (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
             if (!apiKey) return res.status(403).json({ error: 'API key required' });
 
-            // Validate against minecraft ext servers
             let validKey = false;
             try {
                 const extLoader = require('../../../server/extension-loader');
@@ -244,11 +322,9 @@ module.exports = function (extDb) {
             const uuid = req.query.uuid;
             if (!uuid) return res.status(400).json({ error: 'uuid required' });
 
-            // Format UUID
             const cleanUuid = uuid.replace(/-/g, '').toLowerCase();
             const formattedUuid = `${cleanUuid.slice(0, 8)}-${cleanUuid.slice(8, 12)}-${cleanUuid.slice(12, 16)}-${cleanUuid.slice(16, 20)}-${cleanUuid.slice(20)}`;
 
-            // Look up linked account → user_id → active rank
             let userId = null;
             try {
                 const extLoader = require('../../../server/extension-loader');
@@ -259,9 +335,7 @@ module.exports = function (extDb) {
                 }
             } catch { /* */ }
 
-            if (!userId) {
-                return res.json({ has_rank: false, rank: null, luckperms_group: null });
-            }
+            if (!userId) return res.json({ has_rank: false, rank: null, luckperms_group: null });
 
             const userRank = await extDb.get(
                 `SELECT ur.*, r.name, r.luckperms_group, r.color
@@ -271,9 +345,7 @@ module.exports = function (extDb) {
                 [userId, new Date().toISOString()]
             );
 
-            if (!userRank) {
-                return res.json({ has_rank: false, rank: null, luckperms_group: null });
-            }
+            if (!userRank) return res.json({ has_rank: false, rank: null, luckperms_group: null });
 
             res.json({
                 has_rank: true,
@@ -292,7 +364,6 @@ module.exports = function (extDb) {
     // ADMIN ENDPOINTS
     // ══════════════════════════════════════════════════════
 
-    // GET /admin/donations — list all donations
     router.get('/admin/donations', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const page = parseInt(req.query.page) || 1;
@@ -307,7 +378,6 @@ module.exports = function (extDb) {
                 [limit, offset]
             );
 
-            // Enrich with usernames
             for (const d of donations) {
                 const user = await coreDb.get('SELECT username, display_name FROM users WHERE id = ?', [d.user_id]);
                 d.username = user?.display_name || user?.username || 'Unknown';
@@ -321,15 +391,13 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /admin/stats — donation stats
     router.get('/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const totalRevenue = await extDb.get("SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE status = 'completed'");
             const totalDonations = await extDb.get("SELECT COUNT(*) as count FROM donations WHERE status = 'completed'");
             const activeRanks = await extDb.get("SELECT COUNT(*) as count FROM user_ranks WHERE active = 1");
             const thisMonth = new Date();
-            thisMonth.setDate(1);
-            thisMonth.setHours(0, 0, 0, 0);
+            thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
             const monthRevenue = await extDb.get("SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE status = 'completed' AND created_at >= ?", [thisMonth.toISOString()]);
 
             res.json({
@@ -344,7 +412,6 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /admin/ranks — list all ranks (including inactive)
     router.get('/admin/ranks', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const ranks = await extDb.all('SELECT * FROM donation_ranks ORDER BY sort_order ASC');
@@ -355,17 +422,14 @@ module.exports = function (extDb) {
         }
     });
 
-    // PUT /admin/ranks/:id — update a rank
     router.put('/admin/ranks/:id', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { name, price, color, icon, description, perks, luckperms_group, sort_order, active } = req.body;
             const perksJson = Array.isArray(perks) ? JSON.stringify(perks) : perks;
-
             await extDb.run(
                 `UPDATE donation_ranks SET name=?, price=?, color=?, icon=?, description=?, perks=?, luckperms_group=?, sort_order=?, active=? WHERE id=?`,
                 [name, price, color, icon || '⭐', description, perksJson, luckperms_group, sort_order || 0, active ? 1 : 0, req.params.id]
             );
-
             const updated = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [req.params.id]);
             try { updated.perks = JSON.parse(updated.perks || '[]'); } catch { updated.perks = []; }
             res.json(updated);
@@ -375,21 +439,17 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /admin/ranks — create a new rank
     router.post('/admin/ranks', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { name, price, color, icon, description, perks, luckperms_group, sort_order } = req.body;
             if (!name || !price) return res.status(400).json({ error: 'name and price required' });
-
             const id = 'rank_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_');
             const perksJson = Array.isArray(perks) ? JSON.stringify(perks) : (perks || '[]');
-
             await extDb.run(
                 `INSERT INTO donation_ranks (id, name, price, color, icon, description, perks, luckperms_group, sort_order)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [id, name, price, color || '#ffffff', icon || '⭐', description || '', perksJson, luckperms_group || name.toLowerCase(), sort_order || 0]
             );
-
             const rank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [id]);
             try { rank.perks = JSON.parse(rank.perks || '[]'); } catch { rank.perks = []; }
             res.status(201).json(rank);
@@ -399,7 +459,6 @@ module.exports = function (extDb) {
         }
     });
 
-    // DELETE /admin/ranks/:id — delete a rank
     router.delete('/admin/ranks/:id', authenticateToken, requireAdmin, async (req, res) => {
         try {
             await extDb.run('DELETE FROM donation_ranks WHERE id = ?', [req.params.id]);
@@ -409,7 +468,6 @@ module.exports = function (extDb) {
         }
     });
 
-    // PUT /admin/config — update donation settings
     router.put('/admin/config', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { stripe_secret_key, stripe_webhook_secret, discord_donation_webhook, siteUrl } = req.body;
@@ -423,7 +481,6 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /admin/config — get donation settings
     router.get('/admin/config', authenticateToken, requireAdmin, async (req, res) => {
         try {
             res.json({
@@ -437,17 +494,13 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /admin/grant-rank — manually assign a rank to a user
     router.post('/admin/grant-rank', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { user_id, rank_id, duration_days } = req.body;
             if (!user_id || !rank_id) return res.status(400).json({ error: 'user_id and rank_id required' });
 
-            // Find user by ID first, then by username
             let user = await coreDb.get('SELECT id FROM users WHERE id = ?', [user_id]);
-            if (!user) {
-                user = await coreDb.get('SELECT id FROM users WHERE username = ? OR display_name = ?', [user_id, user_id]);
-            }
+            if (!user) user = await coreDb.get('SELECT id FROM users WHERE username = ? OR display_name = ?', [user_id, user_id]);
             if (!user) return res.status(404).json({ error: 'User not found' });
 
             const targetUserId = user.id;
@@ -458,7 +511,6 @@ module.exports = function (extDb) {
                 ? new Date(Date.now() + duration_days * 24 * 60 * 60 * 1000).toISOString()
                 : null;
 
-            // Upsert user_ranks
             const existing = await extDb.get('SELECT id FROM user_ranks WHERE user_id = ?', [targetUserId]);
             if (existing) {
                 await extDb.run(
@@ -479,13 +531,11 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /admin/manual-donation — manually add a donation record (e.g. PayPal)
     router.post('/admin/manual-donation', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { username, rank_id, amount, status, created_at, grant_rank } = req.body;
             if (!username || !amount) return res.status(400).json({ error: 'Username and amount required' });
 
-            // Find user by username
             const user = await coreDb.get('SELECT id FROM users WHERE username = ? OR display_name = ?', [username, username]);
             if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -499,7 +549,6 @@ module.exports = function (extDb) {
                 [donationId, user.id, rank_id || null, amount, status || 'completed', createdAt, expiresAt]
             );
 
-            // If grant_rank is true and status is completed, also update user_ranks
             if (grant_rank && (status === 'completed' || !status) && rank_id) {
                 const existing = await extDb.get('SELECT id FROM user_ranks WHERE user_id = ?', [user.id]);
                 if (existing) {
@@ -523,22 +572,19 @@ module.exports = function (extDb) {
     });
 
     // ══════════════════════════════════════════════════════
-    // INTERNAL: Complete a donation
+    // INTERNAL: Complete a donation + send receipt email
     // ══════════════════════════════════════════════════════
     async function completeDonation(stripeSessionId) {
         const donation = await extDb.get('SELECT * FROM donations WHERE stripe_session_id = ?', [stripeSessionId]);
         if (!donation || donation.status === 'completed') return;
 
-        // Mark as completed
         await extDb.run("UPDATE donations SET status = 'completed' WHERE id = ?", [donation.id]);
 
-        // Activate/extend rank
         const rank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [donation.rank_id]);
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
         const existing = await extDb.get('SELECT * FROM user_ranks WHERE user_id = ?', [donation.user_id]);
         if (existing) {
-            // If upgrading or renewing, extend from current expiry or now
             let newExpiry = expiresAt;
             if (existing.expires_at && new Date(existing.expires_at) > new Date()) {
                 newExpiry = new Date(new Date(existing.expires_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -554,10 +600,163 @@ module.exports = function (extDb) {
             );
         }
 
-        // Send Discord webhook
-        await sendDiscordWebhook(donation, rank);
+        // Send receipt email
+        const user = await coreDb.get('SELECT username, display_name, email FROM users WHERE id = ?', [donation.user_id]);
+        if (user && user.email) {
+            sendReceiptEmail(user, donation, rank, expiresAt).catch(err => {
+                console.error('[Donations] Receipt email error:', err);
+            });
+        }
 
+        await sendDiscordWebhook(donation, rank);
         console.log(`[Donations] ✅ Donation completed: ${donation.id} — ${rank?.name || 'Unknown'} for user ${donation.user_id}`);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // EMAIL TEMPLATES
+    // ══════════════════════════════════════════════════════
+    async function sendReceiptEmail(user, donation, rank, expiresAt) {
+        const siteName = Config.get('siteName', 'Venary');
+        const siteUrl = Config.get('siteUrl', 'http://localhost:3000');
+        const primaryColor = Config.get('primaryColor', '#00d4ff');
+        const accentColor = Config.get('accentColor', '#7b2fff');
+        const rankColor = rank?.color || primaryColor;
+        const displayName = user.display_name || user.username;
+        const expiryDate = new Date(expiresAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const donationDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const receiptId = donation.id.slice(0, 8).toUpperCase();
+
+        const perks = (() => { try { return JSON.parse(rank?.perks || '[]'); } catch { return []; } })();
+        const perksHtml = perks.length > 0
+            ? perks.map(p => `<tr><td style="padding:6px 0;color:#a0a0b8;font-size:0.85rem">✓ ${p}</td></tr>`).join('')
+            : '';
+
+        await Mailer.send({
+            to: user.email,
+            subject: `Your ${rank?.name || 'Donation'} rank receipt — ${siteName}`,
+            html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:Inter,system-ui,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:32px 16px">
+
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,${primaryColor},${accentColor});border-radius:12px 12px 0 0;padding:24px 32px;text-align:center">
+    <div style="font-family:monospace;font-weight:700;font-size:1.3rem;letter-spacing:3px;color:#fff">${siteName.toUpperCase()}</div>
+    <div style="color:rgba(255,255,255,0.8);font-size:0.85rem;margin-top:4px">Donation Receipt</div>
+  </div>
+
+  <!-- Body -->
+  <div style="background:#111827;padding:32px;border-left:1px solid #1f2937;border-right:1px solid #1f2937">
+    <p style="color:#e8e8f0;font-size:1rem;margin:0 0 8px 0">Hey <strong>${displayName}</strong>,</p>
+    <p style="color:#a0a0b8;font-size:0.9rem;margin:0 0 28px 0">Thank you for supporting <strong style="color:#e8e8f0">${siteName}</strong>! Your donation means a lot to us. Here's your receipt.</p>
+
+    <!-- Rank Badge -->
+    <div style="background:#0d1117;border:2px solid ${rankColor};border-radius:12px;padding:20px 24px;margin-bottom:24px;text-align:center">
+      <div style="font-size:2rem;margin-bottom:8px">${rank?.icon || '⭐'}</div>
+      <div style="font-size:1.3rem;font-weight:700;color:${rankColor};letter-spacing:1px">${rank?.name || 'Donation'} Rank</div>
+      <div style="color:#a0a0b8;font-size:0.8rem;margin-top:4px">Active until ${expiryDate}</div>
+    </div>
+
+    <!-- Transaction Details -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+      <tr style="border-bottom:1px solid #1f2937">
+        <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Receipt #</td>
+        <td style="padding:10px 0;color:#e8e8f0;font-size:0.85rem;text-align:right;font-family:monospace">${receiptId}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #1f2937">
+        <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Date</td>
+        <td style="padding:10px 0;color:#e8e8f0;font-size:0.85rem;text-align:right">${donationDate}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #1f2937">
+        <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Rank</td>
+        <td style="padding:10px 0;font-size:0.85rem;text-align:right;color:${rankColor};font-weight:600">${rank?.name || '—'}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #1f2937">
+        <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Duration</td>
+        <td style="padding:10px 0;color:#e8e8f0;font-size:0.85rem;text-align:right">30 days</td>
+      </tr>
+      <tr>
+        <td style="padding:14px 0;color:#e8e8f0;font-size:1rem;font-weight:700">Total</td>
+        <td style="padding:14px 0;color:#22c55e;font-size:1.1rem;font-weight:800;text-align:right">$${parseFloat(donation.amount).toFixed(2)} USD</td>
+      </tr>
+    </table>
+
+    ${perksHtml ? `
+    <!-- Perks -->
+    <div style="background:#0d1117;border-radius:8px;padding:16px 20px;margin-bottom:24px">
+      <div style="color:#6b7280;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Your Perks</div>
+      <table style="width:100%;border-collapse:collapse">${perksHtml}</table>
+    </div>` : ''}
+
+    <!-- CTA -->
+    <div style="text-align:center;margin-top:8px">
+      <a href="${siteUrl}/#/donate" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,${primaryColor},${accentColor});color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.9rem">View Your Rank</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="background:#0d1117;border:1px solid #1f2937;border-top:none;border-radius:0 0 12px 12px;padding:16px 32px;text-align:center">
+    <p style="color:#4b5563;font-size:0.75rem;margin:0">Questions? Contact us at ${siteUrl}</p>
+    <p style="color:#374151;font-size:0.7rem;margin:8px 0 0 0">© ${new Date().getFullYear()} ${siteName}. Thank you for your support.</p>
+  </div>
+
+</div>
+</body>
+</html>`
+        });
+    }
+
+    async function sendConversionEmail(user, fromRank, toRank, daysRemaining, newDays, newExpiry) {
+        const siteName = Config.get('siteName', 'Venary');
+        const siteUrl = Config.get('siteUrl', 'http://localhost:3000');
+        const primaryColor = Config.get('primaryColor', '#00d4ff');
+        const accentColor = Config.get('accentColor', '#7b2fff');
+        const displayName = user.display_name || user.username;
+        const expiryDate = new Date(newExpiry).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        await Mailer.send({
+            to: user.email,
+            subject: `Rank converted to ${toRank.name} — ${siteName}`,
+            html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:Inter,system-ui,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:32px 16px">
+  <div style="background:linear-gradient(135deg,${primaryColor},${accentColor});border-radius:12px 12px 0 0;padding:24px 32px;text-align:center">
+    <div style="font-family:monospace;font-weight:700;font-size:1.3rem;letter-spacing:3px;color:#fff">${siteName.toUpperCase()}</div>
+    <div style="color:rgba(255,255,255,0.8);font-size:0.85rem;margin-top:4px">Rank Conversion</div>
+  </div>
+  <div style="background:#111827;padding:32px;border:1px solid #1f2937;border-top:none">
+    <p style="color:#e8e8f0;font-size:1rem;margin:0 0 8px 0">Hey <strong>${displayName}</strong>,</p>
+    <p style="color:#a0a0b8;font-size:0.9rem;margin:0 0 24px 0">Your rank has been successfully converted. Here's a summary of the change.</p>
+    <div style="display:flex;gap:16px;margin-bottom:24px;align-items:center;justify-content:center">
+      <div style="text-align:center;padding:16px;background:#0d1117;border:2px solid ${fromRank?.color || '#666'};border-radius:10px;flex:1">
+        <div style="font-size:1.5rem">${fromRank?.icon || '⭐'}</div>
+        <div style="color:${fromRank?.color || '#666'};font-weight:700;font-size:0.9rem;margin-top:4px">${fromRank?.name || 'Previous'}</div>
+        <div style="color:#6b7280;font-size:0.75rem">${daysRemaining} days left</div>
+      </div>
+      <div style="color:#6b7280;font-size:1.5rem">→</div>
+      <div style="text-align:center;padding:16px;background:#0d1117;border:2px solid ${toRank.color || primaryColor};border-radius:10px;flex:1">
+        <div style="font-size:1.5rem">${toRank.icon || '⭐'}</div>
+        <div style="color:${toRank.color || primaryColor};font-weight:700;font-size:0.9rem;margin-top:4px">${toRank.name}</div>
+        <div style="color:#6b7280;font-size:0.75rem">${newDays} days</div>
+      </div>
+    </div>
+    <p style="color:#a0a0b8;font-size:0.85rem;text-align:center;margin:0 0 24px 0">Your new rank expires on <strong style="color:#e8e8f0">${expiryDate}</strong></p>
+    <div style="text-align:center">
+      <a href="${siteUrl}/#/donate" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,${primaryColor},${accentColor});color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.9rem">View Your Rank</a>
+    </div>
+  </div>
+  <div style="background:#0d1117;border:1px solid #1f2937;border-top:none;border-radius:0 0 12px 12px;padding:16px 32px;text-align:center">
+    <p style="color:#374151;font-size:0.7rem;margin:0">© ${new Date().getFullYear()} ${siteName}</p>
+  </div>
+</div>
+</body>
+</html>`
+        });
     }
 
     // ══════════════════════════════════════════════════════
@@ -568,11 +767,9 @@ module.exports = function (extDb) {
         if (!webhookUrl) return;
 
         try {
-            // Get user info for the embed
             const user = await coreDb.get('SELECT username, display_name, avatar FROM users WHERE id = ?', [donation.user_id]);
             const displayName = user?.display_name || user?.username || donation.minecraft_username || 'Unknown';
 
-            // Determine thumbnail: MC head first, then user avatar, then default
             let thumbnail = null;
             if (donation.minecraft_uuid) {
                 thumbnail = `https://mc-heads.net/avatar/${donation.minecraft_uuid}/128`;
@@ -580,7 +777,6 @@ module.exports = function (extDb) {
                 thumbnail = user.avatar;
             }
 
-            // Color from rank (convert hex to decimal)
             const colorHex = (rank?.color || '#29b6f6').replace('#', '');
             const colorInt = parseInt(colorHex, 16);
 
@@ -595,20 +791,16 @@ module.exports = function (extDb) {
                     { name: '⏰ Duration', value: '30 days', inline: true },
                 ],
                 thumbnail: thumbnail ? { url: thumbnail } : undefined,
-                footer: { text: 'Vonix Network' },
+                footer: { text: Config.get('siteName', 'Venary') },
                 timestamp: new Date().toISOString(),
             };
 
             await fetch(webhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: 'Vonix Donations',
-                    embeds: [embed],
-                }),
+                body: JSON.stringify({ username: Config.get('siteName', 'Venary') + ' Donations', embeds: [embed] }),
             });
 
-            // Mark as notified
             await extDb.run('UPDATE donations SET discord_notified = 1 WHERE id = ?', [donation.id]);
         } catch (err) {
             console.error('[Donations] Discord webhook error:', err);
@@ -616,7 +808,7 @@ module.exports = function (extDb) {
     }
 
     // ══════════════════════════════════════════════════════
-    // RANK EXPIRY CHECK (runs every 5 minutes)
+    // RANK EXPIRY CHECK (every 5 minutes)
     // ══════════════════════════════════════════════════════
     async function checkExpiredRanks() {
         try {
