@@ -150,19 +150,37 @@ var ForumPage = {
                     } catch (e) { }
                 }
 
+                // POST MANAGEMENT ACTIONS
+                let actionHtml = '';
+                if (App.currentUser && (App.currentUser.id === p.user_id || App.currentUser.role === 'admin' || App.currentUser.role === 'moderator')) {
+                    actionHtml = `
+                        <div class=\"forum-post-actions\" style=\"display: flex; gap: 8px; margin-left: auto; align-items: center; opacity: 0.7; transition: opacity 0.2s;\">
+                            <button class=\"btn btn-ghost btn-sm\" onclick=\"ForumPage.editPost('${p.id}', this)\" style=\"padding: 2px 6px; font-size: 0.75rem;\">
+                                <i class=\"fas fa-edit\"></i> Edit
+                            </button>
+                            <button class=\"btn btn-ghost btn-sm text-danger\" onclick=\"ForumPage.deletePost('${p.id}', ${p.is_op}, '${t.id}')\" style=\"padding: 2px 6px; font-size: 0.75rem; color: var(--neon-pink);\">
+                                <i class=\"fas fa-trash\"></i> Delete
+                            </button>
+                        </div>
+                    `;
+                }
+
                 html += `
                     <div class=\"forum-post animate-fade-up\" id=\"post-${p.id}\">
                         <div class=\"forum-post-sidebar\">
                             <div class=\"avatar\">${avatar}</div>
                         </div>
                         <div class=\"forum-post-content\">
-                            <div class=\"forum-post-header\">
-                                <span class=\"forum-post-author\">${App.escapeHtml(p.display_name || p.username)}</span>
-                                <span class=\"forum-post-role\">${App.renderRankBadge({ name: p.role, color: p.role === 'admin' ? '#ff0000' : '#5865F2' })}</span>
-                                <span class=\"badge badge-level\" style=\"margin-left: 4px; font-size: 0.7rem;\">LVL ${p.level}</span>
-                                <span class=\"forum-post-time\">${App.timeAgo(p.created_at)}${p.edited_at ? ' (Edited)' : ''}</span>
+                            <div class=\"forum-post-header\" style=\"display: flex; align-items: baseline;\">
+                                <div style=\"display: flex; align-items: baseline; gap: 8px;\">
+                                    <span class=\"forum-post-author\">${App.escapeHtml(p.display_name || p.username)}</span>
+                                    <span class=\"forum-post-role\">${App.renderRankBadge({ name: p.role, color: p.role === 'admin' ? '#ff0000' : '#5865F2' })}</span>
+                                    <span class=\"badge badge-level\" style=\"margin-left: 4px; font-size: 0.7rem;\">LVL ${p.level}</span>
+                                    <span class=\"forum-post-time\">${App.timeAgo(p.created_at)}${p.edited_at ? ' (Edited)' : ''}</span>
+                                </div>
+                                ${actionHtml}
                             </div>
-                            <div class=\"forum-post-body\">${App.renderContent(p.content)}</div>
+                            <div class=\"forum-post-body\" id=\"post-body-${p.id}\" data-raw-content=\"${encodeURIComponent(p.content)}\">${App.renderContent(p.content)}</div>
                             ${mediaHtml}
                         </div>
                     </div>
@@ -248,6 +266,68 @@ var ForumPage = {
             App.showToast('Reply posted!', 'success');
         } catch (err) {
             App.showToast(err.message || 'Failed to post reply', 'error');
+        }
+    },
+
+    editPost(postId, btn) {
+        const bodyEl = document.getElementById(`post-body-${postId}`);
+        if (!bodyEl || bodyEl.querySelector('textarea')) return;
+
+        const rawContent = decodeURIComponent(bodyEl.getAttribute('data-raw-content') || '');
+        
+        bodyEl.innerHTML = `
+            <div class=\"forum-composer\" style=\"margin-top: 0; padding: 10px; background: transparent; border: none;\">
+                <textarea id=\"edit-content-${postId}\" class=\"input-field\" rows=\"4\" style=\"width: 100%;\">${App.escapeHtml(rawContent)}</textarea>
+                <div style=\"display:flex; justify-content:flex-end; gap: 8px; margin-top: 8px;\">
+                    <button class=\"btn btn-ghost btn-sm\" onclick=\"ForumPage.cancelEdit('${postId}')\">Cancel</button>
+                    <button class=\"btn btn-primary btn-sm\" onclick=\"ForumPage.saveEdit('${postId}')\">Save</button>
+                </div>
+            </div>
+        `;
+    },
+
+    cancelEdit(postId) {
+        const bodyEl = document.getElementById(`post-body-${postId}`);
+        if (bodyEl) {
+            const rawContent = decodeURIComponent(bodyEl.getAttribute('data-raw-content') || '');
+            bodyEl.innerHTML = App.renderContent(rawContent);
+        }
+    },
+
+    async saveEdit(postId) {
+        const content = document.getElementById(`edit-content-${postId}`).value.trim();
+        if (!content) return App.showToast('Content cannot be empty', 'warning');
+
+        try {
+            await API.put(`/api/ext/forum/posts/${postId}`, { content });
+            App.showToast('Post updated', 'success');
+            this.render(document.getElementById('page-container'), ['thread', this.currentThreadId]);
+        } catch (err) {
+            App.showToast(err.message || 'Failed to edit post', 'error');
+        }
+    },
+
+    async deletePost(postId, isOp, threadId) {
+        if (isOp) {
+            if (confirm('This is the original post. Deleting it will delete the entire thread. Are you sure you want to proceed?')) {
+                try {
+                    await API.delete(`/api/ext/forum/threads/${threadId}`);
+                    App.showToast('Thread deleted', 'success');
+                    window.location.hash = `#/forum/category/${this.currentCategoryId}`;
+                } catch (err) {
+                    App.showToast(err.message || 'Failed to delete thread', 'error');
+                }
+            }
+        } else {
+            if (confirm('Are you sure you want to delete this post?')) {
+                try {
+                    await API.delete(`/api/ext/forum/posts/${postId}`);
+                    App.showToast('Post deleted', 'success');
+                    this.render(document.getElementById('page-container'), ['thread', this.currentThreadId]);
+                } catch (err) {
+                    App.showToast(err.message || 'Failed to delete post', 'error');
+                }
+            }
         }
     }
 };
