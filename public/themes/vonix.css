@@ -165,6 +165,29 @@ h3 {
     letter-spacing: -0.02em;
 }
 
-h1 {
-    letter-spacing: -0.04em;
+/* Admin Dashboard Enhancements */
+.admin-sidebar {
+    background: rgba(11, 13, 17, 0.6) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.admin-nav-item.active {
+    background: linear-gradient(to right, #6366f1, #ec4899) !important;
+    color: white !important;
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.3) !important;
+}
+
+.admin-stat-card, .admin-settings-card, .admin-table-container {
+    background: rgba(11, 13, 17, 0.6) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.admin-nav-item:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.admin-table th {
+    background: rgba(255, 255, 255, 0.03) !important;
 }

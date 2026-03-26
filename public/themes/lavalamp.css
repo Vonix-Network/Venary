@@ -52,3 +52,24 @@
     background: var(--neon-magenta);
     box-shadow: 0 0 10px var(--neon-magenta);
 }
+
+/* Admin Dashboard Enhancements */
+.admin-sidebar {
+    background: var(--bg-card);
+    border-color: var(--border-light);
+}
+
+.admin-nav-item.active {
+    background: var(--gradient-primary) !important;
+    color: #fff !important;
+    box-shadow: var(--shadow-neon-strong) !important;
+}
+
+.admin-stat-card:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(255, 51, 0, 0.3);
+}
+
+.admin-table th {
+    background: rgba(255, 51, 0, 0.05) !important;
+}

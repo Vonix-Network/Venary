@@ -3,6 +3,17 @@
    Now includes Extensions management tab
    ======================================= */
 var AdminPage = {
+  icons: {
+    overview: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>',
+    users: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+    reports: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+    extensions: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
+    donations: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+    settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
+    forum: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+    discord: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 12h4M8 10v4M15 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path></svg>'
+  },
+
   async render(container) {
     if (!App.currentUser || (App.currentUser.role !== 'admin' && App.currentUser.role !== 'moderator')) {
       container.innerHTML = '<div class="empty-state"><h3>Access Denied</h3><p>You don\'t have permissions to view this page.</p></div>';
@@ -10,72 +21,132 @@ var AdminPage = {
     }
 
     const isAdmin = App.currentUser.role === 'admin';
-    const title = isAdmin ? '🛡️ ADMIN DASHBOARD' : '🛡️ MODERATOR DASHBOARD';
-    const subtitle = isAdmin ? 'Manage users, content, extensions, and platform-wide moderation' : 'Manage users and platform moderation';
-
     const isDonationsEnabled = App.extensions.some(e => e.id === 'donations' && e.enabled);
     const isForumEnabled = App.extensions.some(e => e.id === 'forum' && e.enabled);
     const isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);
 
     container.innerHTML = '<div class="admin-page">' +
-      '<div class="page-header animate-fade-up"><h1>' + title + '</h1><p>' + subtitle + '</p></div>' +
-      '<div class="admin-stats" id="admin-stats">' +
-      '<div class="admin-stat-card skeleton" style="height:100px"></div>' +
-      '<div class="admin-stat-card skeleton" style="height:100px"></div>' +
-      '<div class="admin-stat-card skeleton" style="height:100px"></div>' +
-      '<div class="admin-stat-card skeleton" style="height:100px"></div>' +
-      '</div>' +
-      '<div class="tabs animate-fade-up">' +
-      '<button class="tab-btn active" data-tab="users" id="admin-tab-users">Users</button>' +
-      '<button class="tab-btn" data-tab="reports" id="admin-tab-reports">Reports</button>' +
-      (isAdmin ? '<button class="tab-btn" data-tab="extensions" id="admin-tab-extensions">🧩 Extensions</button>' : '') +
-      (isAdmin && isDonationsEnabled ? '<button class="tab-btn" data-tab="donations" id="admin-tab-donations">💰 Donations</button>' : '') +
-      (isAdmin ? '<button class="tab-btn" data-tab="settings" id="admin-tab-settings">⚙️ Settings</button>' : '') +
-      (isAdmin && isForumEnabled ? '<button class="tab-btn" data-tab="forum" id="admin-tab-forum">💬 Forum Categories</button>' : '') +
-      (isAdmin && isMinecraftEnabled ? '<button class="tab-btn" data-tab="discord" id="admin-tab-discord">🎮 Discord Settings</button>' : '') +
-      '</div>' +
-      '<div id="admin-content"><div class="loading-spinner"></div></div>' +
+      '<aside class="admin-sidebar">' +
+      '  <div class="admin-sidebar-header"><h2>SYSTEM CONTROL</h2></div>' +
+      '  <nav class="admin-nav">' +
+      '    <button class="admin-nav-item active" data-tab="overview">' + this.icons.overview + ' Overview</button>' +
+      '    <button class="admin-nav-item" data-tab="users">' + this.icons.users + ' Users</button>' +
+      '    <button class="admin-nav-item" data-tab="reports">' + this.icons.reports + ' Reports</button>' +
+      (isAdmin ? '<button class="admin-nav-item" data-tab="extensions">' + this.icons.extensions + ' Extensions</button>' : '') +
+      (isAdmin && isDonationsEnabled ? '<button class="admin-nav-item" data-tab="donations">' + this.icons.donations + ' Donations</button>' : '') +
+      (isAdmin ? '<button class="admin-nav-item" data-tab="settings">' + this.icons.settings + ' Settings</button>' : '') +
+      (isAdmin && isForumEnabled ? '<button class="admin-nav-item" data-tab="forum">' + this.icons.forum + ' Forum Categories</button>' : '') +
+      (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item" data-tab="discord">' + this.icons.discord + ' Discord Settings</button>' : '') +
+      '  </nav>' +
+      '</aside>' +
+      '<main class="admin-main">' +
+      '  <header class="admin-content-header">' +
+      '    <div class="title-info">' +
+      '      <h1 id="admin-view-title">' + (isAdmin ? 'Admin Dashboard' : 'Moderator Dashboard') + '</h1>' +
+      '      <p id="admin-view-subtitle">System status and platform statistics</p>' +
+      '    </div>' +
+      '  </header>' +
+      '  <div id="admin-content" class="animate-fade-up">' +
+      '    <div class="loading-spinner"></div>' +
+      '  </div>' +
+      '</main>' +
       '</div>';
 
     this.bindTabs();
-    await this.loadStats();
-    await this.loadUsers();
+    this.showOverview();
   },
 
   bindTabs() {
     var self = this;
-    document.querySelectorAll('.admin-page .tab-btn').forEach(function (btn) {
+    document.querySelectorAll('.admin-nav-item').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        document.querySelectorAll('.admin-page .tab-btn').forEach(function (b) { b.classList.remove('active'); });
+        document.querySelectorAll('.admin-nav-item').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
-        if (btn.dataset.tab === 'users') self.loadUsers();
-        else if (btn.dataset.tab === 'reports') self.loadReports();
-        else if (btn.dataset.tab === 'extensions') self.loadExtensions();
-        else if (btn.dataset.tab === 'donations') {
+        const tab = btn.dataset.tab;
+        
+        // Update title/subtitle based on tab
+        const titleEl = document.getElementById('admin-view-title');
+        const subtitleEl = document.getElementById('admin-view-subtitle');
+        
+        if (tab === 'overview') {
+          titleEl.innerText = 'Overview';
+          subtitleEl.innerText = 'System status and platform statistics';
+          self.showOverview();
+        } else if (tab === 'users') {
+          titleEl.innerText = 'User Management';
+          subtitleEl.innerText = 'Manage accounts, roles, and access';
+          self.loadUsers();
+        } else if (tab === 'reports') {
+          titleEl.innerText = 'Reports & Moderation';
+          subtitleEl.innerText = 'Handle user reports and content violations';
+          self.loadReports();
+        } else if (tab === 'extensions') {
+          titleEl.innerText = 'Platform Extensions';
+          subtitleEl.innerText = 'Manage and configure installed extensions';
+          self.loadExtensions();
+        } else if (tab === 'donations') {
+          titleEl.innerText = 'Donations';
+          subtitleEl.innerText = 'Track and manage platform contributions';
           if (window.DonationsAdminPage) {
             window.DonationsAdminPage.render(document.getElementById('admin-content'));
           } else {
-            App.showToast('Donations extension script not found. Please restart the server to apply changes.', 'error');
+            App.showToast('Donations extension script not found.', 'error');
           }
+        } else if (tab === 'settings') {
+          titleEl.innerText = 'Global Settings';
+          subtitleEl.innerText = 'Configure platform-wide preferences and appearance';
+          self.loadSettings();
+        } else if (tab === 'forum') {
+          titleEl.innerText = 'Forum Categories';
+          subtitleEl.innerText = 'Organize and manage discussion boards';
+          self.loadForumConfig();
+        } else if (tab === 'discord') {
+          titleEl.innerText = 'Discord Settings';
+          subtitleEl.innerText = 'Manage Discord webhooks and bot integration';
+          self.loadDiscordSettings();
         }
-        else if (btn.dataset.tab === 'settings') self.loadSettings();
-        else if (btn.dataset.tab === 'forum') self.loadForumConfig();
-        else if (btn.dataset.tab === 'discord') self.loadDiscordSettings();
       });
     });
+  },
+
+  async showOverview() {
+    var content = document.getElementById('admin-content');
+    content.innerHTML = '<div class="admin-stats" id="admin-stats-grid">' +
+      '<div class="admin-stat-card skeleton" style="height:120px"></div>' +
+      '<div class="admin-stat-card skeleton" style="height:120px"></div>' +
+      '<div class="admin-stat-card skeleton" style="height:120px"></div>' +
+      '<div class="admin-stat-card skeleton" style="height:120px"></div>' +
+      '</div>';
+    await this.loadStats();
   },
 
   async loadStats() {
     try {
       var stats = await API.getAdminStats();
-      var container = document.getElementById('admin-stats');
+      var container = document.getElementById('admin-stats-grid');
       if (!container) return;
       container.innerHTML =
-        '<div class="admin-stat-card animate-fade-up"><div class="stat-value">' + stats.total_users + '</div><div class="stat-label">Total Users</div></div>' +
-        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.05s"><div class="stat-value" style="color:var(--neon-green)">' + stats.online_users + '</div><div class="stat-label">Online Now</div></div>' +
-        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.1s"><div class="stat-value" style="color:var(--neon-magenta)">' + stats.total_posts + '</div><div class="stat-label">Total Posts</div></div>' +
-        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.15s"><div class="stat-value" style="color:var(--neon-orange)">' + stats.pending_reports + '</div><div class="stat-label">Pending Reports</div></div>';
-    } catch (err) { console.error('Load admin stats error:', err); }
+        '<div class="admin-stat-card animate-fade-up">' +
+        '  <div class="stat-label">Total Users</div>' +
+        '  <div class="stat-value">' + stats.total_users + '</div>' +
+        '  <div class="stat-trend" style="color:var(--neon-green)">↑ New registrations</div>' +
+        '</div>' +
+        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.05s">' +
+        '  <div class="stat-label">Online Now</div>' +
+        '  <div class="stat-value" style="color:var(--neon-green)">' + stats.online_users + '</div>' +
+        '  <div class="stat-trend" style="color:var(--text-muted)">Active users currently connected</div>' +
+        '</div>' +
+        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.1s">' +
+        '  <div class="stat-label">Total Posts</div>' +
+        '  <div class="stat-value" style="color:var(--neon-magenta)">' + stats.total_posts + '</div>' +
+        '  <div class="stat-trend" style="color:var(--text-muted)">Social interactions logged</div>' +
+        '</div>' +
+        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.15s">' +
+        '  <div class="stat-label">Pending Reports</div>' +
+        '  <div class="stat-value" style="color:var(--neon-orange)">' + stats.pending_reports + '</div>' +
+        '  <div class="stat-trend" style="color:' + (stats.pending_reports > 0 ? 'var(--neon-magenta)' : 'var(--text-muted)') + '">' + (stats.pending_reports > 0 ? '⚠ Attention required' : '✓ All clear') + '</div>' +
+        '</div>';
+    } catch (err) { console.error(\'Load admin stats error:\', err); }
   },
 
   userFilters: { page: 1, search: '', role: 'all', sort: 'created_at', order: 'desc' },
@@ -86,8 +157,11 @@ var AdminPage = {
     try {
       var users = await API.getAdminUsers(this.userFilters.page, this.userFilters);
 
-      var filterBarHtml = '<div class="card" style="margin-bottom: var(--space-md); display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">' +
-        '<input type="text" id="admin-search" class="input-field" placeholder="Search username, email..." value="' + App.escapeHtml(this.userFilters.search) + '" style="flex: 1; min-width: 200px;">' +
+      var filterBarHtml = '<div class="admin-filters animate-fade-up">' +
+        '<div style="flex: 1; min-width: 240px; position: relative;">' +
+        '  <input type="text" id="admin-search" class="input-field" placeholder="Search username, email..." value="' + App.escapeHtml(this.userFilters.search) + '" style="width: 100%; padding-left: 40px;">' +
+        '  <div style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);">' + this.icons.users + '</div>' +
+        '</div>' +
         '<select id="admin-role" class="input-field" style="width: auto;">' +
           '<option value="all" ' + (this.userFilters.role === 'all' ? 'selected' : '') + '>All Roles</option>' +
           '<option value="user" ' + (this.userFilters.role === 'user' ? 'selected' : '') + '>User</option>' +
@@ -100,31 +174,57 @@ var AdminPage = {
           '<option value="username" ' + (this.userFilters.sort === 'username' ? 'selected' : '') + '>Username</option>' +
         '</select>' +
         '<select id="admin-order" class="input-field" style="width: auto;">' +
-          '<option value="desc" ' + (this.userFilters.order === 'desc' ? 'selected' : '') + '>Descending (Z-A / Newest / Highest)</option>' +
-          '<option value="asc" ' + (this.userFilters.order === 'asc' ? 'selected' : '') + '>Ascending (A-Z / Oldest / Lowest)</option>' +
+          '<option value="desc" ' + (this.userFilters.order === 'desc' ? 'selected' : '') + '>Descending</option>' +
+          '<option value="asc" ' + (this.userFilters.order === 'asc' ? 'selected' : '') + '>Ascending</option>' +
         '</select>' +
-        '<button class="btn btn-primary" onclick="AdminPage.applyUserFilters()">Search & Filter</button>' +
+        '<button class="btn btn-primary" onclick="AdminPage.applyUserFilters()">Filter</button>' +
         '</div>';
 
-      var tableHtml = '<div class="card" style="overflow-x:auto"><table class="admin-table" style="table-layout: fixed; width: 100%;"><thead><tr><th style="width:25%">User</th><th style="width:25%">Email</th><th style="width:10%">Role</th><th style="width:10%">Status</th><th style="width:5%">Level</th><th style="width:10%">Joined</th><th style="width:15%">Actions</th></tr></thead><tbody>' +
+      var tableHtml = '<div class="admin-table-container animate-fade-up" style="animation-delay: 0.1s; overflow-x:auto;">' +
+        '<table class="admin-table"><thead><tr>' +
+        '  <th>User</th>' +
+        '  <th>Email</th>' +
+        '  <th>Role</th>' +
+        '  <th>Status</th>' +
+        '  <th>Level</th>' +
+        '  <th>Joined</th>' +
+        '  <th style="text-align:right">Actions</th>' +
+        '</tr></thead><tbody>' +
         users.map(function (u) {
           var init = (u.display_name || u.username || '?').charAt(0).toUpperCase();
-          var statusHtml = u.banned ? '<span class="badge badge-admin">BANNED</span>' : '<span class="badge badge-' + (u.status === 'online' ? 'online' : 'offline') + '">' + u.status + '</span>';
+          var statusClass = u.banned ? 'badge-admin' : (u.status === 'online' ? 'badge-online' : 'badge-offline');
+          var statusText = u.banned ? 'BANNED' : u.status.toUpperCase();
+          var isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);
           return '<tr>' +
-            '<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><div class="admin-user-row"><div class="avatar" style="width:28px;height:28px;font-size:0.65rem;flex-shrink:0">' + init + '</div><div style="min-width:0;overflow:hidden;"><div style="font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;" title="' + App.escapeHtml(u.display_name || u.username) + '">' + App.escapeHtml(u.display_name || u.username) + '</div><div style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;" title="@' + App.escapeHtml(u.username) + '">@' + App.escapeHtml(u.username) + '</div></div></div></td>' +
-            '<td style="color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + App.escapeHtml(u.email) + '">' + App.escapeHtml(u.email) + '</td>' +
-            '<td><select class="input-field" style="padding:4px 8px;font-size:0.8rem;background:var(--bg-tertiary);width:auto" onchange="AdminPage.changeRole(\'' + u.id + '\', this.value)">' +
-            '<option value="user"' + (u.role === 'user' ? ' selected' : '') + '>User</option>' +
-            '<option value="moderator"' + (u.role === 'moderator' ? ' selected' : '') + '>Moderator</option>' +
-            '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Admin</option></select></td>' +
-            '<td>' + statusHtml + '</td>' +
+            '<td>' +
+            '  <div class="admin-user-row">' +
+            '    <div class="avatar" style="width:32px;height:32px;font-size:0.8rem;border: 1px solid var(--border-subtle)">' + init + '</div>' +
+            '    <div>' +
+            '      <div style="font-weight:700; color: var(--text-primary)">' + App.escapeHtml(u.display_name || u.username) + '</div>' +
+            '      <div style="font-size:0.75rem;color:var(--text-muted)">@' + App.escapeHtml(u.username) + '</div>' +
+            '    </div>' +
+            '  </div>' +
+            '</td>' +
+            '<td style="font-family: var(--font-mono); font-size: 0.8rem">' + App.escapeHtml(u.email) + '</td>' +
+            '<td>' +
+            '  <select class="input-field" style="padding:4px 8px;font-size:0.8rem;background:var(--bg-tertiary);width:auto; height: 32px;" onchange="AdminPage.changeRole(\'' + u.id + '\', this.value)">' +
+            '    <option value="user"' + (u.role === 'user' ? ' selected' : '') + '>User</option>' +
+            '    <option value="moderator"' + (u.role === 'moderator' ? ' selected' : '') + '>Moderator</option>' +
+            '    <option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
+            '  </select>' +
+            '</td>' +
+            '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
             '<td><span class="badge badge-level">LVL ' + u.level + '</span></td>' +
-            '<td style="color:var(--text-muted);font-size:0.8rem" title="' + new Date(u.created_at).toLocaleString() + '">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
-            '<td style="white-space:nowrap;"><div style="display:flex;gap:4px;flex-wrap:wrap;">' +
-            (u.banned ? '<button class="btn btn-sm btn-secondary" onclick="AdminPage.unbanUser(\'' + u.id + '\')">Unban</button>' : '<button class="btn btn-sm btn-danger" onclick="AdminPage.showBanModal(\'' + u.id + '\', \'' + App.escapeHtml(u.username) + '\')">Ban</button>') +
-            '<button class="btn btn-sm btn-primary" onclick="AdminPage.assignMinecraftUuid(\'' + u.id + '\')">MC UUID</button>' +
-            '<button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button>' +
-            '<button class="btn btn-sm btn-danger" onclick="AdminPage.deleteUser(\'' + u.id + '\')">Delete</button></div></td></tr>';
+            '<td style="color:var(--text-muted);font-size:0.8rem">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
+            '<td>' +
+            '  <div style="display:flex;gap:4px;justify-content:flex-end;">' +
+            (u.banned ? '<button class="btn btn-sm btn-secondary" onclick="AdminPage.unbanUser(\'' + u.id + '\')" title="Unban User">Unban</button>' : '<button class="btn btn-sm btn-danger" onclick="AdminPage.showBanModal(\'' + u.id + '\', \'' + App.escapeHtml(u.username) + '\')" title="Ban User">Ban</button>') +
+            (isMinecraftEnabled ? '<button class="btn btn-sm btn-primary" onclick="AdminPage.assignMinecraftUuid(\'' + u.id + '\')" title="Assign MC UUID">UUID</button>' : '') +
+            '    <button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button>' +
+            '    <button class="btn btn-sm btn-danger" onclick="AdminPage.deleteUser(\'' + u.id + '\')">Delete</button>' +
+            '  </div>' +
+            '</td>' +
+            '</tr>';
         }).join('') + '</tbody></table></div>';
       
       content.innerHTML = filterBarHtml + tableHtml;
@@ -148,20 +248,30 @@ var AdminPage = {
     try {
       var reports = await API.getAdminReports();
       if (reports.length === 0) {
-        content.innerHTML = '<div class="empty-state"><h3>No reports</h3><p>All clear! No pending reports.</p></div>';
+        content.innerHTML = '<div class="empty-state"><h3>No pending reports</h3><p>Excellent! The community is looking healthy.</p></div>';
         return;
       }
-      content.innerHTML = '<div class="stagger-children">' + reports.map(function (r, i) {
+      content.innerHTML = '<div class="admin-settings-section">' + reports.map(function (r, i) {
         var actions = r.status === 'pending' ?
-          '<div style="display:flex;gap:var(--space-sm)"><button class="btn btn-primary btn-sm" onclick="AdminPage.resolveReport(\'' + r.id + '\')">Resolve</button>' +
-          (r.reported_user_id ? '<button class="btn btn-danger btn-sm" onclick="AdminPage.banUser(\'' + r.reported_user_id + '\')">Ban User</button>' : '') + '</div>' :
-          (r.admin_note ? '<p style="font-size:0.8rem;color:var(--text-muted)">Note: ' + App.escapeHtml(r.admin_note) + '</p>' : '');
-        return '<div class="card" style="margin-bottom:var(--space-md);animation-delay:' + (i * 0.05) + 's" data-report-id="' + r.id + '">' +
-          '<div class="card-header"><div><span class="badge ' + (r.status === 'pending' ? 'badge-admin' : 'badge-online') + '" style="margin-right:8px">' + r.status.toUpperCase() + '</span><span style="color:var(--text-muted);font-size:0.8rem">' + App.timeAgo(r.created_at) + '</span></div></div>' +
-          '<p style="margin-bottom:var(--space-md)">' + App.escapeHtml(r.reason) + '</p>' +
-          '<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Reported by: <strong>' + App.escapeHtml(r.reporter_username || 'Unknown') + '</strong>' +
-          (r.reported_username ? ' · Target: <strong>' + App.escapeHtml(r.reported_username) + '</strong>' : '') + '</div>' +
-          actions + '</div>';
+          '<div style="display:flex;gap:var(--space-sm);margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--border-subtle)">' +
+          '  <button class="btn btn-primary btn-sm" onclick="AdminPage.resolveReport(\'' + r.id + '\')">Resolve</button>' +
+          (r.reported_user_id ? '<button class="btn btn-danger btn-sm" onclick="AdminPage.banUser(\'' + r.reported_user_id + '\')">Ban Target</button>' : '') + 
+          '</div>' :
+          (r.admin_note ? '<div style="margin-top:var(--space-md);padding:var(--space-sm);background:var(--bg-tertiary);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--text-muted)">Note: ' + App.escapeHtml(r.admin_note) + '</div>' : '');
+        
+        return '<div class="admin-settings-card animate-fade-up" style="animation-delay:' + (i * 0.05) + 's" data-report-id="' + r.id + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">' +
+          '  <div><span class="badge ' + (r.status === 'pending' ? 'badge-admin' : 'badge-online') + '">' + r.status.toUpperCase() + '</span>' +
+          '  <span style="color:var(--text-muted);font-size:0.8rem;margin-left:8px">' + App.timeAgo(r.created_at) + '</span></div>' +
+          '  <div style="font-size:0.75rem;color:var(--text-muted)">ID: <code>' + r.id + '</code></div>' +
+          '</div>' +
+          '<p style="font-size:1.1rem;font-weight:500;margin-bottom:var(--space-md)">' + App.escapeHtml(r.reason) + '</p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);font-size:0.85rem;color:var(--text-secondary)">' +
+          '  <div style="padding:10px;background:var(--bg-tertiary);border-radius:var(--radius-md)">Reported by: <strong style="color:var(--text-primary)">@' + App.escapeHtml(r.reporter_username || 'Unknown') + '</strong></div>' +
+          (r.reported_username ? '  <div style="padding:10px;background:var(--bg-tertiary);border-radius:var(--radius-md)">Target User: <strong style="color:var(--neon-magenta)">@' + App.escapeHtml(r.reported_username) + '</strong></div>' : '') +
+          '</div>' +
+          actions + 
+          '</div>';
       }).join('') + '</div>';
     } catch (err) {
       content.innerHTML = '<div class="empty-state"><p>Failed to load reports</p></div>';
@@ -181,7 +291,7 @@ var AdminPage = {
         content.innerHTML = '<div class="empty-state"><h3>No extensions installed</h3><p>Place extension folders in the <code>extensions/</code> directory to get started.</p></div>';
         return;
       }
-      content.innerHTML = '<div class="stagger-children">' + extensions.map(function (ext, i) {
+      content.innerHTML = '<div class="admin-settings-section">' + extensions.map(function (ext, i) {
         var statusBadge = ext.enabled ?
           '<span class="badge badge-online">Enabled</span>' :
           '<span class="badge badge-offline">Disabled</span>';
@@ -192,19 +302,23 @@ var AdminPage = {
         var manageBtn = (ext.enabled && ext.admin_route) ?
           '<button class="btn btn-sm btn-secondary" onclick="window.location.hash=\'#' + ext.admin_route + '\'">Manage</button>' : '';
 
-        return '<div class="card" style="margin-bottom:var(--space-md);animation-delay:' + (i * 0.05) + 's">' +
+        return '<div class="admin-settings-card animate-fade-up" style="animation-delay:' + (i * 0.05) + 's">' +
           '<div style="display:flex;justify-content:space-between;align-items:center">' +
-          '<div>' +
-          '<h3 style="font-family:var(--font-display);font-size:0.95rem;letter-spacing:0.5px;margin-bottom:4px">' +
-          '🧩 ' + App.escapeHtml(ext.name) + ' <span style="color:var(--text-muted);font-size:0.75rem">v' + ext.version + '</span></h3>' +
-          '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px">' + App.escapeHtml(ext.description) + '</p>' +
-          '<div style="font-size:0.75rem;color:var(--text-muted)">by ' + App.escapeHtml(ext.author || 'Unknown') + ' · ID: <code>' + ext.id + '</code></div>' +
+          '  <div style="display:flex; gap: 16px; align-items: center;">' +
+          '    <div style="font-size: 2rem; background: var(--bg-tertiary); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle)">🧩</div>' +
+          '    <div>' +
+          '      <h3 style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:4px">' +
+          '      ' + App.escapeHtml(ext.name) + ' <span style="color:var(--text-muted);font-size:0.75rem">v' + ext.version + '</span></h3>' +
+          '      <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">' + App.escapeHtml(ext.description) + '</p>' +
+          '      <div style="font-size:0.75rem;color:var(--text-muted)">by ' + App.escapeHtml(ext.author || 'Unknown') + ' · ID: <code>' + ext.id + '</code></div>' +
+          '    </div>' +
+          '  </div>' +
+          '  <div style="display:flex;align-items:center;gap:var(--space-sm)">' +
+          '    ' + statusBadge + ' ' + manageBtn + ' ' + toggleBtn +
+          '  </div>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;gap:var(--space-sm)">' +
-          statusBadge + ' ' + manageBtn + ' ' + toggleBtn +
-          '</div>' +
-          '</div>' +
-          (ext.nav && ext.nav.length > 0 ? '<div style="margin-top:var(--space-sm);padding-top:var(--space-sm);border-top:1px solid var(--border-primary);font-size:0.78rem;color:var(--text-muted)">Nav items: ' +
+          (ext.nav && ext.nav.length > 0 ? '<div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--border-subtle);font-size:0.8rem;color:var(--text-muted)">' +
+            '<span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-right: 8px">Nav items:</span> ' +
             ext.nav.map(function (n) { return '<span class="badge badge-level" style="margin-left:4px">' + n.label + '</span>'; }).join('') + '</div>' : '') +
           '</div>';
       }).join('') + '</div>';
@@ -308,145 +422,142 @@ var AdminPage = {
     try {
       var s = await API.get('/api/admin/settings');
       content.innerHTML = [
-        '<div class="stagger-children">',
+        '<div class="admin-settings-section">',
 
         // — GENERAL —
-        '<div class="card" style="margin-bottom:var(--space-md);animation-delay:0s">',
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">',
-        '<h3 style="font-family:var(--font-display);font-size:1.1rem">🌐 General Settings</h3>',
-        '<button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'general\',[\'siteName\',\'siteTagline\',\'siteDescription\',\'logoUrl\',\'faviconUrl\',\'footerText\'])">Save General</button>',
-        '</div>',
+        '<div class="admin-settings-card animate-fade-up" style="animation-delay:0s">',
+        '  <div class="admin-settings-header">',
+        '    <h3>🌐 General Settings</h3>',
+        '    <button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'general\',[\'siteName\',\'siteTagline\',\'siteDescription\',\'logoUrl\',\'faviconUrl\',\'footerText\'])">Save Changes</button>',
+        '  </div>',
         this._field('Site Name', 'siteName', s.general.siteName, 'text', 'The name shown across the platform'),
         this._field('Site Tagline', 'siteTagline', s.general.siteTagline, 'text', 'Short one-liner shown on the login/home page'),
         this._field('Site Description', 'siteDescription', s.general.siteDescription, 'textarea', 'Used by search engines and embeds'),
-        this._field('Logo URL', 'logoUrl', s.general.logoUrl, 'text', 'Full URL to your logo image (leave empty for text logo)'),
-        this._field('Favicon URL', 'faviconUrl', s.general.faviconUrl, 'text', 'Full URL to your favicon (.ico or .png)'),
+        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md)">',
+        this._field('Logo URL', 'logoUrl', s.general.logoUrl, 'text', 'Full URL to your logo image'),
+        this._field('Favicon URL', 'faviconUrl', s.general.faviconUrl, 'text', 'Full URL to your favicon'),
+        '</div>',
         this._field('Footer Text', 'footerText', s.general.footerText, 'text', 'Custom text shown in the site footer'),
         '</div>',
 
         // — APPEARANCE —
-        '<div class="card" style="margin-bottom:var(--space-md);animation-delay:0.05s">',
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">',
-        '<h3 style="font-family:var(--font-display);font-size:1.1rem">🎨 Appearance Config</h3>',
-        '<button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'appearance\',[\'primaryColor\',\'accentColor\'])">Save Appearance</button>',
-        '</div>',
-        '<div style="display:flex;gap:var(--space-md);margin-bottom:var(--space-md)">',
-        '<div style="flex:1">',
-        '<label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:6px">Primary Colour</label>',
-        '<div style="display:flex;gap:8px;align-items:center">',
-        '<input type="color" id="s-primaryColor" value="' + s.appearance.primaryColor + '" oninput="AdminPage.previewColor(\'primaryColor\',this.value)" style="width:48px;height:40px;border-radius:8px;border:none;cursor:pointer;background:none">',
-        '<input type="text" id="s-primaryColor-hex" class="input-field" value="' + s.appearance.primaryColor + '" style="font-family:monospace" oninput="AdminPage.syncColorHex(\'primaryColor\',this.value)" maxlength="7">',
-        '</div><small style="color:var(--text-muted)">Main accent — buttons, links, highlights</small>',
-        '</div>',
-        '<div style="flex:1">',
-        '<label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:6px">Accent Colour</label>',
-        '<div style="display:flex;gap:8px;align-items:center">',
-        '<input type="color" id="s-accentColor" value="' + s.appearance.accentColor + '" oninput="AdminPage.previewColor(\'accentColor\',this.value)" style="width:48px;height:40px;border-radius:8px;border:none;cursor:pointer;background:none">',
-        '<input type="text" id="s-accentColor-hex" class="input-field" value="' + s.appearance.accentColor + '" style="font-family:monospace" oninput="AdminPage.syncColorHex(\'accentColor\',this.value)" maxlength="7">',
-        '</div><small style="color:var(--text-muted)">Secondary — gradients, badges, glows</small>',
-        '</div>',
-        '</div>',
-        '<div style="padding:16px;background:var(--bg-tertiary);border-radius:var(--radius-md)">',
-        '<p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:8px">Live preview →</p>',
-        '<div style="display:flex;gap:10px;flex-wrap:wrap">',
-        '<button class="btn btn-primary" id="preview-primary-btn">Primary Button</button>',
-        '<span class="badge badge-level" id="preview-badge">Level Badge</span>',
-        '<div id="preview-glow" style="width:40px;height:40px;border-radius:50%;background:var(--neon-cyan);box-shadow:0 0 20px var(--neon-cyan)"></div>',
-        '</div>',
-        '</div>',
+        '<div class="admin-settings-card animate-fade-up" style="animation-delay:0.05s">',
+        '  <div class="admin-settings-header">',
+        '    <h3>🎨 Appearance Config</h3>',
+        '    <button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'appearance\',[\'primaryColor\',\'accentColor\'])">Save Changes</button>',
+        '  </div>',
+        '  <div style="display:flex;gap:var(--space-md);margin-bottom:var(--space-md)">',
+        '    <div style="flex:1">',
+        '      <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:6px">Primary Colour</label>',
+        '      <div style="display:flex;gap:8px;align-items:center">',
+        '        <input type="color" id="s-primaryColor" value="' + s.appearance.primaryColor + '" oninput="AdminPage.previewColor(\'primaryColor\',this.value)" style="width:48px;height:40px;border-radius:8px;border:none;cursor:pointer;background:none">',
+        '        <input type="text" id="s-primaryColor-hex" class="input-field" value="' + s.appearance.primaryColor + '" style="font-family:monospace" oninput="AdminPage.syncColorHex(\'primaryColor\',this.value)" maxlength="7">',
+        '      </div><small style="color:var(--text-muted)">Main accent — buttons, links, highlights</small>',
+        '    </div>',
+        '    <div style="flex:1">',
+        '      <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:6px">Accent Colour</label>',
+        '      <div style="display:flex;gap:8px;align-items:center">',
+        '        <input type="color" id="s-accentColor" value="' + s.appearance.accentColor + '" oninput="AdminPage.previewColor(\'accentColor\',this.value)" style="width:48px;height:40px;border-radius:8px;border:none;cursor:pointer;background:none">',
+        '        <input type="text" id="s-accentColor-hex" class="input-field" value="' + s.appearance.accentColor + '" style="font-family:monospace" oninput="AdminPage.syncColorHex(\'accentColor\',this.value)" maxlength="7">',
+        '      </div><small style="color:var(--text-muted)">Secondary — gradients, badges, glows</small>',
+        '    </div>',
+        '  </div>',
+        '  <div style="padding:16px;background:var(--bg-tertiary);border-radius:var(--radius-md); border: 1px solid var(--border-subtle)">',
+        '    <p style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Live Preview</p>',
+        '    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">',
+        '      <button class="btn btn-primary" id="preview-primary-btn">Primary Action</button>',
+        '      <span class="badge badge-level" id="preview-badge">Level 99</span>',
+        '      <div id="preview-glow" style="width:32px;height:32px;border-radius:50%;background:var(--neon-cyan);box-shadow:0 0 20px var(--neon-cyan)"></div>',
+        '      <span style="color: var(--neon-cyan); font-weight: 600">Sample Text Link</span>',
+        '    </div>',
+        '  </div>',
         '</div>',
 
         // — COMMUNITY —
-        '<div class="card" style="margin-bottom:var(--space-md);animation-delay:0.1s">',
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">',
-        '<h3 style="font-family:var(--font-display);font-size:1.1rem">👥 Community Tools</h3>',
-        '<button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'community\',[\'registrationOpen\',\'requireEmailVerification\',\'maxUsernameLength\',\'maxBioLength\'])">Save Community</button>',
-        '</div>',
+        '<div class="admin-settings-card animate-fade-up" style="animation-delay:0.1s">',
+        '  <div class="admin-settings-header">',
+        '    <h3>👥 Community Tools</h3>',
+        '    <button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'community\',[\'registrationOpen\',\'requireEmailVerification\',\'maxUsernameLength\',\'maxBioLength\'])">Save Changes</button>',
+        '  </div>',
         this._toggle('Open Registration', 'registrationOpen', s.community.registrationOpen, 'Allow new users to register. Disable to lock the platform.'),
         this._toggle('Require Email Verification', 'requireEmailVerification', s.community.requireEmailVerification, 'Users must verify their email before posting.'),
+        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md)">',
         this._field('Max Username Length', 'maxUsernameLength', s.community.maxUsernameLength, 'number', 'Maximum characters for usernames (8–64)'),
         this._field('Max Bio Length', 'maxBioLength', s.community.maxBioLength, 'number', 'Maximum characters for user bios (100–2000)'),
         '</div>',
+        '</div>',
 
         // — GAMIFICATION —
-        '<div class="card" style="margin-bottom:var(--space-md);animation-delay:0.15s">',
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">',
-        '<h3 style="font-family:var(--font-display);font-size:1.1rem">⭐ Gamification System</h3>',
-        '<button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'gamification\',[\'xpPerPost\',\'xpPerComment\',\'xpPerLike\',\'levelThresholds\'])">Save Gamification</button>',
+        '<div class="admin-settings-card animate-fade-up" style="animation-delay:0.15s">',
+        '  <div class="admin-settings-header">',
+        '    <h3>⭐ Gamification System</h3>',
+        '    <button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'gamification\',[\'xpPerPost\',\'xpPerComment\',\'xpPerLike\',\'levelThresholds\'])">Save Changes</button>',
+        '  </div>',
+        '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md)">',
+        this._field('XP per Post', 'xpPerPost', s.gamification.xpPerPost, 'number', 'XP for new posts'),
+        this._field('XP per Comment', 'xpPerComment', s.gamification.xpPerComment, 'number', 'XP for comments'),
+        this._field('XP per Like', 'xpPerLike', s.gamification.xpPerLike, 'number', 'XP for likes'),
         '</div>',
-        this._field('XP per Post', 'xpPerPost', s.gamification.xpPerPost, 'number', 'XP awarded when a user creates a new post'),
-        this._field('XP per Comment', 'xpPerComment', s.gamification.xpPerComment, 'number', 'XP awarded when a user comments on a post'),
-        this._field('XP per Like received', 'xpPerLike', s.gamification.xpPerLike, 'number', 'XP awarded when a user\'s post receives a like'),
-        '<div class="form-group" style="margin-bottom:var(--space-md)">',
-        '<label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:6px">Level Thresholds (comma-separated XP)</label>',
-        '<input type="text" id="s-levelThresholds" class="input-field" value="' + s.gamification.levelThresholds.join(', ') + '" style="font-family:monospace">',
-        '<small style="color:var(--text-muted)">10 values, starting with 0. Level N unlocks when XP ≥ threshold[N].</small>',
-        '</div>',
+        this._field('Level Thresholds (comma-separated XP)', 'levelThresholds', s.gamification.levelThresholds.join(', '), 'text', '10 values, Level N unlocks when XP ≥ threshold[N].'),
         '</div>',
 
         // — MAINTENANCE —
-        '<div class="card" style="margin-bottom:var(--space-md);animation-delay:0.2s">',
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">',
-        '<h3 style="font-family:var(--font-display);font-size:1.1rem">🔧 Maintenance Config</h3>',
-        '<button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'maintenance\',[\'maintenanceMode\',\'maintenanceMessage\'])">Save Maintenance</button>',
-        '</div>',
-        '<div style="padding:12px 16px;background:rgba(255,100,0,0.12);border:1px solid rgba(255,100,0,0.3);border-radius:var(--radius-md);margin-bottom:var(--space-md)">',
-        '<strong style="color:#ff6400">⚠️ Warning:</strong> Enabling maintenance mode will block all non-admin users from accessing the platform.',
-        '</div>',
+        '<div class="admin-settings-card animate-fade-up" style="animation-delay:0.2s">',
+        '  <div class="admin-settings-header">',
+        '    <h3>🔧 Maintenance Config</h3>',
+        '    <button class="btn btn-primary btn-sm" onclick="AdminPage.saveSection(\'maintenance\',[\'maintenanceMode\',\'maintenanceMessage\'])">Save Changes</button>',
+        '  </div>',
+        '  <div style="padding:12px 16px;background:rgba(255,100,0,0.12);border:1px solid rgba(255,100,0,0.3);border-radius:var(--radius-md);margin-bottom:var(--space-md); color:#ff6400; font-size: 0.9rem">',
+        '    <strong>⚠ Warning:</strong> Enabling maintenance mode will block all non-admin users from accessing the platform.',
+        '  </div>',
         this._toggle('Maintenance Mode', 'maintenanceMode', s.maintenance.maintenanceMode, 'Show maintenance page to all regular users.'),
         this._field('Maintenance Message', 'maintenanceMessage', s.maintenance.maintenanceMessage, 'textarea', 'Message shown to users during maintenance'),
-        '<div style="margin-top:var(--space-md);padding:12px 16px;background:var(--bg-tertiary);border-radius:var(--radius-md)">',
-        '<p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:6px">Database</p>',
-        '<div style="display:flex;align-items:center;gap:10px">',
-        '<span class="badge badge-online">' + s.database.type.toUpperCase() + '</span>',
-        '<span style="font-size:0.85rem;color:var(--text-muted)">Database engine is locked after setup.</span>',
-        '</div>',
-        '</div>',
+        '  <div style="margin-top:var(--space-md);padding:16px;background:var(--bg-tertiary);border-radius:var(--radius-md); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">',
+        '    <div><p style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Database Engine</p>',
+        '    <div style="font-family: var(--font-mono); color: var(--text-primary)">' + s.database.type.toUpperCase() + ' Storage Engine</div></div>',
+        '    <span class="badge badge-online">System Ready</span>',
+        '  </div>',
         '</div>',
 
         // — SMTP —
-        '<div class="card" style="margin-bottom:var(--space-md);animation-delay:0.25s">',
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">',
-        '<div>',
-        '<h3 style="font-family:var(--font-display);font-size:1.1rem">📧 Mail & SMTP</h3>',
-        '<small style="color:var(--text-muted)">Used for email notifications, welcome emails, and alerts.</small>',
-        '</div>',
-        '<button class="btn btn-primary btn-sm" onclick="AdminPage.saveSmtp()">Save SMTP</button>',
-        '</div>',
-        this._toggle('Enable SMTP', 'smtp.enabled', s.smtp.enabled, 'Turn on to allow the platform to send emails.'),
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">',
+        '<div class="admin-settings-card animate-fade-up" style="animation-delay:0.25s">',
+        '  <div class="admin-settings-header">',
+        '    <h3>📧 Mail & SMTP Config</h3>',
+        '    <button class="btn btn-primary btn-sm" onclick="AdminPage.saveSmtp()">Save Changes</button>',
+        '  </div>',
+        this._toggle('Enable SMTP Services', 'smtp.enabled', s.smtp.enabled, 'Turn on to allow the platform to send automated emails.'),
+        '  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">',
         this._field('SMTP Host', 'smtp.host', s.smtp.host, 'text', 'e.g. smtp.gmail.com'),
-        this._field('SMTP Port', 'smtp.port', s.smtp.port, 'number', '587 = TLS, 465 = SSL, 25 = plain'),
-        this._field('Username / Email', 'smtp.user', s.smtp.user, 'text', 'Your SMTP account username'),
-        this._field('Password', 'smtp.pass', s.smtp.pass, 'password', 'Leave unchanged to keep current password'),
+        this._field('SMTP Port', 'smtp.port', s.smtp.port, 'number', '587/465'),
+        this._field('Username / Email', 'smtp.user', s.smtp.user, 'text', 'Account username'),
+        this._field('Password', 'smtp.pass', s.smtp.pass, 'password', 'Account password'),
+        '  </div>',
         this._field('From Address', 'smtp.from', s.smtp.from, 'text', 'e.g. no-reply@yourdomain.com'),
+        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md)">',
+        this._toggle('Use SSL/TLS', 'smtp.secure', s.smtp.secure, 'Enable for port 465 SSL.'),
+        this._toggle('Verify Certificate', 'smtp.rejectUnauthorized', s.smtp.rejectUnauthorized, 'Disable only for self-signed certs.'),
         '</div>',
-        this._toggle('Use SSL/TLS (port 465)', 'smtp.secure', s.smtp.secure, 'Enable if your server uses port 465 with full SSL.'),
-        this._toggle('Verify TLS Certificate', 'smtp.rejectUnauthorized', s.smtp.rejectUnauthorized, 'Disable only for self-signed certs on internal servers.'),
-        '<div style="margin-top:var(--space-md);display:flex;gap:10px;align-items:center">',
-        '<input type="email" id="smtp-test-email" class="input-field" placeholder="Test recipient email" style="max-width:280px">',
-        '<button class="btn btn-sm" style="background:var(--bg-tertiary);border:1px solid var(--border-light)" onclick="AdminPage.sendTestEmail()">Send Test Email</button>',
-        '<span id="smtp-test-result" style="font-size:0.85rem"></span>',
-        '</div>',
+        '  <div style="margin-top:var(--space-md);padding:16px;background:var(--bg-tertiary);border-radius:var(--radius-md); border: 1px solid var(--border-subtle); display:flex;gap:12px;align-items:center">',
+        '    <input type="email" id="smtp-test-email" class="input-field" placeholder="Test recipient email" style="flex: 1">',
+        '    <button class="btn btn-secondary" onclick="AdminPage.sendTestEmail()">Send Test Email</button>',
+        '    <span id="smtp-test-result" style="font-size:0.85rem"></span>',
+        '  </div>',
         '</div>',
 
         // — NOTIFICATIONS —
-        '<div class="card" style="margin-bottom:var(--space-md);animation-delay:0.3s">',
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">',
-        '<div>',
-        '<h3 style="font-family:var(--font-display);font-size:1.1rem">🔔 Notifications</h3>',
-        '<small style="color:var(--text-muted)">Global defaults — users can override these in their own profile settings.</small>',
-        '</div>',
-        '<button class="btn btn-primary btn-sm" onclick="AdminPage.saveNotifications()">Save Notifications</button>',
-        '</div>',
-        this._toggle('Welcome Email on Register', 'notif.welcomeEmail', s.notifications.welcomeEmail, 'Send a welcome email to new users when they sign up.'),
-        this._toggle('Friend Request Notifications', 'notif.notifyFriendRequests', s.notifications.notifyFriendRequests, 'Email users when they receive a friend request.'),
-        this._toggle('New Message Notifications', 'notif.notifyMessages', s.notifications.notifyMessages, 'Email users when they receive a direct message.'),
-        this._toggle('Comment Notifications', 'notif.notifyComments', s.notifications.notifyComments, 'Email users when someone comments on their post.'),
-        this._toggle('Weekly Digest Emails', 'notif.digestEnabled', s.notifications.digestEnabled, 'Send a weekly activity summary email to users (requires SMTP).'),
+        '<div class="admin-settings-card animate-fade-up" style="animation-delay:0.3s">',
+        '  <div class="admin-settings-header">',
+        '    <h3>🔔 Notification Defaults</h3>',
+        '    <button class="btn btn-primary btn-sm" onclick="AdminPage.saveNotifications()">Save Changes</button>',
+        '  </div>',
+        this._toggle('Welcome Email on Register', 'notif.welcomeEmail', s.notifications.welcomeEmail, 'Send a welcome email to new users.'),
+        this._toggle('Friend Request Notifications', 'notif.notifyFriendRequests', s.notifications.notifyFriendRequests, 'Email users on friend requests.'),
+        this._toggle('New Message Notifications', 'notif.notifyMessages', s.notifications.notifyMessages, 'Email users on direct messages.'),
+        this._toggle('Comment Notifications', 'notif.notifyComments', s.notifications.notifyComments, 'Email users on post comments.'),
+        this._toggle('Weekly Digest Emails', 'notif.digestEnabled', s.notifications.digestEnabled, 'Send weekly activity summaries.'),
         '</div>',
 
-        '</div>' // stagger-children
+        '</div>'
       ].join('');
 
 
@@ -462,15 +573,15 @@ var AdminPage = {
       ? '<textarea id="s-' + id + '" class="input-field" rows="3" style="resize:vertical">' + App.escapeHtml(String(value || '')) + '</textarea>'
       : '<input type="' + type + '" id="s-' + id + '" class="input-field" value="' + App.escapeHtml(String(value || '')) + '">';
     return '<div class="form-group" style="margin-bottom:var(--space-md)">' +
-      '<label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:6px">' + label + '</label>' +
+      '<label style="display:block;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px">' + label + '</label>' +
       el +
-      (hint ? '<small style="color:var(--text-muted);display:block;margin-top:4px">' + hint + '</small>' : '') +
+      (hint ? '<small style="color:var(--text-muted);display:block;margin-top:4px; font-size: 0.75rem">' + hint + '</small>' : '') +
       '</div>';
   },
 
   _toggle(label, id, checked, hint) {
-    return '<div class="form-group" style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-primary);margin-bottom:var(--space-sm)">' +
-      '<div><strong style="font-size:0.9rem">' + label + '</strong>' +
+    return '<div class="form-group" style="display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border-subtle);margin-bottom:var(--space-sm)">' +
+      '<div><strong style="font-size:0.95rem; color: var(--text-primary)">' + label + '</strong>' +
       (hint ? '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">' + hint + '</div>' : '') + '</div>' +
       '<label class="custom-toggle" style="cursor:pointer;position:relative;display:inline-block;width:48px;height:26px">' +
       '<input type="checkbox" id="s-' + id + '"' + (checked ? ' checked' : '') + ' style="opacity:0;width:0;height:0">' +
@@ -589,26 +700,26 @@ var AdminPage = {
     try {
       var categories = await API.get('/api/ext/forum/categories');
 
-      var addForm = '<div class="card" style="margin-bottom:var(--space-md)">' +
-        '<h3 style="margin-bottom:var(--space-md);font-family:var(--font-display)">Add Category</h3>' +
-        '<div style="display:flex;gap:10px;align-items:flex-end">' +
-        '<div style="flex:1"><label style="font-size:0.8rem">Icon (Emoji)</label><input type="text" id="new-cat-icon" class="input-field" value="💬" style="width:100%"></div>' +
-        '<div style="flex:3"><label style="font-size:0.8rem">Name</label><input type="text" id="new-cat-name" class="input-field" placeholder="General Discussion" style="width:100%"></div>' +
-        '<div style="flex:4"><label style="font-size:0.8rem">Description</label><input type="text" id="new-cat-desc" class="input-field" placeholder="Talk about anything" style="width:100%"></div>' +
-        '<div><button class="btn btn-primary" onclick="AdminPage.createForumCategory()">Add</button></div>' +
+      var addForm = '<div class="admin-settings-card animate-fade-up" style="margin-bottom:var(--space-md)">' +
+        '<div class="admin-settings-header"><h3>Add Forum Category</h3></div>' +
+        '<div style="display:flex;gap:12px;align-items:flex-end; flex-wrap: wrap;">' +
+        '<div style="width: 80px"><label style="display:block;font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Icon</label><input type="text" id="new-cat-icon" class="input-field" value="💬" style="width:100%; text-align: center; font-size: 1.2rem"></div>' +
+        '<div style="flex:1; min-width: 200px;"><label style="display:block;font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Name</label><input type="text" id="new-cat-name" class="input-field" placeholder="General Discussion" style="width:100%"></div>' +
+        '<div style="flex:2; min-width: 300px;"><label style="display:block;font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Description</label><input type="text" id="new-cat-desc" class="input-field" placeholder="Talk about anything" style="width:100%"></div>' +
+        '<div><button class="btn btn-primary" style="height: 42px" onclick="AdminPage.createForumCategory()">Create</button></div>' +
         '</div></div>';
 
       var tableRows = categories.map(function (c) {
         return '<tr>' +
-          '<td><span style="font-size:1.5rem">' + App.escapeHtml(c.icon) + '</span></td>' +
-          '<td><strong>' + App.escapeHtml(c.name) + '</strong><div style="font-size:0.8rem;color:var(--text-muted)">' + App.escapeHtml(c.description) + '</div></td>' +
-          '<td>' + c.thread_count + ' threads<br><span style="font-size:0.8rem;color:var(--text-muted)">' + c.post_count + ' posts</span></td>' +
-          '<td><button class="btn btn-sm btn-danger" onclick="AdminPage.deleteForumCategory(\'' + c.id + '\')">Delete</button></td>' +
+          '<td style="width: 80px; text-align: center;"><span style="font-size:1.75rem">' + App.escapeHtml(c.icon) + '</span></td>' +
+          '<td><strong style="font-size: 1rem; color: var(--text-primary)">' + App.escapeHtml(c.name) + '</strong><div style="font-size:0.85rem;color:var(--text-muted); margin-top: 4px">' + App.escapeHtml(c.description) + '</div></td>' +
+          '<td style="white-space: nowrap;"><div style="font-weight: 700; color: var(--neon-cyan)">' + c.thread_count + ' Threads</div><div style="font-size:0.8rem;color:var(--text-muted)">' + c.post_count + ' Posts</div></td>' +
+          '<td style="text-align: right;"><button class="btn btn-sm btn-danger" onclick="AdminPage.deleteForumCategory(\'' + c.id + '\')">Delete</button></td>' +
           '</tr>';
       }).join('');
 
-      var list = '<div class="card"><table class="admin-table"><thead><tr><th>Icon</th><th>Category</th><th>Stats</th><th>Actions</th></tr></thead>' +
-        '<tbody>' + (tableRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No categories found.</td></tr>') + '</tbody></table></div>';
+      var list = '<div class="admin-table-container animate-fade-up" style="animation-delay: 0.1s;"><table class="admin-table"><thead><tr><th>Icon</th><th>Category Details</th><th>Statistics</th><th style="text-align:right">Actions</th></tr></thead>' +
+        '<tbody>' + (tableRows || '<tr><td colspan="4" style="text-align:center;padding: 40px; color:var(--text-muted)">No forum categories found. Start by adding one above.</td></tr>') + '</tbody></table></div>';
 
       content.innerHTML = addForm + list;
     } catch (err) {
@@ -654,31 +765,36 @@ var AdminPage = {
       var exts = await API.get('/api/extensions');
       var hasMC = exts.find(e => e.id === 'minecraft' && e.enabled);
 
-      var html = '<div class="card animate-fade-up">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-md)">' +
-        '  <h3 style="font-family:var(--font-display);font-size:1.1rem">🎮 Discord Integration</h3>' +
-        '  <button class="btn btn-primary btn-sm" onclick="AdminPage.saveDiscordSettings()">Save Discord Settings</button>' +
-        '</div>' +
-        this._field('Webhook URL (General/Alerts)', 'discord-webhookUrl', s.discord.webhookUrl, 'text', 'Enter the full Discord Webhook URL to send notifications.') +
-        this._field('Discord Bot Token', 'discord-botToken', s.discord.botToken ? '••••••••' : '', 'text', 'Required to send Direct Messages to users.') +
-        this._field('Discord Server (Guild) ID', 'discord-guildId', s.discord.guildId, 'text', 'Required to fetch members by role for Direct Messaging.');
+      var html = '<div class="admin-settings-section">' +
+        '<div class="admin-settings-card animate-fade-up">' +
+        '  <div class="admin-settings-header">' +
+        '    <h3>🎮 Discord Integration</h3>' +
+        '    <button class="btn btn-primary btn-sm" onclick="AdminPage.saveDiscordSettings()">Save Changes</button>' +
+        '  </div>' +
+        this._field('Webhook URL (General/Alerts)', 'discord-webhookUrl', s.discord.webhookUrl, 'text', 'Enter the full Discord Webhook URL for system alerts.') +
+        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md)">' +
+        this._field('Discord Bot Token', 'discord-botToken', s.discord.botToken ? '••••••••' : '', 'text', 'Required for Direct Messaging support.') +
+        this._field('Discord Server (Guild) ID', 'discord-guildId', s.discord.guildId, 'text', 'Required for member role fetching.') +
+        '</div>';
 
       if (hasMC) {
-        html += '<div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border-primary)">' +
-          '<h4 style="margin-bottom:1rem;color:var(--neon-cyan)">Minecraft Server Alerts</h4>' +
-          this._field('Manager Uptime Notification Role ID', 'discord-uptimeRolePing', s.discord.uptimeRolePing, 'text', 'Numeric Role ID to fetch managers to DM. e.g. 1234567890') +
-          this._field('Offline Strike Threshold', 'discord-uptimeStrikeThreshold', s.discord.uptimeStrikeThreshold, 'number', 'Number of consecutive offline pings before triggering an alert (Default 5).') +
-          this._field('Offline Strike Repeat Interval', 'discord-uptimeStrikeRepeat', s.discord.uptimeStrikeRepeat, 'number', 'Number of pings after first alert before sending another (Default 10).') +
-          '</div>';
+        html += '<div style="margin-top:2rem;padding-top:2rem;border-top:1px solid var(--border-subtle)">' +
+          '  <h4 style="margin-bottom:1.5rem;color:var(--neon-cyan); font-family: var(--font-display); font-size: 1rem;">🛰️ Minecraft Server Uptime Monitor</h4>' +
+          this._field('Manager Notification Role ID', 'discord-uptimeRolePing', s.discord.uptimeRolePing, 'text', 'Role ID to ping/fetch for DM alerts.') +
+          '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md)">' +
+          this._field('Offline Strike Threshold', 'discord-uptimeStrikeThreshold', s.discord.uptimeStrikeThreshold, 'number', 'Pings before first alert (Default: 5).') +
+          this._field('Repeat Alert Interval', 'discord-uptimeStrikeRepeat', s.discord.uptimeStrikeRepeat, 'number', 'Pings between follow-up alerts (Default: 10).') +
+          '</div></div>';
       } else {
-        html += '<div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border-primary);opacity:0.5;pointer-events:none">' +
-          '<h4 style="margin-bottom:1rem;color:var(--text-muted)">Minecraft Server Alerts</h4>' +
-          '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem">Activate the <strong>Minecraft Extension</strong> to configure uptime ping monitors & alerts.</p>' +
-          this._field('Manager Uptime Notification Role ID', 'discord-uptimeRolePing', '', 'text', 'Numeric Role ID to fetch managers to DM.') +
+        html += '<div style="margin-top:2rem;padding-top:2rem;border-top:1px solid var(--border-subtle);opacity:0.5;">' +
+          '  <h4 style="margin-bottom:1rem;color:var(--text-muted); font-family: var(--font-display); font-size: 1rem;">🛰️ Minecraft Server Uptime Monitor</h4>' +
+          '  <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem; background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-md)">' +
+          '    ℹ Activate the <strong>Minecraft Extension</strong> to configure uptime monitors and manager alerts.' +
+          '  </p>' +
           '</div>';
       }
 
-      html += '</div>';
+      html += '</div></div>';
       content.innerHTML = html;
     } catch (err) {
       content.innerHTML = '<div class="empty-state"><p>Failed to load discord settings</p></div>';

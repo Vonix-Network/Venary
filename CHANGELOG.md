@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-03-26
+
+### Changed
+- **Admin Dashboard Rebuild**
+  - Modernized the layout with a sleek vertical sidebar and SVG icon system.
+  - Redesigned all management views (Users, Reports, Extensions, Settings, Forum, Discord).
+  - Implemented responsive grid-based layouts for cards and tables.
+  - Enhanced theme compatibility with dedicated CSS overrides for all 7 platform themes.
+  - Restored corrupted styles in `main.css` and optimized asset encoding.
+
 ## [1.6.0] - 2026-03-25
 
 ### Changed
