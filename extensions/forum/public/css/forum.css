@@ -210,21 +210,22 @@
     display: flex;
     gap: 16px;
     padding: 16px;
-    background: transparent;
-    border-radius: 0;
+    background: var(--bg-card);
+    border-radius: 12px;
     margin-top: 16px;
     position: relative;
-    border: none;
-    border-bottom: 1px solid var(--border-subtle);
-    transition: background 0.1s ease;
+    border: 1px solid var(--border-subtle);
+    transition: all 0.2s ease;
 }
 
 .forum-post:hover {
-    background: var(--bg-card);
+    background: var(--bg-card-hover);
+    border-color: var(--neon-cyan);
+    box-shadow: var(--shadow-neon);
 }
 
 .forum-post.op {
-    background: rgba(0, 0, 0, 0.1);
+    background: var(--bg-card);
     border-left: 4px solid var(--neon-cyan);
 }
 
