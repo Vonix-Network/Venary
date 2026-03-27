@@ -41,7 +41,15 @@ class PterodactylClient {
    */
   _request(method, path, body = null) {
     return new Promise((resolve, reject) => {
-      const target = new URL(this.baseUrl + path);
+      // Ensure path always starts with /
+      const safePath = path.startsWith('/') ? path : '/' + path;
+      const fullUrl = this.baseUrl + safePath;
+      let target;
+      try {
+        target = new URL(fullUrl);
+      } catch (e) {
+        return reject(new Error(`Invalid URL constructed: ${fullUrl} — check your Base URL setting`));
+      }
       const isHttps = target.protocol === 'https:';
       const transport = isHttps ? https : http;
 
