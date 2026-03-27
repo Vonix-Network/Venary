@@ -20,9 +20,10 @@ async function menu() {
     console.log('3. Ban User');
     console.log('4. Unban User');
     console.log('5. Execute raw SQL query');
-    console.log('6. Exit');
+    console.log('6. Promote User to Superadmin');
+    console.log('7. Exit');
     
-    const choice = await prompt('\nSelect an option (1-6): ');
+    const choice = await prompt('\nSelect an option (1-7): ');
     
     try {
         switch(choice.trim()) {
@@ -72,6 +73,27 @@ async function menu() {
                 }
                 break;
             case '6':
+                // Superadmin is admin + extension-granted privileges (e.g. panel access management).
+                // Regular admins cannot assign this role — only via this CLI tool.
+                const superUser = await prompt('Enter username to promote to superadmin: ');
+                const u4 = await db.get('SELECT id, role FROM users WHERE username = ?', [superUser]);
+                if (u4) {
+                    if (u4.role === 'superadmin') {
+                        console.log(`\n[INFO] ${superUser} is already a superadmin.`);
+                    } else {
+                        const confirm = await prompt(`Promote ${superUser} (currently: ${u4.role}) to superadmin? [y/N]: `);
+                        if (confirm.trim().toLowerCase() === 'y') {
+                            await db.run("UPDATE users SET role = 'superadmin' WHERE id = ?", [u4.id]);
+                            console.log(`\n[SUCCESS] Promoted ${superUser} to superadmin.`);
+                        } else {
+                            console.log('\n[CANCELLED]');
+                        }
+                    }
+                } else {
+                    console.log('\n[ERROR] User not found.');
+                }
+                break;
+            case '7':
                 console.log('Exiting...');
                 process.exit(0);
                 break;

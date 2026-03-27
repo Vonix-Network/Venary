@@ -4,11 +4,21 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 
-// Admin middleware
+// Admin middleware — passes admin, superadmin, and moderator
 async function requireAdmin(req, res, next) {
     const user = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
-    if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+    if (!user || !['admin', 'superadmin', 'moderator'].includes(user.role)) {
         return res.status(403).json({ error: 'Admin access required' });
+    }
+    req.userRole = user.role;
+    next();
+}
+
+/** Middleware: superadmin-only actions (e.g. extension permission management) */
+async function requireSuperAdmin(req, res, next) {
+    const user = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
+    if (!user || user.role !== 'superadmin') {
+        return res.status(403).json({ error: 'Superadmin access required' });
     }
     req.userRole = user.role;
     next();
@@ -90,11 +100,14 @@ router.post('/users/:id/ban', authenticateToken, requireAdmin, async (req, res) 
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Only admins can ban moderators
+        // Only admins/superadmins can ban moderators; superadmins cannot be banned via web
+        if (targetUser.role === 'superadmin') {
+            return res.status(403).json({ error: 'Cannot ban a superadmin' });
+        }
         if (targetUser.role === 'admin') {
             return res.status(403).json({ error: 'Cannot ban an admin' });
         }
-        if (targetUser.role === 'moderator' && req.userRole !== 'admin') {
+        if (targetUser.role === 'moderator' && !['admin', 'superadmin'].includes(req.userRole)) {
             return res.status(403).json({ error: 'Only admins can ban moderators' });
         }
 

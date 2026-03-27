@@ -1,0 +1,37 @@
+{
+    "id": "pterodactyl-panel",
+    "name": "Pterodactyl Panel",
+    "version": "1.0.0",
+    "description": "Pterodactyl game server panel integration — real-time console, power controls, and access management.",
+    "author": "Venary",
+    "enabled": true,
+    "nav": [
+        {
+            "label": "Panel",
+            "route": "/pterodactyl",
+            "icon": "terminal",
+            "position": 5,
+            "requiresAccess": "pterodactyl-panel"
+        }
+    ],
+    "routes": {
+        "prefix": "/api/ext/pterodactyl-panel",
+        "file": "server/routes.js"
+    },
+    "admin_route": "/pterodactyl-admin",
+    "pages": [
+        {
+            "route": "/pterodactyl",
+            "file": "public/pages/pterodactyl.js",
+            "global": "PterodactylPage"
+        },
+        {
+            "route": "/pterodactyl-admin",
+            "file": "public/pages/pterodactyl-admin.js",
+            "global": "PterodactylAdminPage"
+        }
+    ],
+    "css": [
+        "public/css/pterodactyl.css"
+    ]
+}
