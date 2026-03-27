@@ -19,7 +19,6 @@ module.exports = function (extDb) {
 
     /** @type {PterodactylClient|null} */
     let pteroClient = null;
-    let consoleStarted = false;
 
     /**
      * Load settings from DB and (re)create the PterodactylClient.
@@ -304,6 +303,62 @@ module.exports = function (extDb) {
     // ── Socket.IO console namespace ───────────────────────────────────────────
 
     /**
+     * Per-server console stream manager.
+     * Maintains one Pterodactyl WS connection per server identifier,
+     * proxies output to all connected Socket.IO clients in that server's room.
+     */
+    const consoleStreams = new Map(); // serverId -> { client, started, buffer[] }
+
+    /**
+     * Get or create a console stream for a server.
+     * @param {string} serverId
+     * @param {import('socket.io').Namespace} ns
+     */
+    async function ensureConsoleStream(serverId, ns) {
+        if (consoleStreams.has(serverId)) return;
+
+        const baseClient = await getClient();
+        if (!baseClient) return;
+
+        // Create a dedicated client instance for this server's WS stream
+        const rows = await extDb.all('SELECT key, value FROM pterodactyl_settings');
+        const cfg = Object.fromEntries(rows.map(r => [r.key, r.value]));
+        if (!cfg.base_url || !cfg.api_key) return;
+
+        const streamClient = new PterodactylClient({
+            baseUrl: cfg.base_url,
+            apiKey: cfg.api_key,
+            serverId,
+        });
+
+        const stream = { client: streamClient, started: true, buffer: [] };
+        consoleStreams.set(serverId, stream);
+
+        console.log('[Pterodactyl] Starting console stream for server:', serverId);
+
+        streamClient.connectConsole(
+            (line) => {
+                // Buffer up to 500 lines
+                stream.buffer.push(line);
+                if (stream.buffer.length > 500) stream.buffer.shift();
+                // Emit to all clients watching this server
+                ns.to('server:' + serverId).emit('console:line', { line, timestamp: new Date().toISOString() });
+            },
+            (state) => {
+                ns.to('server:' + serverId).emit('status:update', { state });
+            },
+            (msg) => {
+                console.error('[Pterodactyl] Console stream error for', serverId, ':', msg);
+                consoleStreams.delete(serverId);
+                ns.to('server:' + serverId).emit('console:error', { message: msg });
+            }
+        ).catch((err) => {
+            console.error('[Pterodactyl] connectConsole threw for', serverId, ':', err.message);
+            consoleStreams.delete(serverId);
+        });
+    }
+
+    /**
      * Attach the /pterodactyl-console Socket.IO namespace.
      * Called once by the extension loader after mounting routes.
      * @param {import('socket.io').Server} io
@@ -314,8 +369,8 @@ module.exports = function (extDb) {
         // Auth + panel access guard on every socket connection
         ns.use(async (socket, next) => {
             try {
-                const token = socket.handshake.auth && socket.handshake.auth.token
-                    || socket.handshake.query && socket.handshake.query.token;
+                const token = (socket.handshake.auth && socket.handshake.auth.token)
+                    || (socket.handshake.query && socket.handshake.query.token);
                 if (!token) {
                     console.error('[Pterodactyl] Socket rejected: no token');
                     return next(new Error('Authentication required'));
@@ -345,27 +400,36 @@ module.exports = function (extDb) {
 
         ns.on('connection', async (socket) => {
             const serverId = socket.handshake.query && socket.handshake.query.server;
-
-            const client = await getClient();
-
-            // Send buffered console history to newly connected client
-            if (client && serverId && client.consoleBuffer.length > 0) {
-                socket.emit('history', { lines: [...client.consoleBuffer] });
+            if (!serverId) {
+                socket.emit('console:error', { message: 'No server specified' });
+                socket.disconnect();
+                return;
             }
 
-            // Start the Pterodactyl WS stream if not already running
-            if (client && serverId && !consoleStarted) {
-                consoleStarted = true;
-                client.serverId = serverId;
-                client.connectConsole(
-                    (line) => ns.emit('console:line', { line, timestamp: new Date().toISOString() }),
-                    (state) => ns.emit('status:update', { state }),
-                    (msg) => {
-                        consoleStarted = false;
-                        ns.emit('console:error', { message: msg });
-                    }
-                ).catch(() => { consoleStarted = false; });
+            console.log('[Pterodactyl] Client connected to console for server:', serverId);
+
+            // Join the room for this server
+            socket.join('server:' + serverId);
+
+            // Send buffered history immediately
+            const stream = consoleStreams.get(serverId);
+            if (stream && stream.buffer.length > 0) {
+                socket.emit('history', { lines: [...stream.buffer] });
             }
+
+            // Start the Pterodactyl WS stream if not already running for this server
+            if (!consoleStreams.has(serverId)) {
+                await ensureConsoleStream(serverId, ns);
+                // Send any buffer that was populated during connection setup
+                const newStream = consoleStreams.get(serverId);
+                if (newStream && newStream.buffer.length > 0) {
+                    socket.emit('history', { lines: [...newStream.buffer] });
+                }
+            }
+
+            socket.on('disconnect', () => {
+                console.log('[Pterodactyl] Client disconnected from console for server:', serverId);
+            });
         });
     }
 
