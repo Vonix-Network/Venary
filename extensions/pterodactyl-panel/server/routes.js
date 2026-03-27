@@ -133,7 +133,8 @@ module.exports = function (extDb) {
 
     // GET /servers — list all servers for the API key owner
     // Pterodactyl API: GET /api/client  (returns paginated server list)
-    router.get('/servers', authenticateToken, requireAdmin, async (req, res) => {
+    // Accessible to any user with panel access (not just admins)
+    router.get('/servers', authenticateToken, requirePanelAccess, async (req, res) => {
         try {
             const client = await getClient();
             if (!client) {
@@ -207,7 +208,8 @@ module.exports = function (extDb) {
                     [api_key.trim()]
                 );
                 pteroClient = null;
-                consoleStarted = false;
+                // Clear all active console streams so they reconnect with new credentials
+                consoleStreams.clear();
             }
 
             // Also store a placeholder server_id so the old validation doesn't break

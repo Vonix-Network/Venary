@@ -166,7 +166,11 @@ class PterodactylClient {
       return this._scheduleReconnect(onLine, onStatus, onError, attempt, safeMsg);
     }
 
-    const ws = new WebSocket(socketUrl);
+    const ws = new WebSocket(socketUrl, {
+        headers: {
+            'Origin': this.baseUrl,
+        },
+    });
     this._ws = ws;
 
     ws.on('open', () => {
@@ -185,41 +189,62 @@ class PterodactylClient {
         onLine(line);
       } else if (event === 'status') {
         onStatus(args[0] ?? '');
+      } else if (event === 'token expiring') {
+        // Pterodactyl sends this ~60s before token expires — re-auth proactively
+        this._refreshWsToken(ws);
+      } else if (event === 'token expired') {
+        // Force reconnect with fresh token
+        ws.close();
       }
     });
 
-    ws.on('close', () => {
+    ws.on('close', (code, reason) => {
+      this._ws = null;
+      // Don't reconnect on intentional close (code 1000)
+      if (code === 1000) return;
       this._scheduleReconnect(onLine, onStatus, onError, attempt);
     });
 
     ws.on('error', (err) => {
-      const safeMsg = err.message.replace(this._apiKey, '[REDACTED]');
-      // 'error' is always followed by 'close', so reconnect is handled there
-      // but we surface the message for diagnostics without leaking the key
-      void safeMsg;
+      // Mask apiKey — 'error' is always followed by 'close' so reconnect handled there
+      void err.message.replace(this._apiKey, '[REDACTED]');
     });
+  }
+
+  /**
+   * Re-fetch a fresh WS token and re-authenticate on the existing socket.
+   * Called when Pterodactyl sends 'token expiring'.
+   * @param {WebSocket} ws
+   */
+  async _refreshWsToken(ws) {
+    try {
+      const path = `/api/client/servers/${this.serverId}/websocket`;
+      const { body } = await this._request('GET', path);
+      const token = body?.data?.token;
+      if (token && ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify({ event: 'auth', args: [token] }));
+      }
+    } catch {
+      // If refresh fails the socket will close and reconnect naturally
+    }
   }
 
   /**
    * Schedule a reconnect attempt with exponential backoff.
    * Base delay: 1000 ms. Multiplier: 2×. Max attempts: 5.
-   *
-   * @param {function(string): void} onLine
-   * @param {function(string): void} onStatus
-   * @param {function(string): void} onError
-   * @param {number} attempt - Zero-based attempt index that just failed
-   * @param {string} [reason]
+   * After max attempts, calls onError and stops.
    */
   _scheduleReconnect(onLine, onStatus, onError, attempt, reason) {
     const MAX_ATTEMPTS = 5;
     const nextAttempt = attempt + 1;
 
     if (nextAttempt > MAX_ATTEMPTS) {
-      onError('Max reconnect attempts reached');
+      onError('Console stream disconnected after ' + MAX_ATTEMPTS + ' reconnect attempts.');
       return;
     }
 
     const delay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s, 8s, 16s
+    console.log('[Pterodactyl] Reconnecting in', delay + 'ms (attempt', nextAttempt + '/' + MAX_ATTEMPTS + ')');
     setTimeout(() => {
       this._openConsoleSocket(onLine, onStatus, onError, nextAttempt);
     }, delay);

@@ -11,6 +11,7 @@ var PterodactylPage = {
     _servers: [],
     _cmdHistory: [],
     _cmdHistoryIdx: -1,
+    _statusPoll: null,
 
     async render(container) {
         // Access check
@@ -49,6 +50,10 @@ var PterodactylPage = {
                 <div id="ptero-error-banner" class="ptero-error-banner" style="display:none">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     <span id="ptero-error-msg">Console stream unavailable.</span>
+                    <button class="btn btn-sm" onclick="PterodactylPage._reconnect()"
+                            style="font-size:0.72rem;padding:3px 10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:var(--text-secondary);flex-shrink:0">
+                        Reconnect
+                    </button>
                     <button class="ptero-banner-close" onclick="PterodactylPage._dismissError()">✕</button>
                 </div>
 
@@ -204,19 +209,36 @@ var PterodactylPage = {
         });
         this._socket = socket;
 
-        socket.on('connect', () => this._dismissError());
+        socket.on('connect', () => {
+            this._dismissError();
+            // Stop polling once WS is live
+            if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; }
+        });
         socket.on('history', ({ lines }) => {
             lines.forEach(l => this._appendLine(l, false));
             this._scrollToBottom();
         });
         socket.on('console:line', ({ line }) => this._appendLine(line, true));
         socket.on('status:update', ({ state }) => this._setStatus(state));
-        socket.on('console:error', ({ message }) => this._showError(message || 'Console stream unavailable.'));
-        socket.on('connect_error', (err) => this._showError('Connection failed: ' + (err.message || 'unknown')));
+        socket.on('console:error', ({ message }) => {
+            this._showError(message || 'Console stream unavailable.');
+            // Fall back to polling status every 5s when WS is down
+            this._startStatusPoll();
+        });
+        socket.on('connect_error', (err) => {
+            this._showError('Connection failed: ' + (err.message || 'unknown'));
+            this._startStatusPoll();
+        });
         socket.on('disconnect', (reason) => {
             if (reason === 'io client disconnect') return;
             this._showError('Disconnected: ' + reason);
+            this._startStatusPoll();
         });
+    },
+
+    _startStatusPoll() {
+        if (this._statusPoll) return; // already polling
+        this._statusPoll = setInterval(() => this._fetchStatus(), 5000);
     },
 
     // ── Console output ───────────────────────────────────────────────────────
@@ -345,8 +367,16 @@ var PterodactylPage = {
         if (banner) banner.style.display = 'none';
     },
 
+    _reconnect() {
+        this._dismissError();
+        if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; }
+        this._fetchStatus();
+        this._connectSocket();
+    },
+
     destroy() {
         if (this._socket) { this._socket.off(); this._socket.disconnect(); this._socket = null; }
+        if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; }
         this._busy = false;
         this._autoScroll = true;
         this._serverId = null;
