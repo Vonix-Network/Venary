@@ -1428,26 +1428,7 @@ textarea.input-field {
     /* Post cards */
     .post-card { border-radius: var(--radius-md); }
 
-    /* Admin page on mobile */
-    .admin-fullscreen .admin-page {
-        grid-template-columns: 1fr !important;
-    }
-
-    .admin-fullscreen .admin-sidebar {
-        position: sticky;
-        top: calc(56px + env(safe-area-inset-top));
-        z-index: 10;
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-        flex-direction: row;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .admin-fullscreen .admin-main {
-        border-radius: 0;
-    }
+    /* Admin page mobile styles handled in pages.css */
 
     /* Prevent horizontal scroll */
     body { overflow-x: hidden; }
