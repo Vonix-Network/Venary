@@ -137,15 +137,13 @@ class PterodactylClient {
 
   /**
    * Open a WebSocket connection to the Pterodactyl console endpoint.
-   * Authenticates with a token obtained from the REST API, then streams
-   * console output and status events to the provided callbacks.
-   *
    * @param {function(string): void} onLine   - Called for each console output line
    * @param {function(string): void} onStatus - Called when server state changes
    * @param {function(string): void} onError  - Called on unrecoverable error
-   * @returns {Promise<void>}
+   * @param {function(object): void} [onStats] - Called with live resource stats
    */
-  async connectConsole(onLine, onStatus, onError) {
+  async connectConsole(onLine, onStatus, onError, onStats) {
+    this._onStats = onStats || null;
     await this._openConsoleSocket(onLine, onStatus, onError, 0);
   }
 
@@ -195,9 +193,10 @@ class PterodactylClient {
       } else if (event === 'status') {
         onStatus(args[0] ?? '');
       } else if (event === 'stats') {
-        // stats event contains current_state
+        // Forward full stats payload to onStats callback if provided
         const state = args[0] && args[0].state;
         if (state) onStatus(state);
+        if (this._onStats && args[0]) this._onStats(args[0]);
       } else if (event === 'token expiring') {
         // Pterodactyl sends this ~60s before token expires — re-auth proactively
         this._refreshWsToken(ws);

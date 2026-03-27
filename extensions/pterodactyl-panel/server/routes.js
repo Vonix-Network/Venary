@@ -132,32 +132,19 @@ module.exports = function (extDb) {
     // ── Server list ───────────────────────────────────────────────────────────
 
     // GET /servers — list all servers for the API key owner
-    // Pterodactyl API: GET /api/client  (returns paginated server list)
-    // Accessible to any user with panel access (not just admins)
+    // Pterodactyl API: GET /api/client
     router.get('/servers', authenticateToken, requirePanelAccess, async (req, res) => {
         try {
             const client = await getClient();
-            if (!client) {
-                return res.status(503).json({ error: 'Extension not configured. Save Base URL and API Key first.' });
-            }
+            if (!client) return res.status(503).json({ error: 'Extension not configured. Save Base URL and API Key first.' });
 
             const result = await client._request('GET', '/api/client');
-
             if (result.statusCode === 401 || result.statusCode === 403) {
-                return res.status(502).json({
-                    error: 'Pterodactyl API rejected the key. Use a Client API key (not Application key).',
-                    statusCode: result.statusCode,
-                });
+                return res.status(502).json({ error: 'Pterodactyl API rejected the key. Use a Client API key (not Application key).', statusCode: result.statusCode });
             }
             if (result.statusCode !== 200) {
-                const detail = (result.body && result.body.errors && result.body.errors[0] && result.body.errors[0].detail)
-                    || (result.body && result.body.message)
-                    || JSON.stringify(result.body);
-                return res.status(502).json({
-                    error: 'Pterodactyl returned HTTP ' + result.statusCode,
-                    detail,
-                    hint: 'Base URL should be https://panel.example.com with no trailing path',
-                });
+                const detail = (result.body && result.body.errors && result.body.errors[0] && result.body.errors[0].detail) || (result.body && result.body.message) || JSON.stringify(result.body);
+                return res.status(502).json({ error: 'Pterodactyl returned HTTP ' + result.statusCode, detail, hint: 'Base URL should be https://panel.example.com with no trailing path' });
             }
 
             const servers = (result.body.data || []).map(s => ({
@@ -167,11 +154,71 @@ module.exports = function (extDb) {
                 description: s.attributes.description || '',
                 node: s.attributes.node || '',
             }));
-
             res.json(servers);
         } catch (err) {
             console.error('[Pterodactyl] GET servers error:', err.message);
             res.status(502).json({ error: err.message || 'Failed to reach Pterodactyl API. Check the Base URL.' });
+        }
+    });
+
+    // GET /server-info?server={id} — static server details: IP, node, limits
+    // Pterodactyl API: GET /api/client/servers/{server}
+    router.get('/server-info', authenticateToken, requirePanelAccess, async (req, res) => {
+        try {
+            const serverId = req.query.server;
+            if (!serverId) return res.status(400).json({ error: 'server query param required' });
+
+            const client = await getClient();
+            if (!client) return res.status(503).json({ error: 'Extension not configured' });
+
+            const result = await client._request('GET', '/api/client/servers/' + serverId);
+            if (result.statusCode !== 200) return res.status(502).json({ error: 'Failed to fetch server info' });
+
+            const a = result.body.attributes || {};
+            const alloc = a.relationships && a.relationships.allocations && a.relationships.allocations.data && a.relationships.allocations.data[0];
+            const allocAttr = alloc && alloc.attributes;
+
+            res.json({
+                name: a.name || '',
+                description: a.description || '',
+                node: a.node || '',
+                ip: allocAttr ? (allocAttr.ip_alias || allocAttr.ip || '') : '',
+                port: allocAttr ? allocAttr.port : null,
+                limits: {
+                    memory: a.limits && a.limits.memory,   // MB
+                    cpu: a.limits && a.limits.cpu,         // %
+                    disk: a.limits && a.limits.disk,       // MB
+                },
+                is_suspended: !!a.is_suspended,
+                is_installing: !!a.is_installing,
+            });
+        } catch (err) {
+            console.error('[Pterodactyl] server-info error:', err.message);
+            res.status(502).json({ error: 'Failed to reach Pterodactyl API' });
+        }
+    });
+
+    // GET /resources?server={id} — live resource snapshot (REST fallback)
+    // Pterodactyl API: GET /api/client/servers/{server}/resources
+    router.get('/resources', authenticateToken, requirePanelAccess, async (req, res) => {
+        try {
+            const serverId = req.query.server;
+            if (!serverId) return res.status(400).json({ error: 'server query param required' });
+
+            const client = await getClient();
+            if (!client) return res.status(503).json({ error: 'Extension not configured' });
+
+            const result = await client._request('GET', '/api/client/servers/' + serverId + '/resources');
+            if (result.statusCode !== 200) return res.status(502).json({ error: 'Failed to fetch resources' });
+
+            const a = result.body.attributes || {};
+            res.json({
+                state: a.current_state || 'offline',
+                resources: a.resources || {},
+            });
+        } catch (err) {
+            console.error('[Pterodactyl] resources error:', err.message);
+            res.status(502).json({ error: 'Failed to reach Pterodactyl API' });
         }
     });
 
@@ -350,6 +397,10 @@ module.exports = function (extDb) {
                 console.error('[Pterodactyl] Console stream error for', serverId, ':', msg);
                 consoleStreams.delete(serverId);
                 ns.to('server:' + serverId).emit('console:error', { message: msg });
+            },
+            (stats) => {
+                // Forward live resource stats to all clients watching this server
+                ns.to('server:' + serverId).emit('stats:update', stats);
             }
         ).catch((err) => {
             console.error('[Pterodactyl] connectConsole threw for', serverId, ':', err.message);
