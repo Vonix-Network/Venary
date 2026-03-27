@@ -291,21 +291,29 @@ module.exports = function (extDb) {
             try {
                 const token = socket.handshake.auth && socket.handshake.auth.token
                     || socket.handshake.query && socket.handshake.query.token;
-                if (!token) return next(new Error('Authentication required'));
+                if (!token) {
+                    console.error('[Pterodactyl] Socket rejected: no token');
+                    return next(new Error('Authentication required'));
+                }
 
                 let decoded;
                 try {
                     decoded = jwt.verify(token, JWT_SECRET);
-                } catch {
+                } catch (e) {
+                    console.error('[Pterodactyl] Socket rejected: invalid token -', e.message);
                     return next(new Error('Invalid token'));
                 }
 
                 const row = await extDb.get('SELECT user_id FROM pterodactyl_access WHERE user_id = ?', [decoded.id]);
-                if (!row) return next(new Error('Panel access denied'));
+                if (!row) {
+                    console.error('[Pterodactyl] Socket rejected: no panel access for user', decoded.id);
+                    return next(new Error('Panel access denied'));
+                }
 
                 socket.user = decoded;
                 next();
-            } catch {
+            } catch (err) {
+                console.error('[Pterodactyl] Socket middleware error:', err.message);
                 next(new Error('Server error'));
             }
         });

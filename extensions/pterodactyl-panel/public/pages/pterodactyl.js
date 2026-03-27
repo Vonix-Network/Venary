@@ -170,15 +170,24 @@ var PterodactylPage = {
 
     _connectSocket() {
         if (!this._serverId) return;
-        if (this._socket) { this._socket.disconnect(); this._socket = null; }
+        if (this._socket) {
+            this._socket.off(); // remove all listeners before disconnecting
+            this._socket.disconnect();
+            this._socket = null;
+        }
 
         const socket = io('/pterodactyl-console', {
             auth: { token: API.token },
             query: { server: this._serverId },
             transports: ['websocket'],
+            reconnection: false, // we handle reconnection manually via server-side backoff
         });
         this._socket = socket;
 
+        socket.on('connect', () => {
+            // Clear any previous error banner on successful connect
+            this._dismissError();
+        });
         socket.on('history', ({ lines }) => {
             lines.forEach(l => this._appendLine(l, false));
             this._scrollToBottom();
@@ -186,8 +195,14 @@ var PterodactylPage = {
         socket.on('console:line', ({ line }) => this._appendLine(line, true));
         socket.on('status:update', ({ state }) => this._setStatus(state));
         socket.on('console:error', ({ message }) => this._showError(message || 'Console stream unavailable.'));
-        socket.on('connect_error', (err) => this._showError(err.message || 'Connection failed.'));
-        socket.on('disconnect', () => this._showError('Disconnected from console stream.'));
+        socket.on('connect_error', (err) => {
+            this._showError('Connection failed: ' + (err.message || 'unknown error'));
+        });
+        socket.on('disconnect', (reason) => {
+            // 'io client disconnect' = we called socket.disconnect() intentionally — don't show error
+            if (reason === 'io client disconnect') return;
+            this._showError('Disconnected from console stream. Reason: ' + reason);
+        });
     },
 
     // ── Console ──────────────────────────────────────────────────────────────
