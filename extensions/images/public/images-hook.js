@@ -331,16 +331,30 @@ var ImagesHook = {
                 headers: { 'Authorization': 'Bearer ' + API.token },
                 body: formData
             });
-            const result = await response.json();
+
+            // Safely parse JSON — non-JSON responses (e.g. HTML error pages) would otherwise throw a cryptic SyntaxError
+            let result;
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                // Surface a clean message instead of raw HTML
+                const fallback = response.status >= 500
+                    ? 'The upload server encountered an error. Please try again.'
+                    : response.status === 413
+                        ? 'File is too large to upload.'
+                        : response.status === 401 || response.status === 403
+                            ? 'You are not authorised to upload files.'
+                            : 'Upload failed. Please try again.';
+                throw new Error(fallback);
+            }
+
             if (result.url) {
                 URL.revokeObjectURL(this.attachedImages[index].url);
                 this.attachedImages[index].url = result.url;
             } else {
-                let errorMsg = result.error || 'Upload failed';
-                if (errorMsg.includes('HTTP 412')) {
-                    errorMsg = 'Upload service (Catbox) is temporarily paused. Please try again in a few minutes or use an external link.';
-                }
-                throw new Error(errorMsg);
+                throw new Error(result.error || 'Upload failed. Please try again.');
             }
         } catch (err) {
             App.showToast(err.message, 'error');

@@ -98,11 +98,26 @@ module.exports = (extDb) => {
                     }
                 });
 
-                const url = await response.text();
-                if (response.ok && url && url.startsWith('http')) {
-                    return res.json({ url: url.trim() });
+                const rawText = await response.text();
+                const url = rawText ? rawText.trim() : '';
+                if (response.ok && url.startsWith('http')) {
+                    return res.json({ url });
                 } else {
-                    throw new Error('Catbox error: HTTP ' + response.status + ' - ' + url);
+                    // Strip HTML from Catbox error responses (e.g. Cloudflare pages, 5xx pages)
+                    const isHtml = url.trimStart().startsWith('<');
+                    let reason;
+                    if (isHtml) {
+                        reason = `Catbox returned an unexpected response (HTTP ${response.status}). The service may be down or rate-limiting requests.`;
+                    } else if (response.status === 412) {
+                        reason = 'Catbox uploads are temporarily paused. Please try again later or use an external link.';
+                    } else if (response.status === 429) {
+                        reason = 'Catbox rate limit reached. Please wait a moment before uploading again.';
+                    } else if (response.status >= 500) {
+                        reason = `Catbox service error (HTTP ${response.status}). Please try again later.`;
+                    } else {
+                        reason = url || `Catbox upload failed (HTTP ${response.status}).`;
+                    }
+                    throw new Error(reason);
                 }
             }
 
@@ -120,12 +135,16 @@ module.exports = (extDb) => {
                     body: formData
                 });
 
-                const result = await response.json();
+                const imgbbText = await response.text();
+                let result;
+                try { result = JSON.parse(imgbbText); } catch {
+                    throw new Error(`ImgBB returned an unexpected response (HTTP ${response.status}). The service may be unavailable.`);
+                }
                 if (result.success && result.data && result.data.url) {
                     return res.json({ url: result.data.url });
                 } else {
                     const errMsg = (result.error && result.error.message) ? result.error.message : 'Unknown ImgBB error';
-                    throw new Error('ImgBB error: ' + errMsg);
+                    throw new Error('ImgBB upload failed: ' + errMsg);
                 }
             }
 
