@@ -118,7 +118,7 @@ const ProfilePage = {
         '</div>' +
         '<div class="profile-stats">' + statsHtml + '</div>' +
         '</div>' +
-        (isOwnProfile ? '<div id="edit-modal" class="hidden"></div>' : '') +
+
         '<div id="skin-customize-modal" class="hidden"></div>' +
         '<div class="page-header" style="margin-top: var(--space-xl)"><h1>📝 Posts</h1></div>' +
         '<div id="user-posts" class="stagger-children"><div class="loading-spinner"></div></div>' +
@@ -623,22 +623,17 @@ const ProfilePage = {
   // ──────────────────────────────────────────────
 
   showEditModal(profile) {
-    var modal = document.getElementById('edit-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.innerHTML = '<div class="modal-overlay" id="edit-overlay"><div class="modal">' +
-      '<div class="modal-header"><h3 class="modal-title">Edit Profile</h3>' +
-      '<button class="modal-close" id="close-edit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>' +
+    // Use App.showModal so this works from any page, not just the profile page
+    App.showModal('Edit Profile',
       '<form id="edit-form" class="auth-form">' +
       '<div class="input-group"><label>Display Name</label><input type="text" class="input-field" id="edit-display" value="' + App.escapeHtml(profile.display_name || '') + '"></div>' +
       '<div class="input-group"><label>Avatar URL</label><input type="text" class="input-field" id="edit-avatar" value="' + App.escapeHtml(profile.avatar || '') + '" placeholder="https://example.com/image.png"></div>' +
       '<div class="input-group"><label>Bio</label><textarea class="input-field" id="edit-bio" rows="3">' + App.escapeHtml(profile.bio || '') + '</textarea></div>' +
       '<div class="input-group"><label>Gaming Tags (comma separated)</label><input type="text" class="input-field" id="edit-tags" value="' + (profile.gaming_tags || []).join(', ') + '" placeholder="e.g. FPS, RPG, Souls-like"></div>' +
       '<button type="submit" class="btn btn-primary">Save Changes</button>' +
-      '</form></div></div>';
+      '</form>'
+    );
 
-    document.getElementById('close-edit').addEventListener('click', function () { modal.classList.add('hidden'); });
-    document.getElementById('edit-overlay').addEventListener('click', function (e) { if (e.target.id === 'edit-overlay') modal.classList.add('hidden'); });
     document.getElementById('edit-form').addEventListener('submit', async function (e) {
       e.preventDefault();
       try {
@@ -650,7 +645,7 @@ const ProfilePage = {
           gaming_tags: tags
         });
         App.currentUser = Object.assign({}, App.currentUser, updated);
-        modal.classList.add('hidden');
+        App.closeModal();
         App.showToast('Profile updated!', 'success');
         Router.navigate(window.location.hash);
       } catch (err) { App.showToast(err.message, 'error'); }
