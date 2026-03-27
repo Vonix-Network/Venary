@@ -329,7 +329,43 @@ module.exports = (extDb) => {
                 throw new Error('ImgBB upload failed: ' + (result.error?.message || 'Unknown error'));
             }
 
-            // 5. Local
+            // 5. Cloudflare R2 (single account)
+            if (settings.storage_type === 'r2') {
+                const c = JSON.parse(settings.external_storage_config || '{}');
+                if (!c.r2_key_id || !c.r2_app_key || !c.r2_bucket || !c.r2_endpoint) throw new Error('R2 configuration incomplete. Check admin settings.');
+                const filename = uuidv4() + ext;
+                const url = await uploadS3({ provider: 'r2', keyId: c.r2_key_id, appKey: c.r2_app_key, bucket: c.r2_bucket, endpoint: c.r2_endpoint, publicUrl: c.r2_public_url }, req.file.buffer, filename, mime);
+                return res.json({ url });
+            }
+
+            // 6. Backblaze B2 (single account)
+            if (settings.storage_type === 'b2') {
+                const c = JSON.parse(settings.external_storage_config || '{}');
+                if (!c.b2_key_id || !c.b2_app_key || !c.b2_bucket || !c.b2_endpoint) throw new Error('B2 configuration incomplete. Check admin settings.');
+                const filename = uuidv4() + ext;
+                const url = await uploadS3({ provider: 'b2', keyId: c.b2_key_id, appKey: c.b2_app_key, bucket: c.b2_bucket, endpoint: c.b2_endpoint, publicUrl: c.b2_public_url }, req.file.buffer, filename, mime);
+                return res.json({ url });
+            }
+
+            // 7. Cloudinary (single account)
+            if (settings.storage_type === 'cloudinary') {
+                const c = JSON.parse(settings.external_storage_config || '{}');
+                if (!c.cld_cloud_name || !c.cld_api_key || !c.cld_api_secret) throw new Error('Cloudinary configuration incomplete. Check admin settings.');
+                const filename = uuidv4() + ext;
+                const url = await uploadCloudinary({ cloudName: c.cld_cloud_name, apiKey: c.cld_api_key, apiSecret: c.cld_api_secret }, req.file.buffer, filename, mime);
+                return res.json({ url });
+            }
+
+            // 8. Bunny.net (single zone)
+            if (settings.storage_type === 'bunny') {
+                const c = JSON.parse(settings.external_storage_config || '{}');
+                if (!c.bunny_access_key || !c.bunny_storage_zone) throw new Error('Bunny.net configuration incomplete. Check admin settings.');
+                const filename = uuidv4() + ext;
+                const url = await uploadBunny({ accessKey: c.bunny_access_key, storageZone: c.bunny_storage_zone, region: c.bunny_region || 'de', publicHostname: c.bunny_public_hostname }, req.file.buffer, filename, mime);
+                return res.json({ url });
+            }
+
+            // 9. Local
             if (settings.storage_type === 'local' || !settings.storage_type) {
                 const fileName = uuidv4() + ext;
                 fs.writeFileSync(path.join(uploadsDir, fileName), req.file.buffer);

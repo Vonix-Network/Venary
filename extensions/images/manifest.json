@@ -1,7 +1,7 @@
 {
     "id": "images",
     "name": "Media & Embeds",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "Adds support for multi-image/video uploads and YouTube embeds.",
     "author": "Venary",
     "enabled": true,
@@ -19,6 +19,9 @@
             "file": "public/images-hook.js",
             "global": "ImagesHook"
         }
+    ],
+    "css": [
+        "public/css/images-admin.css"
     ],
     "admin_route": "/admin/images"
 }
