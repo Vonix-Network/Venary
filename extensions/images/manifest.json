@@ -1,7 +1,7 @@
 {
     "id": "images",
     "name": "Media & Embeds",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Adds support for multi-image/video uploads and YouTube embeds.",
     "author": "Venary",
     "enabled": true,
