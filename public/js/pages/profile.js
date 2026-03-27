@@ -103,7 +103,7 @@ const ProfilePage = {
           ? '<div style="position:relative">' +
             '<div class="profile-avatar" id="profile-avatar-trigger" style="cursor:pointer" onclick="ProfilePage.toggleAvatarMenu()" title="Profile options">' + avatarContent + '</div>' +
             roleBadge +
-            '<div id="profile-avatar-menu" class="notifications-dropdown hidden" style="position:absolute;left:0;bottom:calc(100% + 8px);top:auto;min-width:180px;z-index:100">' +
+            '<div id="profile-avatar-menu" class="profile-avatar-dropdown hidden" style="position:absolute;left:0;bottom:calc(100% + 8px);top:auto;min-width:180px;z-index:100">' +
               '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu(); ProfilePage.showEditModal(ProfilePage._currentProfile);" style="cursor:pointer;display:flex;align-items:center;gap:10px">' +
                 '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
                 '<span>Edit Profile</span>' +

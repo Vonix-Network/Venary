@@ -917,8 +917,26 @@ textarea.input-field {
     }
 }
 
-/* ========== Notifications Dropdown ========== */
-.notifications-dropdown {
+/* Profile avatar dropdown — reuses notification card styles but opens upward from avatar */
+.profile-avatar-dropdown {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    top: auto;
+    min-width: 180px;
+    width: 180px;
+    background: var(--bg-card);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-neon);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: fadeUp 0.2s ease;
+}
     position: absolute;
     bottom: 50px;
     left: 0;
