@@ -1677,3 +1677,192 @@ input[type="range"]::-moz-range-thumb {
         animation-duration: 0.2s;
     }
 }
+
+/* ========== Friends Page — Contact List Layout ========== */
+.friends-search-bar {
+    position: relative;
+    margin-bottom: var(--space-lg);
+}
+
+.friends-search-bar svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.friends-search-bar .input-field {
+    width: 100%;
+    padding-left: 42px;
+    border-radius: var(--radius-xl);
+}
+
+/* Contact-list style rows */
+.friends-list {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.friend-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background var(--transition-fast);
+    animation: fadeInUp 0.25s ease-out both;
+}
+
+.friend-row:last-child {
+    border-bottom: none;
+}
+
+.friend-row:hover {
+    background: rgba(255,255,255,0.02);
+}
+
+.friend-row-info {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.friend-row-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.friend-row-status {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.friend-row-status.online {
+    color: var(--neon-green);
+}
+
+.friend-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.friend-action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.friend-action-btn:hover {
+    background: rgba(41,182,246,0.1);
+    border-color: rgba(41,182,246,0.3);
+    color: var(--neon-cyan);
+}
+
+.friend-action-btn.friend-action-remove:hover {
+    background: rgba(255,45,120,0.1);
+    border-color: rgba(255,45,120,0.3);
+    color: var(--neon-pink);
+}
+
+.friends-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    padding: 4px 0 8px;
+}
+
+/* Mobile overrides */
+@media (max-width: 768px) {
+    .friends-page {
+        max-width: 100%;
+    }
+
+    .friends-page .page-header {
+        display: none;
+    }
+
+    .friends-search-bar {
+        margin-bottom: 0;
+        border-radius: 0;
+        border-bottom: 1px solid var(--border-subtle);
+        background: var(--bg-secondary);
+        padding: 10px 14px;
+    }
+
+    .friends-search-bar .input-field {
+        border-radius: var(--radius-full);
+        font-size: 16px;
+        background: var(--bg-tertiary);
+    }
+
+    .friends-search-bar svg {
+        left: 28px;
+    }
+
+    .tabs {
+        border-radius: 0;
+        margin-bottom: 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .friends-list {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        border-top: none;
+    }
+
+    .friend-row {
+        padding: 12px 14px;
+    }
+
+    .friend-action-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .friends-section-label {
+        padding: 12px 14px 4px;
+    }
+
+    /* Search results full width */
+    .search-results {
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: calc(56px + env(safe-area-inset-top) + 110px);
+        border-radius: var(--radius-lg);
+        margin: 0 8px;
+        max-height: 60vh;
+        overflow-y: auto;
+        z-index: 200;
+    }
+
+    .search-result-item {
+        padding: 12px 16px;
+    }
+}
