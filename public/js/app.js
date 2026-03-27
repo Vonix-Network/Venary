@@ -132,6 +132,18 @@ var App = {
             var enabledExts = extensions.filter(function (e) { return e.enabled; });
             if (enabledExts.length === 0) return;
 
+            // Fetch per-extension access grants for the current user.
+            // Currently only pterodactyl-panel gates its nav behind a DB permission.
+            var pteroAccess = false;
+            var hasPtero = enabledExts.some(function (e) { return e.id === 'pterodactyl-panel'; });
+            if (hasPtero && API.token) {
+                try {
+                    var ar = await API.get('/api/ext/pterodactyl-panel/access/me');
+                    pteroAccess = !!ar.granted;
+                } catch { pteroAccess = false; }
+            }
+            this._extAccessMap = { 'pterodactyl-panel': pteroAccess };
+
             // Load CSS files
             enabledExts.forEach(function (ext) {
                 (ext.css || []).forEach(function (cssPath) {
@@ -151,7 +163,7 @@ var App = {
             });
             await Promise.all(loadPromises);
 
-            // Inject nav links
+            // Inject nav links (access-gated entries filtered here)
             this._injectNavLinks(enabledExts);
 
             console.log('🧩 Loaded ' + enabledExts.length + ' extension(s)');
@@ -201,8 +213,12 @@ var App = {
 
         var html = '';
         var allNavItems = [];
+        var accessMap = App._extAccessMap || {};
 
         extensions.forEach(function (ext) {
+            // Skip nav entirely if this extension requires an access grant the user doesn't have
+            if (accessMap.hasOwnProperty(ext.id) && !accessMap[ext.id]) return;
+
             (ext.nav || []).forEach(function (nav) {
                 var item = { ...nav, extId: ext.id };
                 allNavItems.push(item);
