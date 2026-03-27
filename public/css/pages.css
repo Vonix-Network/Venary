@@ -1594,7 +1594,7 @@ input[type="range"]::-moz-range-thumb {
     .comment-input-wrapper { gap: 8px; }
     .comment-input { font-size: 16px; }
 
-    /* Composer — sticky, clean */
+    /* Composer — clean, scrolls with content */
     .post-composer {
         border-radius: 0;
         border-left: none;
@@ -1602,17 +1602,12 @@ input[type="range"]::-moz-range-thumb {
         border-top: none;
         margin-bottom: 0;
         padding: 10px 14px;
-        position: sticky;
-        top: calc(56px + env(safe-area-inset-top));
-        z-index: 10;
-        background: rgba(5, 6, 10, 0.97);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-subtle);
     }
 
     .post-composer:focus-within {
-        box-shadow: 0 2px 20px rgba(41,182,246,0.15);
+        box-shadow: none;
     }
 
     .composer-input {
