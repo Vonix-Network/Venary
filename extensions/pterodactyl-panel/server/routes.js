@@ -5,7 +5,6 @@
 'use strict';
 
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
 const PterodactylClient = require('./pterodactyl-client');
 
 /**
@@ -94,7 +93,8 @@ module.exports = function (extDb) {
         try {
             const row = await extDb.get('SELECT user_id FROM pterodactyl_access WHERE user_id = ?', [req.user.id]);
             res.json({ granted: !!row });
-        } catch {
+        } catch (err) {
+            console.error('[Pterodactyl] access/me error:', err.message);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -104,7 +104,8 @@ module.exports = function (extDb) {
         try {
             const rows = await extDb.all('SELECT user_id, granted_at FROM pterodactyl_access');
             res.json(rows);
-        } catch {
+        } catch (err) {
+            console.error('[Pterodactyl] access/users error:', err.message);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -117,11 +118,12 @@ module.exports = function (extDb) {
             if (!user) return res.status(404).json({ error: 'User not found' });
 
             await extDb.run(
-                'INSERT OR IGNORE INTO pterodactyl_access (user_id, granted_at) VALUES (?, ?)',
+                'INSERT INTO pterodactyl_access (user_id, granted_at) VALUES (?, ?) ON CONFLICT(user_id) DO NOTHING',
                 [userId, new Date().toISOString()]
             );
             res.json({ granted: true, user_id: userId });
-        } catch {
+        } catch (err) {
+            console.error('[Pterodactyl] Grant access error:', err.message);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -131,7 +133,8 @@ module.exports = function (extDb) {
         try {
             await extDb.run('DELETE FROM pterodactyl_access WHERE user_id = ?', [req.params.userId]);
             res.json({ granted: false, user_id: req.params.userId });
-        } catch {
+        } catch (err) {
+            console.error('[Pterodactyl] Revoke access error:', err.message);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -144,7 +147,8 @@ module.exports = function (extDb) {
             const rows = await extDb.all('SELECT key, value FROM pterodactyl_settings WHERE key != ?', ['api_key']);
             const settings = Object.fromEntries(rows.map(r => [r.key, r.value]));
             res.json({ base_url: settings.base_url || '', server_id: settings.server_id || '' });
-        } catch {
+        } catch (err) {
+            console.error('[Pterodactyl] GET settings error:', err.message);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -179,7 +183,8 @@ module.exports = function (extDb) {
 
             // Response MUST NOT include api_key
             res.json({ ok: true, base_url: base_url.trim(), server_id: server_id.trim() });
-        } catch {
+        } catch (err) {
+            console.error('[Pterodactyl] POST settings error:', err.message);
             res.status(500).json({ error: 'Server error' });
         }
     });
