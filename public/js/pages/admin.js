@@ -22,7 +22,9 @@ var AdminPage = {
 
     // Hide main nav and expand container to full width
     var mainNav = document.getElementById('main-nav');
+    var mobileBottomNav = document.getElementById('mobile-bottom-nav');
     if (mainNav) mainNav.classList.add('hidden');
+    if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
     container.classList.add('full-width', 'admin-fullscreen');
 
     const isAdmin = App.currentUser.role === 'admin' || App.currentUser.role === 'superadmin';

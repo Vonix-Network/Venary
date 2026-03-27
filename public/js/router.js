@@ -22,8 +22,12 @@ var Router = {
         var segments = path.split('/').filter(Boolean);
         if (segments[0] !== 'admin') {
             var mainNav = document.getElementById('main-nav');
+            var mobileBottomNav = document.getElementById('mobile-bottom-nav');
             var pageContainer = document.getElementById('page-container');
             if (mainNav) mainNav.classList.remove('hidden');
+            // Only restore mobileBottomNav if we are on a mobile device (where it should be visible normally)
+            // But we can just remove hidden, as its visibility is controlled via CSS media queries anyway
+            if (mobileBottomNav) mobileBottomNav.classList.remove('hidden');
             if (pageContainer) {
                 pageContainer.classList.remove('admin-fullscreen');
                 pageContainer.classList.remove('full-width');
