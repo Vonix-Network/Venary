@@ -103,16 +103,6 @@ const ProfilePage = {
           ? '<div style="position:relative">' +
             '<div class="profile-avatar" id="profile-avatar-trigger" style="cursor:pointer" onclick="ProfilePage.toggleAvatarMenu()" title="Profile options">' + avatarContent + '</div>' +
             roleBadge +
-            '<div id="profile-avatar-menu" class="profile-avatar-dropdown hidden" style="position:absolute;left:0;bottom:calc(100% + 8px);top:auto;min-width:180px;z-index:100">' +
-              '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu(); ProfilePage.showEditModal(ProfilePage._currentProfile);" style="cursor:pointer;display:flex;align-items:center;gap:10px">' +
-                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-                '<span>Edit Profile</span>' +
-              '</div>' +
-              '<div id="profile-donation-menu-item" class="notification-item" style="cursor:pointer;display:flex;align-items:center;gap:10px">' +
-                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' +
-                '<span>Donation History</span>' +
-              '</div>' +
-            '</div>' +
             '</div>'
           : '<div class="profile-avatar">' + avatarContent + '</div>' + roleBadge
         ) +
@@ -147,21 +137,8 @@ const ProfilePage = {
       ProfilePage._loadDonationButton(profile.id, isOwnProfile);
 
       if (isOwnProfile) {
-        var editBtn = document.getElementById('edit-profile-btn');
-        if (editBtn) editBtn.addEventListener('click', function () { ProfilePage.showEditModal(profile); });
         var customizeBtn = document.getElementById('customize-skin-btn');
         if (customizeBtn) customizeBtn.addEventListener('click', function () { ProfilePage.showCustomizeModal(profile); });
-
-        // Wire up donation history menu item
-        var donationMenuItem = document.getElementById('profile-donation-menu-item');
-        if (donationMenuItem) {
-          var donationsEnabled = App.extensions && App.extensions.some(function(e) { return e.id === 'donations' && e.enabled; });
-          if (donationsEnabled) {
-            donationMenuItem.addEventListener('click', function () { ProfilePage.closeAvatarMenu(); ProfilePage.showDonationHistory(); });
-          } else {
-            donationMenuItem.style.display = 'none';
-          }
-        }
 
         // Close avatar menu on outside click
         document.addEventListener('click', function onOutsideClick(e) {
@@ -178,13 +155,50 @@ const ProfilePage = {
   },
 
   toggleAvatarMenu() {
-    var menu = document.getElementById('profile-avatar-menu');
-    if (menu) menu.classList.toggle('hidden');
+    var existing = document.getElementById('profile-avatar-menu');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    var trigger = document.getElementById('profile-avatar-trigger');
+    if (!trigger) return;
+    var rect = trigger.getBoundingClientRect();
+
+    var donationsEnabled = App.extensions && App.extensions.some(function(e) { return e.id === 'donations' && e.enabled; });
+
+    var menu = document.createElement('div');
+    menu.id = 'profile-avatar-menu';
+    menu.className = 'profile-avatar-dropdown';
+    menu.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + (rect.top - 8) + 'px;transform:translateY(-100%);z-index:9999;';
+    menu.innerHTML =
+      '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu(); ProfilePage.showEditModal(ProfilePage._currentProfile);" style="cursor:pointer;display:flex;align-items:center;gap:10px">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+        '<span>Edit Profile</span>' +
+      '</div>' +
+      (donationsEnabled
+        ? '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu(); ProfilePage.showDonationHistory();" style="cursor:pointer;display:flex;align-items:center;gap:10px">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' +
+            '<span>Donation History</span>' +
+          '</div>'
+        : '');
+
+    document.body.appendChild(menu);
+
+    // Close on outside click
+    setTimeout(function() {
+      document.addEventListener('click', function handler(e) {
+        if (!menu.contains(e.target) && e.target !== trigger && !trigger.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 0);
   },
 
   closeAvatarMenu() {
     var menu = document.getElementById('profile-avatar-menu');
-    if (menu) menu.classList.add('hidden');
+    if (menu) menu.remove();
   },
 
   // ──────────────────────────────────────────────
