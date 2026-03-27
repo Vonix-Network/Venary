@@ -481,3 +481,27 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Player count badge ── */
+.ptero-player-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(102,187,106,0.1);
+    border: 1px solid rgba(102,187,106,0.3);
+    color: #a5d6a7;
+    font-family: var(--font-mono);
+}
+
+.ptero-player-count::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #66bb6a;
+    flex-shrink: 0;
+}

@@ -43,9 +43,12 @@ var PterodactylPage = {
                         <select id="ptero-server-select" class="ptero-server-select" style="display:none"
                                 onchange="PterodactylPage._switchServer(this.value)"></select>
                     </div>
-                    <div id="ptero-status-pill" class="ptero-status-pill ptero-status-offline">
-                        <span class="ptero-status-dot"></span>
-                        <span id="ptero-status-text">OFFLINE</span>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span id="ptero-player-count" class="ptero-player-count" style="display:none"></span>
+                        <div id="ptero-status-pill" class="ptero-status-pill ptero-status-offline">
+                            <span class="ptero-status-dot"></span>
+                            <span id="ptero-status-text">OFFLINE</span>
+                        </div>
                     </div>
                 </div>
 
@@ -214,6 +217,10 @@ var PterodactylPage = {
         try {
             const r = await API.get('/api/ext/pterodactyl-panel/status?server=' + encodeURIComponent(this._serverId));
             this._setStatus(r.status);
+            // Also seed stats from the initial REST response
+            if (r.resources && Object.keys(r.resources).length) {
+                this._updateStats(r.resources);
+            }
         } catch { this._setStatus('offline'); }
     },
 
@@ -231,6 +238,33 @@ var PterodactylPage = {
         const s = MAP[state] || MAP.offline;
         pill.className = 'ptero-status-pill ' + s.cls;
         text.textContent = s.label;
+
+        // Hide player count when offline
+        if (state === 'offline' || state === 'stopping') {
+            const pc = document.getElementById('ptero-player-count');
+            if (pc) pc.style.display = 'none';
+        }
+    },
+
+    _setPlayerCount(online, max) {
+        const el = document.getElementById('ptero-player-count');
+        if (!el) return;
+        if (this._status !== 'running') { el.style.display = 'none'; return; }
+        el.textContent = online + ' / ' + max + ' players';
+        el.style.display = 'flex';
+    },
+
+    /** Parse player count from a Minecraft console line. */
+    _parsePlayerCount(line) {
+        // "There are X of a max of Y players online"
+        let m = line.match(/There are (\d+) of a max(?: of)? (\d+) players/i);
+        if (m) { this._setPlayerCount(parseInt(m[1]), parseInt(m[2])); return; }
+        // "Players Online: X/Y"
+        m = line.match(/Players Online:\s*(\d+)\/(\d+)/i);
+        if (m) { this._setPlayerCount(parseInt(m[1]), parseInt(m[2])); return; }
+        // "[Server thread/INFO]: ChaseRubble joined the game" — increment
+        // "[Server thread/INFO]: ChaseRubble left the game" — decrement
+        // These are handled by the /list command poll instead
     },
 
     // ── Stats ─────────────────────────────────────────────────────────────────
@@ -402,6 +436,7 @@ var PterodactylPage = {
         socket.on('connect', () => {
             this._dismissError();
             if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; }
+            if (this._playerPoll) { clearInterval(this._playerPoll); this._playerPoll = null; }
         });
         socket.on('history', ({ lines }) => {
             lines.forEach(l => this._appendLine(l, false));
@@ -410,6 +445,7 @@ var PterodactylPage = {
         socket.on('console:line', ({ line }) => this._appendLine(line, true));
         socket.on('status:update', ({ state }) => this._setStatus(state));
         socket.on('stats:update', (stats) => this._updateStats(stats));
+        socket.on('players:update', ({ online, max }) => this._setPlayerCount(online, max));
         socket.on('console:error', ({ message }) => {
             this._showError(message || 'Console stream unavailable.');
             this._startStatusPoll();
@@ -441,9 +477,11 @@ var PterodactylPage = {
 
         const div = document.createElement('div');
         div.className = 'ptero-line';
-        // Use innerHTML to render ANSI colors
         div.innerHTML = this._ansiToHtml(line);
         el.appendChild(div);
+
+        // Parse player count from console output
+        // this._parsePlayerCount(line); — disabled, using server-side MC pinger instead
 
         if (scroll && this._autoScroll) this._scrollToBottom();
     },

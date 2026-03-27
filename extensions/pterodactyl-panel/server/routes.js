@@ -273,7 +273,7 @@ module.exports = function (extDb) {
 
     // ── Server status ─────────────────────────────────────────────────────────
 
-    // GET /status?server={identifier} — current server state
+    // GET /status?server={identifier} — current server state + resources
     // Pterodactyl API: GET /api/client/servers/{server}/resources
     router.get('/status', authenticateToken, requirePanelAccess, async (req, res) => {
         try {
@@ -395,17 +395,64 @@ module.exports = function (extDb) {
             },
             (msg) => {
                 console.error('[Pterodactyl] Console stream error for', serverId, ':', msg);
+                if (stream._statsPoll) { clearInterval(stream._statsPoll); stream._statsPoll = null; }
+                if (stream._playerPoll) { clearInterval(stream._playerPoll); stream._playerPoll = null; }
                 consoleStreams.delete(serverId);
                 ns.to('server:' + serverId).emit('console:error', { message: msg });
             },
             (stats) => {
-                // Forward live resource stats to all clients watching this server
                 ns.to('server:' + serverId).emit('stats:update', stats);
             }
         ).catch((err) => {
             console.error('[Pterodactyl] connectConsole threw for', serverId, ':', err.message);
+            if (stream._statsPoll) { clearInterval(stream._statsPoll); stream._statsPoll = null; }
+            if (stream._playerPoll) { clearInterval(stream._playerPoll); stream._playerPoll = null; }
             consoleStreams.delete(serverId);
         });
+
+        // Poll REST /resources every 3s as the primary stats source.
+        // Pterodactyl's WS 'stats' event is unreliable without a daemon subscription.
+        stream._statsPoll = setInterval(async () => {
+            try {
+                const result = await streamClient._request('GET', '/api/client/servers/' + serverId + '/resources');
+                if (result.statusCode !== 200) return;
+                const attrs = result.body && result.body.attributes;
+                if (!attrs) return;
+                const state = attrs.current_state;
+                if (state) ns.to('server:' + serverId).emit('status:update', { state });
+                if (attrs.resources) ns.to('server:' + serverId).emit('stats:update', attrs.resources);
+            } catch { /* ignore — WS error handler will clean up */ }
+        }, 3000);
+
+        // Poll player count every 15s using the server's allocation IP/port.
+        // Uses the Minecraft pinger if available — no console pollution.
+        stream._playerPoll = setInterval(async () => {
+            try {
+                // Get server allocation to find IP:port
+                const infoResult = await streamClient._request('GET', '/api/client/servers/' + serverId);
+                if (infoResult.statusCode !== 200) return;
+                const a = infoResult.body && infoResult.body.attributes;
+                if (!a) return;
+                const alloc = a.relationships && a.relationships.allocations &&
+                    a.relationships.allocations.data && a.relationships.allocations.data[0];
+                if (!alloc) return;
+                const ip = alloc.attributes.ip_alias || alloc.attributes.ip;
+                const port = alloc.attributes.port;
+                if (!ip || !port) return;
+
+                // Use Minecraft pinger if available
+                try {
+                    const { smartPing } = require('../../minecraft/server/pinger');
+                    const ping = await smartPing(ip, port, false);
+                    if (ping && ping.players) {
+                        ns.to('server:' + serverId).emit('players:update', {
+                            online: ping.players.online || 0,
+                            max: ping.players.max || 0,
+                        });
+                    }
+                } catch { /* pinger not available or not a MC server — skip */ }
+            } catch { /* ignore */ }
+        }, 15000);
     }
 
     /**

@@ -115,24 +115,24 @@ class PterodactylClient {
   }
 
   /**
-   * Fetch the current server resource state and normalise it.
-   * @returns {Promise<{ status: 'running'|'offline'|'starting'|'stopping' }>}
+   * Fetch the current server resource state and full stats.
+   * @returns {Promise<{ status: string, resources: object }>}
    */
   async getServerStatus() {
     const path = `/api/client/servers/${this.serverId}/resources`;
     const { body } = await this._request('GET', path);
 
-    const raw = body?.attributes?.current_state ?? '';
+    const attrs = body?.attributes || {};
+    const raw = attrs.current_state ?? '';
     const STATUS_MAP = {
-      running: 'running',
-      online: 'running',
-      offline: 'offline',
-      stopped: 'offline',
-      starting: 'starting',
-      stopping: 'stopping',
+      running: 'running', online: 'running',
+      offline: 'offline', stopped: 'offline',
+      starting: 'starting', stopping: 'stopping',
     };
-    const status = STATUS_MAP[raw] ?? 'offline';
-    return { status };
+    return {
+      status: STATUS_MAP[raw] ?? 'offline',
+      resources: attrs.resources || {},
+    };
   }
 
   /**
