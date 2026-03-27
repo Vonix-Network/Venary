@@ -332,19 +332,20 @@ var ImagesHook = {
                 body: formData
             });
 
-            // Safely parse JSON — non-JSON responses (e.g. HTML error pages) would otherwise throw a cryptic SyntaxError
+            // Safely parse JSON — always attempt JSON first; only fall back on parse failure
+            // (avoids false positives from content-type mismatches on some proxy setups)
             let result;
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                result = await response.json();
-            } else {
-                const text = await response.text();
-                // Surface a clean message instead of raw HTML
-                const fallback = response.status >= 500
+            const rawBody = await response.text();
+            try {
+                result = JSON.parse(rawBody);
+            } catch {
+                // Non-JSON body (e.g. HTML error page from Cloudflare/nginx/Express crash)
+                const status = response.status;
+                const fallback = status >= 500
                     ? 'The upload server encountered an error. Please try again.'
-                    : response.status === 413
+                    : status === 413
                         ? 'File is too large to upload.'
-                        : response.status === 401 || response.status === 403
+                        : status === 401 || status === 403
                             ? 'You are not authorised to upload files.'
                             : 'Upload failed. Please try again.';
                 throw new Error(fallback);
