@@ -49,10 +49,7 @@ const ProfilePage = {
 
       var actionsHtml = '';
       if (isOwnProfile) {
-        actionsHtml = '<button class="btn btn-secondary" id="edit-profile-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit Profile</button>';
-        if (App.currentUser && App.currentUser.role === 'admin') {
-          actionsHtml += ' <a href="#/admin" class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Admin Panel</a>';
-        }
+        // no buttons here — actions moved to avatar dropdown
       } else {
         actionsHtml = this.renderFriendButton(profile) +
           ' <button class="btn btn-secondary" onclick="window.location.hash=\'#/chat/' + profile.id + '\'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>';
@@ -102,8 +99,23 @@ const ProfilePage = {
         (profile.minecraft_uuid ? skinViewerHtml : '') +
         '<div class="profile-info">' +
         '<div class="profile-avatar-section">' +
-        '<div class="profile-avatar">' + avatarContent + '</div>' +
-        roleBadge +
+        (isOwnProfile
+          ? '<div style="position:relative">' +
+            '<div class="profile-avatar" id="profile-avatar-trigger" style="cursor:pointer" onclick="ProfilePage.toggleAvatarMenu()" title="Profile options">' + avatarContent + '</div>' +
+            roleBadge +
+            '<div id="profile-avatar-menu" class="notifications-dropdown hidden" style="position:absolute;left:0;top:calc(100% + 8px);min-width:180px;z-index:100">' +
+              '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu(); ProfilePage.showEditModal(ProfilePage._currentProfile);" style="cursor:pointer;display:flex;align-items:center;gap:10px">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+                '<span>Edit Profile</span>' +
+              '</div>' +
+              '<div id="profile-donation-menu-item" class="notification-item" style="cursor:pointer;display:flex;align-items:center;gap:10px">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' +
+                '<span>Donation History</span>' +
+              '</div>' +
+            '</div>' +
+            '</div>'
+          : '<div class="profile-avatar">' + avatarContent + '</div>' + roleBadge
+        ) +
         '<div id="profile-donation-btn-area"></div>' +
         '<div class="profile-actions">' + actionsHtml + '</div>' +
         '</div>' +
@@ -139,10 +151,40 @@ const ProfilePage = {
         if (editBtn) editBtn.addEventListener('click', function () { ProfilePage.showEditModal(profile); });
         var customizeBtn = document.getElementById('customize-skin-btn');
         if (customizeBtn) customizeBtn.addEventListener('click', function () { ProfilePage.showCustomizeModal(profile); });
+
+        // Wire up donation history menu item
+        var donationMenuItem = document.getElementById('profile-donation-menu-item');
+        if (donationMenuItem) {
+          var donationsEnabled = App.extensions && App.extensions.some(function(e) { return e.id === 'donations' && e.enabled; });
+          if (donationsEnabled) {
+            donationMenuItem.addEventListener('click', function () { ProfilePage.closeAvatarMenu(); ProfilePage.showDonationHistory(); });
+          } else {
+            donationMenuItem.style.display = 'none';
+          }
+        }
+
+        // Close avatar menu on outside click
+        document.addEventListener('click', function onOutsideClick(e) {
+          var menu = document.getElementById('profile-avatar-menu');
+          var trigger = document.getElementById('profile-avatar-trigger');
+          if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && e.target !== trigger && !trigger.contains(e.target)) {
+            menu.classList.add('hidden');
+          }
+        });
       }
     } catch (err) {
       container.innerHTML = '<div class="empty-state"><h3>User not found</h3><p>' + (err.message || '') + '</p></div>';
     }
+  },
+
+  toggleAvatarMenu() {
+    var menu = document.getElementById('profile-avatar-menu');
+    if (menu) menu.classList.toggle('hidden');
+  },
+
+  closeAvatarMenu() {
+    var menu = document.getElementById('profile-avatar-menu');
+    if (menu) menu.classList.add('hidden');
   },
 
   // ──────────────────────────────────────────────
@@ -437,19 +479,11 @@ const ProfilePage = {
     const donationsEnabled = App.extensions && App.extensions.some(function(e) { return e.id === 'donations' && e.enabled; });
     if (!donationsEnabled) return;
 
-    try {
-      // Fetch rank for this user via the public rank endpoint
-      // We show the button for everyone; history only for own profile
-      if (isOwnProfile) {
-        area.innerHTML = '<button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%" onclick="ProfilePage.showDonationHistory()">💰 Donation History</button>';
-      } else {
-        // For other users, just show their rank badge if they have one
-        // (already shown via App.renderRankBadge in the header)
-        area.innerHTML = '';
-      }
-    } catch (e) {
-      area.innerHTML = '';
-    }
+    // For own profile, donation history is now in the avatar dropdown menu
+    if (isOwnProfile) return;
+
+    // For other users, nothing to show here
+    area.innerHTML = '';
   },
 
   async showDonationHistory() {

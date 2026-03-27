@@ -271,6 +271,15 @@ var App = {
             }
         }
 
+        // Close profile menu on outside click
+        document.addEventListener('click', function (e) {
+            var dropdown = document.getElementById('profile-menu-dropdown');
+            var avatar = document.getElementById('nav-avatar');
+            if (dropdown && !dropdown.classList.contains('hidden') && avatar && !dropdown.contains(e.target) && !avatar.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
         // Show mod/admin buttons
         var modShieldBtn = document.getElementById('mod-shield-btn');
         if (modShieldBtn) modShieldBtn.classList.add('hidden');
@@ -354,6 +363,18 @@ var App = {
     // Notifications Dropdown System
     // ===========================================
     isNotificationsOpen: false,
+
+    toggleProfileMenu(e) {
+        if (e) e.stopPropagation();
+        var dropdown = document.getElementById('profile-menu-dropdown');
+        if (!dropdown) return;
+        dropdown.classList.toggle('hidden');
+    },
+
+    closeProfileMenu() {
+        var dropdown = document.getElementById('profile-menu-dropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+    },
 
     async toggleNotifications(e) {
         if (e) e.stopPropagation();
