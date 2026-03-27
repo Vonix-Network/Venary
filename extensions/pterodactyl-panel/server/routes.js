@@ -1,5 +1,5 @@
 /* =======================================
-   Pterodactyl Panel Extension â€” API Routes
+   Pterodactyl Panel Extension Ã¢â‚¬â€ API Routes
    Factory pattern: receives ext db instance.
    ======================================= */
 'use strict';
@@ -17,7 +17,7 @@ module.exports = function (extDb) {
     const { authenticateToken, JWT_SECRET } = require('../../../server/middleware/auth');
     const jwt = require('jsonwebtoken');
 
-    // â”€â”€ Singleton PterodactylClient instance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Singleton PterodactylClient instance Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     /** @type {PterodactylClient|null} */
     let pteroClient = null;
     let consoleStarted = false;
@@ -41,7 +41,7 @@ module.exports = function (extDb) {
         return pteroClient;
     }
 
-    // â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Middleware Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     /**
      * Accepts admin, superadmin, moderator roles.
@@ -84,9 +84,9 @@ module.exports = function (extDb) {
             .catch(() => res.status(500).json({ error: 'Server error' }));
     }
 
-    // â”€â”€ Access endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Access endpoints Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-    // GET /access/me â€” check own panel access (used by client nav gating)
+    // GET /access/me Ã¢â‚¬â€ check own panel access (used by client nav gating)
     router.get('/access/me', authenticateToken, async (req, res) => {
         try {
             const row = await extDb.get('SELECT user_id FROM pterodactyl_access WHERE user_id = ?', [req.user.id]);
@@ -97,7 +97,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /access/users â€” list all users with their access state (admin+)
+    // GET /access/users Ã¢â‚¬â€ list all users with their access state (admin+)
     router.get('/access/users', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const rows = await extDb.all('SELECT user_id, granted_at FROM pterodactyl_access');
@@ -108,7 +108,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /access/:userId â€” grant panel access (superadmin only)
+    // POST /access/:userId Ã¢â‚¬â€ grant panel access (superadmin only)
     router.post('/access/:userId', authenticateToken, requireSuperadmin, async (req, res) => {
         try {
             const { userId } = req.params;
@@ -126,7 +126,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // DELETE /access/:userId â€” revoke panel access (superadmin only)
+    // DELETE /access/:userId Ã¢â‚¬â€ revoke panel access (superadmin only)
     router.delete('/access/:userId', authenticateToken, requireSuperadmin, async (req, res) => {
         try {
             await extDb.run('DELETE FROM pterodactyl_access WHERE user_id = ?', [req.params.userId]);
@@ -137,36 +137,40 @@ module.exports = function (extDb) {
         }
     });
 
-    // â”€â”€ Settings endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Settings endpoints Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-    // GET /servers â€” list servers from Pterodactyl API (admin only, uses stored credentials)
+    // GET /servers Ã¢â‚¬â€ list servers from Pterodactyl API (admin only, uses stored credentials)
     router.get('/servers', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const client = await getClient();
             if (!client) return res.status(503).json({ error: 'Extension not configured. Save Base URL and API Key first.' });
 
             const result = await client._request('GET', '/api/client/servers');
+
+            if (result.statusCode === 401 || result.statusCode === 403) {
+                return res.status(502).json({ error: 'Pterodactyl API rejected the key. Use a Client API key (not Application key).', statusCode: result.statusCode });
+            }
             if (result.statusCode !== 200) {
-                return res.status(502).json({ error: 'Pterodactyl API error', detail: result.body?.errors?.[0]?.detail || `HTTP ${result.statusCode}` });
+                const detail = (result.body && result.body.errors && result.body.errors[0] && result.body.errors[0].detail) || (result.body && result.body.message) || JSON.stringify(result.body);
+                return res.status(502).json({ error: 'Pterodactyl returned HTTP ' + result.statusCode, detail: detail });
             }
 
-            // Normalize to minimal shape: id (short identifier), name, description
-            const servers = (result.body?.data || []).map(s => ({
-                id: s.attributes?.identifier,
-                uuid: s.attributes?.uuid,
-                name: s.attributes?.name,
-                description: s.attributes?.description || '',
-                status: s.attributes?.status || 'unknown',
-            }));
+            const servers = (result.body && result.body.data || []).map(function(s) { return {
+                id: s.attributes && s.attributes.identifier,
+                uuid: s.attributes && s.attributes.uuid,
+                name: s.attributes && s.attributes.name,
+                description: (s.attributes && s.attributes.description) || '',
+                status: (s.attributes && s.attributes.status) || 'unknown',
+            }; });
 
             res.json(servers);
         } catch (err) {
             console.error('[Pterodactyl] GET servers error:', err.message);
-            res.status(500).json({ error: 'Server error' });
+            res.status(502).json({ error: err.message || 'Failed to reach Pterodactyl API. Check the Base URL is correct and reachable.' });
         }
     });
 
-    // GET /settings â€” returns base_url and server_id only (NEVER api_key)
+    // GET /settings Ã¢â‚¬â€ returns base_url and server_id only (NEVER api_key)
     router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const rows = await extDb.all('SELECT key, value FROM pterodactyl_settings WHERE key != ?', ['api_key']);
@@ -178,7 +182,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /settings â€” save base_url, api_key, server_id
+    // POST /settings Ã¢â‚¬â€ save base_url, api_key, server_id
     router.post('/settings', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { base_url, api_key, server_id } = req.body;
@@ -214,9 +218,9 @@ module.exports = function (extDb) {
         }
     });
 
-    // â”€â”€ Server status endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Server status endpoint Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-    // GET /status â€” current server state
+    // GET /status Ã¢â‚¬â€ current server state
     router.get('/status', authenticateToken, requirePanelAccess, async (req, res) => {
         try {
             const serverId = req.query.server;
@@ -238,9 +242,9 @@ module.exports = function (extDb) {
         }
     });
 
-    // â”€â”€ Power action endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Power action endpoint Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-    // POST /power â€” send power action
+    // POST /power Ã¢â‚¬â€ send power action
     router.post('/power', authenticateToken, requirePanelAccess, async (req, res) => {
         try {
             const { action, server: serverId } = req.body;
@@ -268,7 +272,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // â”€â”€ Socket.IO console namespace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Socket.IO console namespace Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     /**
      * Attach the /pterodactyl-console Socket.IO namespace.
