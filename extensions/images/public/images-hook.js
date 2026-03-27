@@ -339,12 +339,12 @@ var ImagesHook = {
             try {
                 result = JSON.parse(rawBody);
             } catch {
-                // Non-JSON body (e.g. HTML error page from Cloudflare/nginx/Express crash)
+                // Non-JSON body (e.g. HTML 413 from nginx, or proxy/Express crash)
                 const status = response.status;
-                const fallback = status >= 500
-                    ? 'The upload server encountered an error. Please try again.'
-                    : status === 413
-                        ? 'File is too large to upload.'
+                const fallback = status === 413
+                    ? 'Your server or proxy rejected the file as too large. Check nginx client_max_body_size.'
+                    : status >= 500
+                        ? 'The upload server encountered an error. Please try again.'
                         : status === 401 || status === 403
                             ? 'You are not authorised to upload files.'
                             : 'Upload failed. Please try again.';

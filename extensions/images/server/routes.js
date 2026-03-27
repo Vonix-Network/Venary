@@ -68,7 +68,20 @@ module.exports = (extDb) => {
     });
 
     // Server-side Upload Proxy (For Catbox / Local)
-    router.post('/upload', authenticateToken, upload.single('media'), async (req, res) => {
+    // Multer error handler wrapper — converts multer's LIMIT_FILE_SIZE into a clean JSON 413
+    const uploadMiddleware = (req, res, next) => {
+        upload.single('media')(req, res, (err) => {
+            if (err && err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(413).json({ error: 'File exceeds the 200MB upload limit.' });
+            }
+            if (err) {
+                return res.status(400).json({ error: 'Upload error: ' + err.message });
+            }
+            next();
+        });
+    };
+
+    router.post('/upload', authenticateToken, uploadMiddleware, async (req, res) => {
         try {
             if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
