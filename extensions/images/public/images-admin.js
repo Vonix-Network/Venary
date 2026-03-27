@@ -32,6 +32,7 @@ var ImagesAdminPage = {
                         <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:4px">Storage Strategy</label>
                         <select id="cfg-storage-type" class="input-field" onchange="ImagesAdminPage.toggleExtConfig(this.value)">
                             <option value="local">Local Storage (Current Server)</option>
+                            <option value="nullpointer">0x0.st (Free, No Key Required)</option>
                             <option value="imgbb">ImgBB (Free External API)</option>
                             <option value="catbox">Catbox.moe (Unlimited Free Host)</option>
                             <option value="s3">Amazon S3 / DigitalOcean Spaces</option>

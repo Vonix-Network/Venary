@@ -80,7 +80,32 @@ module.exports = (extDb) => {
                 return res.status(403).json({ error: 'Uploads are disabled' });
             }
 
-            // 1. Catbox Strategy
+            // 1. 0x0.st Strategy (no API key required, 512MB max, 30d–1yr retention)
+            if (settings.storage_type === 'nullpointer') {
+                const formData = new FormData();
+                const blob = new Blob([req.file.buffer], { type: req.file.mimetype || 'application/octet-stream' });
+                formData.append('file', blob, req.file.originalname || 'upload');
+
+                const response = await fetch('https://0x0.st', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'User-Agent': 'Venary-Forum/1.0' }
+                });
+
+                const rawText = await response.text();
+                const url = rawText ? rawText.trim() : '';
+                if (response.ok && url.startsWith('http')) {
+                    return res.json({ url });
+                } else {
+                    const isHtml = url.trimStart().startsWith('<');
+                    const reason = isHtml || !url
+                        ? `0x0.st returned an unexpected response (HTTP ${response.status}). The service may be temporarily unavailable.`
+                        : url;
+                    throw new Error(reason);
+                }
+            }
+
+            // 2. Catbox Strategy
             if (settings.storage_type === 'catbox') {
                 const formData = new FormData();
                 formData.append('reqtype', 'fileupload');
@@ -121,7 +146,7 @@ module.exports = (extDb) => {
                 }
             }
 
-            // 1b. ImgBB Strategy
+            // 3. ImgBB Strategy
             if (settings.storage_type === 'imgbb') {
                 const config = JSON.parse(settings.external_storage_config || '{}');
                 if (!config.imgbb_key) throw new Error('ImgBB API Key is not configured in Admin settings.');
@@ -148,7 +173,7 @@ module.exports = (extDb) => {
                 }
             }
 
-            // 1c. Local Strategy
+            // 4. Local Strategy
             if (settings.storage_type === 'local' || !settings.storage_type) {
                 const ext = path.extname(req.file.originalname) || '.png';
                 const fileName = uuidv4() + ext;
