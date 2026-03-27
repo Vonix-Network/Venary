@@ -1,5 +1,5 @@
 /* =======================================
-   Pterodactyl Panel Extension — API Routes
+   Pterodactyl Panel Extension â€” API Routes
    Factory pattern: receives ext db instance.
    ======================================= */
 'use strict';
@@ -17,7 +17,7 @@ module.exports = function (extDb) {
     const { authenticateToken, JWT_SECRET } = require('../../../server/middleware/auth');
     const jwt = require('jsonwebtoken');
 
-    // ── Singleton PterodactylClient instance ─────────────────────────────────
+    // â”€â”€ Singleton PterodactylClient instance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /** @type {PterodactylClient|null} */
     let pteroClient = null;
     let consoleStarted = false;
@@ -30,20 +30,18 @@ module.exports = function (extDb) {
     async function getClient() {
         const rows = await extDb.all('SELECT key, value FROM pterodactyl_settings');
         const cfg = Object.fromEntries(rows.map(r => [r.key, r.value]));
-        if (!cfg.base_url || !cfg.api_key || !cfg.server_id) return null;
-        if (!pteroClient ||
-            pteroClient.baseUrl !== cfg.base_url.replace(/\/$/, '') ||
-            pteroClient.serverId !== cfg.server_id) {
+        if (!cfg.base_url || !cfg.api_key) return null;
+        if (!pteroClient || pteroClient.baseUrl !== cfg.base_url.replace(/\/$/, '')) {
             pteroClient = new PterodactylClient({
                 baseUrl: cfg.base_url,
                 apiKey: cfg.api_key,
-                serverId: cfg.server_id,
+                serverId: cfg.server_id || '',
             });
         }
         return pteroClient;
     }
 
-    // ── Middleware ────────────────────────────────────────────────────────────
+    // â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Accepts admin, superadmin, moderator roles.
@@ -86,9 +84,9 @@ module.exports = function (extDb) {
             .catch(() => res.status(500).json({ error: 'Server error' }));
     }
 
-    // ── Access endpoints ──────────────────────────────────────────────────────
+    // â”€â”€ Access endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    // GET /access/me — check own panel access (used by client nav gating)
+    // GET /access/me â€” check own panel access (used by client nav gating)
     router.get('/access/me', authenticateToken, async (req, res) => {
         try {
             const row = await extDb.get('SELECT user_id FROM pterodactyl_access WHERE user_id = ?', [req.user.id]);
@@ -99,7 +97,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // GET /access/users — list all users with their access state (admin+)
+    // GET /access/users â€” list all users with their access state (admin+)
     router.get('/access/users', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const rows = await extDb.all('SELECT user_id, granted_at FROM pterodactyl_access');
@@ -110,7 +108,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /access/:userId — grant panel access (superadmin only)
+    // POST /access/:userId â€” grant panel access (superadmin only)
     router.post('/access/:userId', authenticateToken, requireSuperadmin, async (req, res) => {
         try {
             const { userId } = req.params;
@@ -128,7 +126,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // DELETE /access/:userId — revoke panel access (superadmin only)
+    // DELETE /access/:userId â€” revoke panel access (superadmin only)
     router.delete('/access/:userId', authenticateToken, requireSuperadmin, async (req, res) => {
         try {
             await extDb.run('DELETE FROM pterodactyl_access WHERE user_id = ?', [req.params.userId]);
@@ -139,9 +137,36 @@ module.exports = function (extDb) {
         }
     });
 
-    // ── Settings endpoints ────────────────────────────────────────────────────
+    // â”€â”€ Settings endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    // GET /settings — returns base_url and server_id only (NEVER api_key)
+    // GET /servers â€” list servers from Pterodactyl API (admin only, uses stored credentials)
+    router.get('/servers', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const client = await getClient();
+            if (!client) return res.status(503).json({ error: 'Extension not configured. Save Base URL and API Key first.' });
+
+            const result = await client._request('GET', '/api/client/servers');
+            if (result.statusCode !== 200) {
+                return res.status(502).json({ error: 'Pterodactyl API error', detail: result.body?.errors?.[0]?.detail || `HTTP ${result.statusCode}` });
+            }
+
+            // Normalize to minimal shape: id (short identifier), name, description
+            const servers = (result.body?.data || []).map(s => ({
+                id: s.attributes?.identifier,
+                uuid: s.attributes?.uuid,
+                name: s.attributes?.name,
+                description: s.attributes?.description || '',
+                status: s.attributes?.status || 'unknown',
+            }));
+
+            res.json(servers);
+        } catch (err) {
+            console.error('[Pterodactyl] GET servers error:', err.message);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
+    // GET /settings â€” returns base_url and server_id only (NEVER api_key)
     router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const rows = await extDb.all('SELECT key, value FROM pterodactyl_settings WHERE key != ?', ['api_key']);
@@ -153,7 +178,7 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /settings — save base_url, api_key, server_id
+    // POST /settings â€” save base_url, api_key, server_id
     router.post('/settings', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { base_url, api_key, server_id } = req.body;
@@ -189,46 +214,61 @@ module.exports = function (extDb) {
         }
     });
 
-    // ── Server status endpoint ────────────────────────────────────────────────
+    // â”€â”€ Server status endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    // GET /status — current server state
+    // GET /status â€” current server state
     router.get('/status', authenticateToken, requirePanelAccess, async (req, res) => {
         try {
+            const serverId = req.query.server;
+            if (!serverId) return res.status(400).json({ error: 'server query param required' });
+
             const client = await getClient();
             if (!client) return res.status(503).json({ error: 'Extension not configured' });
 
+            // Temporarily override serverId for this request
+            const origId = client.serverId;
+            client.serverId = serverId;
             const result = await client.getServerStatus();
+            client.serverId = origId;
+
             res.json(result);
         } catch (err) {
+            console.error('[Pterodactyl] status error:', err.message);
             res.status(502).json({ error: 'Failed to reach Pterodactyl API' });
         }
     });
 
-    // ── Power action endpoint ─────────────────────────────────────────────────
+    // â”€â”€ Power action endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    // POST /power — send power action
+    // POST /power â€” send power action
     router.post('/power', authenticateToken, requirePanelAccess, async (req, res) => {
         try {
-            const { action } = req.body;
+            const { action, server: serverId } = req.body;
             const VALID = ['start', 'stop', 'kill', 'restart'];
             if (!action || !VALID.includes(action)) {
                 return res.status(400).json({ error: `action must be one of: ${VALID.join(', ')}` });
             }
+            if (!serverId) return res.status(400).json({ error: 'server is required' });
 
             const client = await getClient();
             if (!client) return res.status(503).json({ error: 'Extension not configured' });
 
+            const origId = client.serverId;
+            client.serverId = serverId;
             const result = await client.sendPowerAction(action);
+            client.serverId = origId;
+
             if (result.statusCode >= 400) {
                 return res.status(502).json({ error: 'Pterodactyl API returned an error', detail: result.body?.errors?.[0]?.detail || '' });
             }
             res.json({ ok: true, action });
         } catch (err) {
+            console.error('[Pterodactyl] power error:', err.message);
             res.status(502).json({ error: 'Failed to reach Pterodactyl API' });
         }
     });
 
-    // ── Socket.IO console namespace ───────────────────────────────────────────
+    // â”€â”€ Socket.IO console namespace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Attach the /pterodactyl-console Socket.IO namespace.
@@ -262,23 +302,28 @@ module.exports = function (extDb) {
         });
 
         ns.on('connection', async (socket) => {
-            // Flush console history to newly connected client
+            const serverId = socket.handshake.query?.server;
+
+            // Flush console history for this server
             const client = await getClient();
-            if (client && client.consoleBuffer.length > 0) {
+            if (client && serverId && client.consoleBuffer.length > 0) {
                 socket.emit('history', { lines: [...client.consoleBuffer] });
             }
 
-            // Start the Pterodactyl WS stream if not already running
-            if (client && !consoleStarted) {
+            // Start the Pterodactyl WS stream if not already running for this server
+            if (client && serverId && !consoleStarted) {
                 consoleStarted = true;
+                const origId = client.serverId;
+                client.serverId = serverId;
                 client.connectConsole(
                     (line) => ns.emit('console:line', { line, timestamp: new Date().toISOString() }),
                     (state) => ns.emit('status:update', { state }),
                     (msg) => {
                         consoleStarted = false;
+                        client.serverId = origId;
                         ns.emit('console:error', { message: msg });
                     }
-                ).catch(() => { consoleStarted = false; });
+                ).catch(() => { consoleStarted = false; client.serverId = origId; });
             }
         });
     }
