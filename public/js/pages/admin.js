@@ -20,10 +20,17 @@ var AdminPage = {
       return;
     }
 
+    // Hide main nav and expand container to full width
+    var mainNav = document.getElementById('main-nav');
+    if (mainNav) mainNav.classList.add('hidden');
+    container.classList.add('full-width', 'admin-fullscreen');
+
     const isAdmin = App.currentUser.role === 'admin';
     const isDonationsEnabled = App.extensions.some(e => e.id === 'donations' && e.enabled);
     const isForumEnabled = App.extensions.some(e => e.id === 'forum' && e.enabled);
     const isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);
+
+    var backIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>';
 
     container.innerHTML = '<div class="admin-page">' +
       '<aside class="admin-sidebar">' +
@@ -38,6 +45,9 @@ var AdminPage = {
       (isAdmin && isForumEnabled ? '<button class="admin-nav-item" data-tab="forum">' + this.icons.forum + ' Forum Categories</button>' : '') +
       (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item" data-tab="discord">' + this.icons.discord + ' Discord Settings</button>' : '') +
       '  </nav>' +
+      '  <div class="admin-sidebar-footer">' +
+      '    <button class="admin-nav-item admin-back-btn" onclick="window.location.hash=\'#/feed\'">' + backIcon + ' Back to Site</button>' +
+      '  </div>' +
       '</aside>' +
       '<main class="admin-main">' +
       '  <header class="admin-content-header">' +

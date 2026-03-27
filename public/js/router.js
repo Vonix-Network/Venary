@@ -18,9 +18,17 @@ var Router = {
         var queryIndex = fullPath.indexOf('?');
         var path = queryIndex !== -1 ? fullPath.substring(0, queryIndex) : fullPath;
 
+        // Restore nav if leaving admin
+        var segments = path.split('/').filter(Boolean);
+        if (segments[0] !== 'admin') {
+            var mainNav = document.getElementById('main-nav');
+            var pageContainer = document.getElementById('page-container');
+            if (mainNav) mainNav.classList.remove('hidden');
+            if (pageContainer) pageContainer.classList.remove('admin-fullscreen');
+        }
+
         // 1. Try exact match first (e.g. /admin/images)
         var handler = this.routes[path];
-        var segments = path.split('/').filter(Boolean);
         var params = [];
 
         // 2. If no exact match, try base path match (e.g. /profile/123)
@@ -43,7 +51,19 @@ var Router = {
         }
 
         if (!handler) {
-            window.location.hash = '#/feed';
+            // Show 404 page
+            var container = document.getElementById('page-container');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(10px)';
+            
+            setTimeout(function () {
+                NotFoundPage.render(container, segments);
+                requestAnimationFrame(function () {
+                    container.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    container.style.opacity = '1';
+                    container.style.transform = 'translateY(0)';
+                });
+            }, 150);
             return;
         }
 

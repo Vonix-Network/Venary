@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+- **Admin Dashboard** — Added a "Back to Site" button in the sidebar footer for easier navigation back to the feed.
+
 ## [1.7.0] - 2026-03-26
 
 ### Changed
