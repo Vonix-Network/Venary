@@ -246,6 +246,31 @@ module.exports = function (extDb) {
 
     // ── Power action ──────────────────────────────────────────────────────────
 
+    // POST /command — send a console command to a server
+    // Pterodactyl API: POST /api/client/servers/{server}/command  { command }
+    // Returns 204 No Content on success.
+    router.post('/command', authenticateToken, requirePanelAccess, async (req, res) => {
+        try {
+            const { command, server: serverId } = req.body;
+            if (!command || !command.trim()) return res.status(400).json({ error: 'command is required' });
+            if (!serverId) return res.status(400).json({ error: 'server is required' });
+
+            const client = await getClient();
+            if (!client) return res.status(503).json({ error: 'Extension not configured' });
+
+            const result = await client._request('POST', '/api/client/servers/' + serverId + '/command', { command: command.trim() });
+
+            if (result.statusCode === 204 || result.statusCode === 200) {
+                return res.json({ ok: true });
+            }
+            const detail = (result.body && result.body.errors && result.body.errors[0] && result.body.errors[0].detail) || '';
+            res.status(502).json({ error: 'Pterodactyl API returned an error', detail });
+        } catch (err) {
+            console.error('[Pterodactyl] command error:', err.message);
+            res.status(502).json({ error: 'Failed to reach Pterodactyl API' });
+        }
+    });
+
     // POST /power — send power signal to a server
     // Pterodactyl API: POST /api/client/servers/{server}/power  { signal: start|stop|kill|restart }
     // Returns 204 No Content on success.

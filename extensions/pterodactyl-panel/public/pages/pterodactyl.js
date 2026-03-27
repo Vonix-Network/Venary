@@ -1,6 +1,6 @@
 /* =======================================
    Pterodactyl Panel Extension — Panel Page
-   Live console, power controls, server selector.
+   Live console, command input, power controls.
    ======================================= */
 var PterodactylPage = {
     _socket: null,
@@ -9,6 +9,8 @@ var PterodactylPage = {
     _busy: false,
     _serverId: null,
     _servers: [],
+    _cmdHistory: [],
+    _cmdHistoryIdx: -1,
 
     async render(container) {
         // Access check
@@ -28,62 +30,88 @@ var PterodactylPage = {
         }
 
         container.innerHTML = `
-            <div class="ptero-page animate-fade-up" style="max-width:1000px;margin:0 auto">
-                <div class="ptero-header">
-                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                        <div>
-                            <h2 style="margin:0 0 4px;font-size:1.4rem">🖥️ Server Panel</h2>
-                            <p style="margin:0;color:var(--text-muted);font-size:0.85rem">Real-time console and power controls.</p>
-                        </div>
-                        <div id="ptero-server-selector-wrap" style="display:none">
-                            <select id="ptero-server-select" class="input-field" style="height:36px;font-size:0.85rem;min-width:200px"
-                                    onchange="PterodactylPage._switchServer(this.value)">
-                            </select>
-                        </div>
+            <div class="ptero-page animate-fade-up" style="max-width:1040px;margin:0 auto">
+
+                <!-- Top bar -->
+                <div class="ptero-topbar">
+                    <div class="ptero-topbar-left">
+                        <h2 class="ptero-title">Server Panel</h2>
+                        <select id="ptero-server-select" class="ptero-server-select" style="display:none"
+                                onchange="PterodactylPage._switchServer(this.value)"></select>
                     </div>
-                    <span id="ptero-status-badge" class="badge badge-offline">OFFLINE</span>
+                    <div id="ptero-status-pill" class="ptero-status-pill ptero-status-offline">
+                        <span class="ptero-status-dot"></span>
+                        <span id="ptero-status-text">OFFLINE</span>
+                    </div>
                 </div>
 
                 <!-- Error banner -->
                 <div id="ptero-error-banner" class="ptero-error-banner" style="display:none">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     <span id="ptero-error-msg">Console stream unavailable.</span>
                     <button class="ptero-banner-close" onclick="PterodactylPage._dismissError()">✕</button>
                 </div>
 
-                <!-- Power controls -->
-                <div class="ptero-controls animate-fade-up" style="animation-delay:0.05s">
-                    <button id="ptero-btn-start" class="btn ptero-btn-start" onclick="PterodactylPage._power('start')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-                        Start
-                    </button>
-                    <div class="ptero-stop-group">
-                        <button id="ptero-btn-stop" class="btn ptero-btn-stop" onclick="PterodactylPage._power('stop')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-                            Stop
-                        </button>
-                        <button id="ptero-btn-kill" class="btn ptero-btn-kill" onclick="PterodactylPage._power('kill')" title="Force kill">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            Kill
-                        </button>
-                    </div>
-                    <button id="ptero-btn-restart" class="btn ptero-btn-restart" onclick="PterodactylPage._power('restart')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                        Restart
-                    </button>
-                </div>
+                <!-- Main panel card -->
+                <div class="ptero-panel-card animate-fade-up" style="animation-delay:0.05s">
 
-                <!-- Console -->
-                <div class="admin-settings-card animate-fade-up" style="animation-delay:0.1s;padding:0;overflow:hidden">
-                    <div class="ptero-console-toolbar">
-                        <span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono)" id="ptero-console-label">console output</span>
-                        <button class="btn btn-sm btn-ghost" onclick="PterodactylPage._clearConsole()" style="font-size:0.7rem;padding:2px 8px">Clear</button>
+                    <!-- Power controls -->
+                    <div class="ptero-power-bar">
+                        <span class="ptero-power-label">Power</span>
+
+                        <button id="ptero-btn-start" class="ptero-btn-start" onclick="PterodactylPage._power('start')">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                            Start
+                        </button>
+
+                        <div class="ptero-stop-group">
+                            <button id="ptero-btn-stop" class="ptero-btn-stop" onclick="PterodactylPage._power('stop')">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                Stop
+                            </button>
+                            <button id="ptero-btn-kill" class="ptero-btn-kill" onclick="PterodactylPage._power('kill')" title="Force kill process">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                Kill
+                            </button>
+                        </div>
+
+                        <button id="ptero-btn-restart" class="ptero-btn-restart" onclick="PterodactylPage._power('restart')">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Restart
+                        </button>
                     </div>
+
+                    <!-- Console toolbar -->
+                    <div class="ptero-console-toolbar">
+                        <div class="ptero-console-toolbar-left">
+                            <span class="ptero-console-dot red"></span>
+                            <span class="ptero-console-dot yellow"></span>
+                            <span class="ptero-console-dot green"></span>
+                            <span class="ptero-console-title" id="ptero-console-label">console</span>
+                        </div>
+                        <button class="btn btn-sm btn-ghost" onclick="PterodactylPage._clearConsole()"
+                                style="font-size:0.7rem;padding:2px 10px;opacity:0.6">Clear</button>
+                    </div>
+
+                    <!-- Console output -->
                     <div id="ptero-console" class="ptero-console"></div>
+
+                    <!-- Command input -->
+                    <div class="ptero-cmd-bar">
+                        <span class="ptero-cmd-prompt">&gt;</span>
+                        <input id="ptero-cmd-input" class="ptero-cmd-input"
+                               type="text"
+                               placeholder="Enter command..."
+                               autocomplete="off"
+                               spellcheck="false"
+                               onkeydown="PterodactylPage._onCmdKey(event)" />
+                        <button id="ptero-cmd-send" class="ptero-cmd-send" onclick="PterodactylPage._sendCommand()" title="Send command (Enter)">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>`;
 
-        // Load server list then initialise
         await this._loadServers();
     },
 
@@ -100,16 +128,13 @@ var PterodactylPage = {
             }
 
             const select = document.getElementById('ptero-server-select');
-            const wrap = document.getElementById('ptero-server-selector-wrap');
-            if (select && wrap) {
+            if (select) {
                 select.innerHTML = servers.map(s =>
                     `<option value="${App.escapeHtml(s.id)}">${App.escapeHtml(s.name)}</option>`
                 ).join('');
-                // Only show selector if more than one server
-                if (servers.length > 1) wrap.style.display = '';
+                if (servers.length > 1) select.style.display = '';
             }
 
-            // Auto-select first server
             this._serverId = servers[0].id;
             this._updateConsoleLabel(servers[0].name);
             this._fetchStatus();
@@ -122,12 +147,9 @@ var PterodactylPage = {
     _switchServer(serverId) {
         if (serverId === this._serverId) return;
         this._serverId = serverId;
-
         const server = this._servers.find(s => s.id === serverId);
         if (server) this._updateConsoleLabel(server.name);
-
-        // Disconnect existing socket, clear console, reconnect for new server
-        if (this._socket) { this._socket.disconnect(); this._socket = null; }
+        if (this._socket) { this._socket.off(); this._socket.disconnect(); this._socket = null; }
         this._clearConsole();
         this._setStatus('offline');
         this._fetchStatus();
@@ -136,7 +158,7 @@ var PterodactylPage = {
 
     _updateConsoleLabel(name) {
         const el = document.getElementById('ptero-console-label');
-        if (el) el.textContent = `console — ${name}`;
+        if (el) el.textContent = name;
     },
 
     // ── Status ───────────────────────────────────────────────────────────────
@@ -144,7 +166,7 @@ var PterodactylPage = {
     async _fetchStatus() {
         if (!this._serverId) return;
         try {
-            const r = await API.get(`/api/ext/pterodactyl-panel/status?server=${encodeURIComponent(this._serverId)}`);
+            const r = await API.get('/api/ext/pterodactyl-panel/status?server=' + encodeURIComponent(this._serverId));
             this._setStatus(r.status);
         } catch {
             this._setStatus('offline');
@@ -153,41 +175,36 @@ var PterodactylPage = {
 
     _setStatus(state) {
         this._status = state;
-        const badge = document.getElementById('ptero-status-badge');
-        if (!badge) return;
+        const pill = document.getElementById('ptero-status-pill');
+        const text = document.getElementById('ptero-status-text');
+        if (!pill || !text) return;
+
         const MAP = {
-            running:  { cls: 'badge-online',  label: 'RUNNING'  },
-            offline:  { cls: 'badge-offline', label: 'OFFLINE'  },
-            starting: { cls: 'badge-level',   label: 'STARTING' },
-            stopping: { cls: 'badge-level',   label: 'STOPPING' },
+            running:  { cls: 'ptero-status-running',  label: 'Running'  },
+            offline:  { cls: 'ptero-status-offline',  label: 'Offline'  },
+            starting: { cls: 'ptero-status-starting', label: 'Starting' },
+            stopping: { cls: 'ptero-status-stopping', label: 'Stopping' },
         };
         const s = MAP[state] || MAP.offline;
-        badge.className = `badge ${s.cls}`;
-        badge.textContent = s.label;
+        pill.className = 'ptero-status-pill ' + s.cls;
+        text.textContent = s.label;
     },
 
     // ── Socket.IO ────────────────────────────────────────────────────────────
 
     _connectSocket() {
         if (!this._serverId) return;
-        if (this._socket) {
-            this._socket.off(); // remove all listeners before disconnecting
-            this._socket.disconnect();
-            this._socket = null;
-        }
+        if (this._socket) { this._socket.off(); this._socket.disconnect(); this._socket = null; }
 
         const socket = io('/pterodactyl-console', {
             auth: { token: API.token },
             query: { server: this._serverId },
             transports: ['websocket'],
-            reconnection: false, // we handle reconnection manually via server-side backoff
+            reconnection: false,
         });
         this._socket = socket;
 
-        socket.on('connect', () => {
-            // Clear any previous error banner on successful connect
-            this._dismissError();
-        });
+        socket.on('connect', () => this._dismissError());
         socket.on('history', ({ lines }) => {
             lines.forEach(l => this._appendLine(l, false));
             this._scrollToBottom();
@@ -195,28 +212,37 @@ var PterodactylPage = {
         socket.on('console:line', ({ line }) => this._appendLine(line, true));
         socket.on('status:update', ({ state }) => this._setStatus(state));
         socket.on('console:error', ({ message }) => this._showError(message || 'Console stream unavailable.'));
-        socket.on('connect_error', (err) => {
-            this._showError('Connection failed: ' + (err.message || 'unknown error'));
-        });
+        socket.on('connect_error', (err) => this._showError('Connection failed: ' + (err.message || 'unknown')));
         socket.on('disconnect', (reason) => {
-            // 'io client disconnect' = we called socket.disconnect() intentionally — don't show error
             if (reason === 'io client disconnect') return;
-            this._showError('Disconnected from console stream. Reason: ' + reason);
+            this._showError('Disconnected: ' + reason);
         });
     },
 
-    // ── Console ──────────────────────────────────────────────────────────────
+    // ── Console output ───────────────────────────────────────────────────────
 
     _appendLine(line, scroll) {
         const el = document.getElementById('ptero-console');
         if (!el) return;
+
         const lines = el.querySelectorAll('.ptero-line');
         if (lines.length >= 500) lines[0].remove();
+
         const div = document.createElement('div');
-        div.className = 'ptero-line';
+        div.className = 'ptero-line ' + this._lineClass(line);
         div.textContent = line;
         el.appendChild(div);
+
         if (scroll && this._autoScroll) this._scrollToBottom();
+    },
+
+    /** Classify a console line for colour coding. */
+    _lineClass(line) {
+        const l = line.toLowerCase();
+        if (/\b(warn|warning)\b/.test(l)) return 'warn';
+        if (/\b(error|exception|fatal|severe|critical)\b/.test(l)) return 'error';
+        if (/\b(done|started|ready|success|enabled)\b/.test(l)) return 'success';
+        return 'info';
     },
 
     _scrollToBottom() {
@@ -229,6 +255,58 @@ var PterodactylPage = {
         if (el) el.innerHTML = '';
     },
 
+    // ── Command input ─────────────────────────────────────────────────────────
+
+    _onCmdKey(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this._sendCommand();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (this._cmdHistory.length === 0) return;
+            this._cmdHistoryIdx = Math.min(this._cmdHistoryIdx + 1, this._cmdHistory.length - 1);
+            const input = document.getElementById('ptero-cmd-input');
+            if (input) input.value = this._cmdHistory[this._cmdHistoryIdx];
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            this._cmdHistoryIdx = Math.max(this._cmdHistoryIdx - 1, -1);
+            const input = document.getElementById('ptero-cmd-input');
+            if (input) input.value = this._cmdHistoryIdx >= 0 ? this._cmdHistory[this._cmdHistoryIdx] : '';
+        }
+    },
+
+    async _sendCommand() {
+        const input = document.getElementById('ptero-cmd-input');
+        const sendBtn = document.getElementById('ptero-cmd-send');
+        if (!input || !this._serverId) return;
+
+        const cmd = input.value.trim();
+        if (!cmd) return;
+
+        // Echo command to console
+        this._appendLine('> ' + cmd, true);
+
+        // Add to history
+        this._cmdHistory.unshift(cmd);
+        if (this._cmdHistory.length > 50) this._cmdHistory.pop();
+        this._cmdHistoryIdx = -1;
+
+        input.value = '';
+        if (sendBtn) sendBtn.disabled = true;
+
+        try {
+            await API.post('/api/ext/pterodactyl-panel/command', {
+                command: cmd,
+                server: this._serverId,
+            });
+        } catch (err) {
+            this._appendLine('[Error] ' + (err.message || 'Failed to send command'), true);
+        } finally {
+            if (sendBtn) sendBtn.disabled = false;
+            input.focus();
+        }
+    },
+
     // ── Power ────────────────────────────────────────────────────────────────
 
     async _power(action) {
@@ -236,9 +314,9 @@ var PterodactylPage = {
         this._setBusy(true);
         try {
             await API.post('/api/ext/pterodactyl-panel/power', { action, server: this._serverId });
-            App.showToast(`Server ${action} signal sent.`, 'success');
+            App.showToast('Signal sent: ' + action, 'success');
         } catch (err) {
-            App.showToast(err.message || `Failed to send ${action} signal.`, 'error');
+            App.showToast(err.message || 'Failed to send ' + action + ' signal.', 'error');
         } finally {
             this._setBusy(false);
         }
@@ -247,7 +325,7 @@ var PterodactylPage = {
     _setBusy(busy) {
         this._busy = busy;
         ['start', 'stop', 'kill', 'restart'].forEach(id => {
-            const btn = document.getElementById(`ptero-btn-${id}`);
+            const btn = document.getElementById('ptero-btn-' + id);
             if (btn) btn.disabled = busy;
         });
     },
@@ -260,24 +338,25 @@ var PterodactylPage = {
         if (!banner) return;
         if (msgEl) msgEl.textContent = msg;
         banner.style.display = 'flex';
-        this._setBusy(true);
     },
 
     _dismissError() {
         const banner = document.getElementById('ptero-error-banner');
         if (banner) banner.style.display = 'none';
-        this._setBusy(false);
     },
 
     destroy() {
-        if (this._socket) { this._socket.disconnect(); this._socket = null; }
+        if (this._socket) { this._socket.off(); this._socket.disconnect(); this._socket = null; }
         this._busy = false;
         this._autoScroll = true;
         this._serverId = null;
         this._servers = [];
+        this._cmdHistory = [];
+        this._cmdHistoryIdx = -1;
     },
 };
 
+// Auto-scroll detection
 document.addEventListener('scroll', function (e) {
     const el = document.getElementById('ptero-console');
     if (!el || e.target !== el) return;
