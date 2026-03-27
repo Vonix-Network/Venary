@@ -62,7 +62,7 @@ class PterodactylClient {
         method,
         headers: {
           'Authorization': `Bearer ${this._apiKey}`,
-          'Accept': 'application/json',
+          'Accept': 'application/json, application/vnd.pterodactyl.v1+json',
           'Content-Type': 'application/json',
           ...(payload ? { 'Content-Length': Buffer.byteLength(payload) } : {}),
         },

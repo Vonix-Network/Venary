@@ -10,7 +10,7 @@
 - **Conflict Resolution:** If a push fails, perform a `git pull --rebase` before re-attempting.
 
 # PRECEPT: SURGICAL EDITS & INTEGRITY
-- **Surgical Precision:** Use targeted edits rather than full-file overwrites. When modifying existing code, identify the specific lines/functions to change to minimize diff noise and prevent accidental regressions.
+- **Surgical Precision:** Use targeted edits rather than full-file overwrites. When modifying existing code, identify the specific lines/functions to change to minimize diff noise and prevent accidental regressions. Avoid using commands to edit or read files.
 - **Credit Preservation:** **Strictly maintain** all existing author credits, license headers, and `@authored` tags. If adding significant logic, append your contribution details without overwriting original metadata.
 - **Context Awareness:** Before applying a surgical edit, verify the surrounding scope to ensure no side effects occur in interdependent modules.
 
