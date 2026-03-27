@@ -167,30 +167,7 @@ var AdminPage = {
     try {
       var users = await API.getAdminUsers(this.userFilters.page, this.userFilters);
 
-      var filterBarHtml = '<div class="admin-filters animate-fade-up">' +
-        '<div style="flex: 1; min-width: 240px; position: relative;">' +
-        '  <input type="text" id="admin-search" class="input-field" placeholder="Search username, email..." value="' + App.escapeHtml(this.userFilters.search) + '" style="width: 100%; padding-left: 40px;">' +
-        '  <div style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);">' + this.icons.users + '</div>' +
-        '</div>' +
-        '<select id="admin-role" class="input-field" style="width: auto;">' +
-          '<option value="all" ' + (this.userFilters.role === 'all' ? 'selected' : '') + '>All Roles</option>' +
-          '<option value="user" ' + (this.userFilters.role === 'user' ? 'selected' : '') + '>User</option>' +
-          '<option value="moderator" ' + (this.userFilters.role === 'moderator' ? 'selected' : '') + '>Moderator</option>' +
-          '<option value="admin" ' + (this.userFilters.role === 'admin' ? 'selected' : '') + '>Admin</option>' +
-        '</select>' +
-        '<select id="admin-sort" class="input-field" style="width: auto;" onchange="if(this.value === \'username\'){document.getElementById(\'admin-order\').value=\'asc\'}else{document.getElementById(\'admin-order\').value=\'desc\'}">' +
-          '<option value="created_at" ' + (this.userFilters.sort === 'created_at' ? 'selected' : '') + '>Joined Date</option>' +
-          '<option value="level" ' + (this.userFilters.sort === 'level' ? 'selected' : '') + '>Level</option>' +
-          '<option value="username" ' + (this.userFilters.sort === 'username' ? 'selected' : '') + '>Username</option>' +
-        '</select>' +
-        '<select id="admin-order" class="input-field" style="width: auto;">' +
-          '<option value="desc" ' + (this.userFilters.order === 'desc' ? 'selected' : '') + '>Descending</option>' +
-          '<option value="asc" ' + (this.userFilters.order === 'asc' ? 'selected' : '') + '>Ascending</option>' +
-        '</select>' +
-        '<button class="btn btn-primary" onclick="AdminPage.applyUserFilters()">Filter</button>' +
-        '</div>';
-
-      // Fetch pterodactyl panel access state for all users (if extension enabled)
+      // Fetch pterodactyl panel access state (if extension enabled)
       var isPteroEnabled = App.extensions.some(function(e) { return e.id === 'pterodactyl-panel' && e.enabled; });
       var isSuperadmin = App.currentUser && App.currentUser.role === 'superadmin';
       var pteroGrantedSet = new Set();
@@ -198,74 +175,101 @@ var AdminPage = {
         try {
           var pteroAccess = await API.get('/api/ext/pterodactyl-panel/access/users');
           pteroAccess.forEach(function(r) { pteroGrantedSet.add(r.user_id); });
-        } catch { /* extension may not be configured yet — ignore */ }
+        } catch { /* ignore if not configured */ }
       }
 
-      var tableHtml = '<div class="admin-table-container animate-fade-up" style="animation-delay: 0.1s; overflow-x:auto;">' +
-        '<table class="admin-table"><thead><tr>' +
-        '  <th>User</th>' +
-        '  <th>Email</th>' +
-        '  <th>Role</th>' +
-        '  <th>Status</th>' +
-        '  <th>Level</th>' +
-        '  <th>Joined</th>' +
-        '  <th style="text-align:right">Actions</th>' +
-        '</tr></thead><tbody>' +
-        users.map(function (u) {
+      var isMinecraftEnabled = App.extensions.some(function(e) { return e.id === 'minecraft' && e.enabled; });
+
+      var filterBarHtml = '<div class="admin-filters animate-fade-up" style="flex-wrap:wrap;gap:8px;">' +
+        '<div style="flex:1;min-width:200px;position:relative;">' +
+        '  <input type="text" id="admin-search" class="input-field" placeholder="Search username, email..." value="' + App.escapeHtml(this.userFilters.search) + '" style="width:100%;padding-left:36px;" onkeydown="if(event.key===\'Enter\')AdminPage.applyUserFilters()">' +
+        '  <div style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">' + this.icons.users + '</div>' +
+        '</div>' +
+        '<select id="admin-role" class="input-field" style="width:auto;min-width:110px;">' +
+          '<option value="all"' + (this.userFilters.role === 'all' ? ' selected' : '') + '>All Roles</option>' +
+          '<option value="user"' + (this.userFilters.role === 'user' ? ' selected' : '') + '>User</option>' +
+          '<option value="moderator"' + (this.userFilters.role === 'moderator' ? ' selected' : '') + '>Moderator</option>' +
+          '<option value="admin"' + (this.userFilters.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
+        '</select>' +
+        '<select id="admin-sort" class="input-field" style="width:auto;min-width:130px;">' +
+          '<option value="created_at"' + (this.userFilters.sort === 'created_at' ? ' selected' : '') + '>Joined Date</option>' +
+          '<option value="level"' + (this.userFilters.sort === 'level' ? ' selected' : '') + '>Level</option>' +
+          '<option value="username"' + (this.userFilters.sort === 'username' ? ' selected' : '') + '>Username</option>' +
+        '</select>' +
+        '<select id="admin-order" class="input-field" style="width:auto;min-width:110px;">' +
+          '<option value="desc"' + (this.userFilters.order === 'desc' ? ' selected' : '') + '>Desc</option>' +
+          '<option value="asc"' + (this.userFilters.order === 'asc' ? ' selected' : '') + '>Asc</option>' +
+        '</select>' +
+        '<button class="btn btn-primary" onclick="AdminPage.applyUserFilters()" style="white-space:nowrap">Filter</button>' +
+        '</div>';
+
+      var cardsHtml = '<div class="admin-user-cards animate-fade-up" style="animation-delay:0.1s">' +
+        users.map(function(u) {
           var init = (u.display_name || u.username || '?').charAt(0).toUpperCase();
-          var statusClass = u.banned ? 'badge-admin' : (u.status === 'online' ? 'badge-online' : 'badge-offline');
-          var statusText = u.banned ? 'BANNED' : u.status.toUpperCase();
-          var isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);
-          // Role dropdown — superadmin shown as read-only when applicable
+          var isBanned = !!u.banned;
+          var isOnline = u.status === 'online';
+          var statusCls = isBanned ? 'badge-admin' : (isOnline ? 'badge-online' : 'badge-offline');
+          var statusTxt = isBanned ? 'Banned' : (isOnline ? 'Online' : 'Offline');
+
+          // Role selector
           var isSuperadminTarget = u.role === 'superadmin';
           var roleSelect = isSuperadminTarget
-            ? '<select class="input-field" style="padding:4px 8px;font-size:0.8rem;background:var(--bg-tertiary);width:auto;height:32px;" disabled title="Superadmin role can only be changed via CLI">' +
-              '  <option value="superadmin" selected>Superadmin</option>' +
-              '</select>'
-            : '<select class="input-field" style="padding:4px 8px;font-size:0.8rem;background:var(--bg-tertiary);width:auto;height:32px;" onchange="AdminPage.changeRole(\'' + u.id + '\', this.value)">' +
-              '  <option value="user"' + (u.role === 'user' ? ' selected' : '') + '>User</option>' +
-              '  <option value="moderator"' + (u.role === 'moderator' ? ' selected' : '') + '>Moderator</option>' +
-              '  <option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
+            ? '<select class="input-field" style="padding:3px 8px;font-size:0.78rem;height:28px;width:auto;background:var(--bg-tertiary);" disabled title="Superadmin — change via CLI"><option selected>Superadmin</option></select>'
+            : '<select class="input-field" style="padding:3px 8px;font-size:0.78rem;height:28px;width:auto;background:var(--bg-tertiary);" onchange="AdminPage.changeRole(\'' + u.id + '\', this.value)">' +
+              '<option value="user"' + (u.role === 'user' ? ' selected' : '') + '>User</option>' +
+              '<option value="moderator"' + (u.role === 'moderator' ? ' selected' : '') + '>Moderator</option>' +
+              '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
               '</select>';
-          // Panel access toggle (only when pterodactyl-panel extension is enabled)
+
+          // Panel access toggle
           var pteroToggle = '';
           if (isPteroEnabled) {
             var isGranted = pteroGrantedSet.has(u.id);
-            var toggleDisabled = !isSuperadmin ? ' disabled title="Only superadmins can manage panel access"' : '';
-            pteroToggle = '<label style="display:flex;align-items:center;gap:5px;font-size:0.75rem;color:var(--text-muted);cursor:' + (isSuperadmin ? 'pointer' : 'not-allowed') + ';opacity:' + (isSuperadmin ? '1' : '0.5') + '" title="Panel Access">' +
-              '<input type="checkbox" class="ptero-access-toggle"' + (isGranted ? ' checked' : '') + toggleDisabled +
+            var canToggle = isSuperadmin;
+            pteroToggle = '<label style="display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;color:var(--text-muted);cursor:' + (canToggle ? 'pointer' : 'not-allowed') + ';opacity:' + (canToggle ? '1' : '0.45') + '" title="Panel Access">' +
+              '<input type="checkbox"' + (isGranted ? ' checked' : '') + (canToggle ? '' : ' disabled') +
               ' onchange="AdminPage.togglePanelAccess(\'' + u.id + '\', this)"' +
-              ' style="accent-color:var(--neon-cyan);width:14px;height:14px;">' +
-              'Panel</label>';
+              ' style="accent-color:var(--neon-cyan);width:13px;height:13px;cursor:inherit">Panel</label>';
           }
-          return '<tr>' +
-            '<td>' +
-            '  <div class="admin-user-row">' +
-            '    <div class="avatar" style="width:32px;height:32px;font-size:0.8rem;border: 1px solid var(--border-subtle)">' + init + '</div>' +
-            '    <div>' +
-            '      <div style="font-weight:700; color: var(--text-primary)">' + App.escapeHtml(u.display_name || u.username) + '</div>' +
-            '      <div style="font-size:0.75rem;color:var(--text-muted)">@' + App.escapeHtml(u.username) + '</div>' +
-            '    </div>' +
+
+          return '<div class="admin-user-card">' +
+            // Left: avatar + identity
+            '<div class="auc-identity">' +
+            '  <div class="avatar" style="width:38px;height:38px;font-size:0.9rem;flex-shrink:0;border:1px solid var(--border-subtle)">' + init + '</div>' +
+            '  <div style="min-width:0">' +
+            '    <div style="font-weight:700;font-size:0.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + App.escapeHtml(u.display_name || u.username) + '</div>' +
+            '    <div style="font-size:0.72rem;color:var(--text-muted)">@' + App.escapeHtml(u.username) + '</div>' +
             '  </div>' +
-            '</td>' +
-            '<td style="font-family: var(--font-mono); font-size: 0.8rem">' + App.escapeHtml(u.email) + '</td>' +
-            '<td>' + roleSelect + '</td>' +
-            '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
-            '<td><span class="badge badge-level">LVL ' + u.level + '</span></td>' +
-            '<td style="color:var(--text-muted);font-size:0.8rem">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
-            '<td>' +
-            '  <div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;">' +
-            pteroToggle +
-            (u.banned ? '<button class="btn btn-sm btn-secondary" onclick="AdminPage.unbanUser(\'' + u.id + '\')" title="Unban User">Unban</button>' : '<button class="btn btn-sm btn-danger" onclick="AdminPage.showBanModal(\'' + u.id + '\', \'' + App.escapeHtml(u.username) + '\')" title="Ban User">Ban</button>') +
+            '</div>' +
+            // Middle: meta
+            '<div class="auc-meta">' +
+            '  <div class="auc-email">' + App.escapeHtml(u.email) + '</div>' +
+            '  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">' +
+            '    <span class="badge ' + statusCls + '" style="font-size:0.65rem;padding:2px 7px">' + statusTxt + '</span>' +
+            '    <span class="badge badge-level" style="font-size:0.65rem;padding:2px 7px">LVL ' + u.level + '</span>' +
+            '    <span style="font-size:0.72rem;color:var(--text-muted)">' + new Date(u.created_at).toLocaleDateString() + '</span>' +
+            '  </div>' +
+            '</div>' +
+            // Right: controls
+            '<div class="auc-controls">' +
+            '  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
+            roleSelect +
+            (isPteroEnabled ? pteroToggle : '') +
+            '  </div>' +
+            '  <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">' +
+            (isBanned
+              ? '<button class="btn btn-sm btn-secondary" onclick="AdminPage.unbanUser(\'' + u.id + '\')">Unban</button>'
+              : '<button class="btn btn-sm btn-danger" onclick="AdminPage.showBanModal(\'' + u.id + '\', \'' + App.escapeHtml(u.username) + '\')">Ban</button>') +
             (isMinecraftEnabled ? '<button class="btn btn-sm btn-primary" onclick="AdminPage.assignMinecraftUuid(\'' + u.id + '\')" title="Assign MC UUID">UUID</button>' : '') +
-            '    <button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button>' +
-            '    <button class="btn btn-sm btn-danger" onclick="AdminPage.deleteUser(\'' + u.id + '\')">Delete</button>' +
+            '<button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button>' +
+            '<button class="btn btn-sm btn-danger" onclick="AdminPage.deleteUser(\'' + u.id + '\')">Delete</button>' +
             '  </div>' +
-            '</td>' +
-            '</tr>';
-        }).join('') + '</tbody></table></div>';
-      
-      content.innerHTML = filterBarHtml + tableHtml;
+            '</div>' +
+            '</div>';
+        }).join('') +
+        '</div>';
+
+      content.innerHTML = filterBarHtml + cardsHtml;
     } catch (err) {
       content.innerHTML = '<div class="empty-state"><p>Failed to load users</p></div>';
     }
