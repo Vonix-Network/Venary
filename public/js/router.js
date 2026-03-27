@@ -24,7 +24,10 @@ var Router = {
             var mainNav = document.getElementById('main-nav');
             var pageContainer = document.getElementById('page-container');
             if (mainNav) mainNav.classList.remove('hidden');
-            if (pageContainer) pageContainer.classList.remove('admin-fullscreen');
+            if (pageContainer) {
+                pageContainer.classList.remove('admin-fullscreen');
+                pageContainer.classList.remove('full-width');
+            }
         }
 
         // 1. Try exact match first (e.g. /admin/images)
