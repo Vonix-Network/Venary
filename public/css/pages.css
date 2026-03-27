@@ -1543,18 +1543,18 @@ input[type="range"]::-moz-range-thumb {
 
 /* ========== Mobile Feed Optimizations ========== */
 @media (max-width: 768px) {
-    /* Feed container — full width, no side padding */
+    /* Feed container — full width */
     .feed-page {
         max-width: 100%;
         padding: 0;
     }
 
-    /* Hide desktop page header — title shown in mobile top bar */
+    /* Hide desktop page header */
     .feed-page .page-header {
         display: none;
     }
 
-    /* Post cards — edge-to-edge like native apps */
+    /* Post cards — edge-to-edge */
     .post-card {
         border-radius: 0;
         border-left: none;
@@ -1562,7 +1562,6 @@ input[type="range"]::-moz-range-thumb {
         margin-bottom: 0;
         border-bottom: 1px solid var(--border-subtle);
         padding: 14px 14px 10px;
-        /* No hover lift on touch */
         transform: none !important;
         box-shadow: none !important;
     }
@@ -1573,19 +1572,10 @@ input[type="range"]::-moz-range-thumb {
         transform: none;
     }
 
-    /* Post header tighter */
-    .post-header {
-        gap: 10px;
-        margin-bottom: 10px;
-    }
+    .post-header { gap: 10px; margin-bottom: 10px; }
+    .post-content { font-size: 0.95rem; margin-bottom: 10px; }
 
-    /* Post content */
-    .post-content {
-        font-size: 0.95rem;
-        margin-bottom: 10px;
-    }
-
-    /* Post actions — full width, larger tap targets */
+    /* Post actions — full width tap targets */
     .post-actions {
         gap: 0;
         padding-top: 8px;
@@ -1596,27 +1586,15 @@ input[type="range"]::-moz-range-thumb {
         flex: 1;
         justify-content: center;
         padding: 10px 8px;
-        font-size: 0.85rem;
-        border-radius: var(--radius-sm);
         min-height: 40px;
     }
 
-    /* Comments section */
-    .comments-section {
-        margin-top: 10px;
-        padding-top: 10px;
-    }
+    /* Comments */
+    .comments-section { margin-top: 10px; padding-top: 10px; }
+    .comment-input-wrapper { gap: 8px; }
+    .comment-input { font-size: 16px; }
 
-    .comment-input-wrapper {
-        gap: 8px;
-        padding: 0 2px;
-    }
-
-    .comment-input {
-        font-size: 16px; /* prevent iOS zoom */
-    }
-
-    /* Composer — compact sticky bar on mobile */
+    /* Composer — sticky, clean */
     .post-composer {
         border-radius: 0;
         border-left: none;
@@ -1637,62 +1615,41 @@ input[type="range"]::-moz-range-thumb {
         box-shadow: 0 2px 20px rgba(41,182,246,0.15);
     }
 
-    /* Composer input row */
     .composer-input {
         gap: 10px;
-        align-items: center;
+        align-items: flex-start;
     }
 
-    /* Textarea compact by default, expands on focus */
+    /* Textarea — normal auto-resize, no height clamp */
     .composer-textarea {
-        min-height: 36px;
-        max-height: 36px;
-        padding: 8px 12px;
-        border-radius: var(--radius-full);
+        min-height: 40px;
+        padding: 10px 14px;
+        border-radius: var(--radius-lg);
         background: var(--bg-tertiary);
         border: 1px solid var(--border-subtle);
         font-size: 16px;
-        transition: max-height 0.2s ease, border-radius 0.2s ease;
-        overflow: hidden;
+        resize: none;
     }
 
     .composer-textarea:focus {
-        max-height: 120px;
-        border-radius: var(--radius-md);
-        overflow: auto;
         border-color: var(--border-accent);
+        outline: none;
     }
 
-    /* Composer actions — hidden until textarea focused */
+    /* Composer actions always visible on mobile */
     .composer-actions {
-        display: none;
+        display: flex;
         margin-top: 8px;
         padding-top: 8px;
         flex-wrap: wrap;
         gap: 8px;
+        align-items: center;
+        justify-content: space-between;
     }
 
-    .post-composer:focus-within .composer-actions {
-        display: flex;
-    }
+    .char-count { display: none; }
 
-    /* Simplify composer actions on mobile */
-    .composer-actions > div:first-child {
-        order: 2;
-    }
-
-    .composer-actions > div:last-child {
-        order: 1;
-        flex: 1;
-        justify-content: flex-end;
-    }
-
-    /* Char count hidden on mobile */
-    .char-count {
-        display: none;
-    }
-
-    /* Gallery images full width */
+    /* Gallery */
     .post-gallery.two-imgs,
     .post-gallery.three-imgs,
     .post-gallery.four-plus-imgs {
