@@ -37,7 +37,7 @@ const ProfilePage = {
       var tags = profile.gaming_tags || [];
 
       var roleBadge = '';
-      if (profile.role === 'admin') roleBadge = '<span class="badge badge-admin" style="margin-top:8px">ADMIN</span>';
+      if (profile.role === 'admin' || profile.role === 'superadmin') roleBadge = '<span class="badge badge-admin" style="margin-top:8px">ADMIN</span>';
       else if (profile.role === 'moderator') roleBadge = '<span class="badge badge-mod" style="margin-top:8px">MOD</span>';
 
       var tagsHtml = '';

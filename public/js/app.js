@@ -301,7 +301,7 @@ var App = {
         if (modShieldBtn) modShieldBtn.classList.add('hidden');
 
         if (this.currentUser) {
-            if (this.currentUser.role === 'admin' || this.currentUser.role === 'moderator') {
+            if (this.currentUser.role === 'admin' || this.currentUser.role === 'superadmin' || this.currentUser.role === 'moderator') {
                 if (modShieldBtn) modShieldBtn.classList.remove('hidden');
             }
         }
@@ -520,7 +520,7 @@ var App = {
         let glow = '';
         if (userObj.donation_rank && userObj.donation_rank.color) {
             color = this.escapeHtml(userObj.donation_rank.color);
-        } else if (userObj.role === 'admin') {
+        } else if (userObj.role === 'admin' || userObj.role === 'superadmin') {
             color = 'var(--neon-magenta)';
         } else if (userObj.role === 'moderator') {
             color = 'var(--neon-cyan)';
@@ -740,7 +740,7 @@ var App = {
     handleShieldClick() {
         if (!this.currentUser) return;
 
-        if (this.currentUser.role === 'admin') {
+        if (this.currentUser.role === 'admin' || this.currentUser.role === 'superadmin') {
             App.showModal('🛡️ Access Dashboard',
                 '<div style="display:flex;flex-direction:column;gap:var(--space-md)">' +
                 '<button class="btn btn-primary" style="width:100%" onclick="App.closeModal(); window.location.hash=\'#/mod\'">Moderator Dashboard</button>' +

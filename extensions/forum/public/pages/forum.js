@@ -152,7 +152,7 @@ var ForumPage = {
 
                 // POST MANAGEMENT ACTIONS
                 let actionHtml = '';
-                if (App.currentUser && (App.currentUser.id === p.user_id || App.currentUser.role === 'admin' || App.currentUser.role === 'moderator')) {
+                if (App.currentUser && (App.currentUser.id === p.user_id || App.currentUser.role === 'admin' || App.currentUser.role === 'superadmin' || App.currentUser.role === 'moderator')) {
                     actionHtml = `
                         <div class=\"forum-post-actions\" style=\"display: flex; gap: 8px; margin-left: auto; align-items: center; opacity: 0.7; transition: opacity 0.2s;\">
                             <button class=\"btn btn-ghost btn-sm\" onclick=\"ForumPage.editPost('${p.id}', this)\" style=\"padding: 2px 6px; font-size: 0.75rem;\">

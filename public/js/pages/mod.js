@@ -3,7 +3,7 @@
    ======================================= */
 var ModPage = {
     async render(container) {
-        if (!App.currentUser || (App.currentUser.role !== 'admin' && App.currentUser.role !== 'moderator')) {
+        if (!App.currentUser || !['admin', 'superadmin', 'moderator'].includes(App.currentUser.role)) {
             container.innerHTML = '<div class="empty-state"><h3>Access Denied</h3><p>You don\'t have permissions to view this page.</p></div>';
             return;
         }
@@ -42,7 +42,7 @@ var ModPage = {
         content.innerHTML = '<div class="loading-spinner"></div>';
         try {
             var users = await API.getAdminUsers(1);
-            const isFullAdmin = App.currentUser.role === 'admin';
+            const isFullAdmin = App.currentUser.role === 'admin' || App.currentUser.role === 'superadmin';
 
             content.innerHTML = '<div class="card" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>User</th><th>Status</th><th>Level</th><th>Actions</th></tr></thead><tbody>' +
                 users.map(function (u) {
@@ -50,7 +50,7 @@ var ModPage = {
                     var statusHtml = u.banned ? '<span class="badge badge-admin">BANNED</span>' : '<span class="badge badge-' + (u.status === 'online' ? 'online' : 'offline') + '">' + u.status + '</span>';
 
                     let actionBtns = '';
-                    if (u.role === 'admin' && !isFullAdmin) {
+                    if ((u.role === 'admin' || u.role === 'superadmin') && !isFullAdmin) {
                         actionBtns = '<span class="badge badge-level">Admin</span>';
                     } else {
                         if (u.banned) {

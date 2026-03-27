@@ -235,7 +235,7 @@ module.exports = (extDb) => {
         try {
             const db = require('../../../server/db');
             const user = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
-            if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+            if (!user || !['admin', 'superadmin', 'moderator'].includes(user.role)) return res.status(403).json({ error: 'Admin only' });
 
             const updates = req.body;
             if (!updates) throw new Error('No updates provided');

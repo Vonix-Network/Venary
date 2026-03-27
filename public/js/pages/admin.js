@@ -15,7 +15,7 @@ var AdminPage = {
   },
 
   async render(container) {
-    if (!App.currentUser || (App.currentUser.role !== 'admin' && App.currentUser.role !== 'moderator')) {
+    if (!App.currentUser || (App.currentUser.role !== 'admin' && App.currentUser.role !== 'superadmin')) {
       container.innerHTML = '<div class="empty-state"><h3>Access Denied</h3><p>You don\'t have permissions to view this page.</p></div>';
       return;
     }
@@ -25,7 +25,7 @@ var AdminPage = {
     if (mainNav) mainNav.classList.add('hidden');
     container.classList.add('full-width', 'admin-fullscreen');
 
-    const isAdmin = App.currentUser.role === 'admin';
+    const isAdmin = App.currentUser.role === 'admin' || App.currentUser.role === 'superadmin';
     const isDonationsEnabled = App.extensions.some(e => e.id === 'donations' && e.enabled);
     const isForumEnabled = App.extensions.some(e => e.id === 'forum' && e.enabled);
     const isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);

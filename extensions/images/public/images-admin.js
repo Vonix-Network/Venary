@@ -1,26 +1,26 @@
-/**
- * Images Extension — Admin Page
+﻿/**
+ * Images Extension â€” Admin Page
  */
 var ImagesAdminPage = {
     settings: null,
     multiKeys: [],
 
-    // Provider definitions — used for both individual modes and pool cards
+    // Provider definitions â€” used for both individual modes and pool cards
     PROVIDERS: {
-        r2:         { label: 'Cloudflare R2',  icon: '☁️',  color: '#f6821f', desc: 'S3-compatible, 10GB free/mo, no egress fees, permanent.' },
-        b2:         { label: 'Backblaze B2',   icon: '🔥',  color: '#e05c2a', desc: '10GB free forever, $0.006/GB after, S3-compatible.' },
-        cloudinary: { label: 'Cloudinary',     icon: '🌤',  color: '#3448c5', desc: '25GB free/account, images & video, permanent.' },
-        bunny:      { label: 'Bunny.net',      icon: '🐰',  color: '#f5a623', desc: 'Pay-as-you-go CDN storage, simple REST API.' },
-        imgbb:      { label: 'ImgBB',          icon: '🖼',  color: '#2196f3', desc: 'Free image hosting, 32MB per image, API key required.' },
-        catbox:     { label: 'Catbox.moe',     icon: '📦',  color: '#9c27b0', desc: 'Unlimited anonymous hosting, no key required.' },
-        nullpointer:{ label: '0x0.st',         icon: '⬛',  color: '#607d8b', desc: '512MB max, 30d–1yr retention, no key required.' },
-        local:      { label: 'Local Storage',  icon: '💾',  color: '#4caf50', desc: 'Store files on your own server.' },
-        multicloud: { label: 'Multi-Cloud Pool', icon: '🔀', color: '#00f0ff', desc: 'R2 → B2 → Cloudinary → Bunny, sequential fallback.' },
+        r2:         { label: 'Cloudflare R2',  icon: 'â˜ï¸',  color: '#f6821f', desc: 'S3-compatible, 10GB free/mo, no egress fees, permanent.' },
+        b2:         { label: 'Backblaze B2',   icon: 'ðŸ”¥',  color: '#e05c2a', desc: '10GB free forever, $0.006/GB after, S3-compatible.' },
+        cloudinary: { label: 'Cloudinary',     icon: 'ðŸŒ¤',  color: '#3448c5', desc: '25GB free/account, images & video, permanent.' },
+        bunny:      { label: 'Bunny.net',      icon: 'ðŸ°',  color: '#f5a623', desc: 'Pay-as-you-go CDN storage, simple REST API.' },
+        imgbb:      { label: 'ImgBB',          icon: 'ðŸ–¼',  color: '#2196f3', desc: 'Free image hosting, 32MB per image, API key required.' },
+        catbox:     { label: 'Catbox.moe',     icon: 'ðŸ“¦',  color: '#9c27b0', desc: 'Unlimited anonymous hosting, no key required.' },
+        nullpointer:{ label: '0x0.st',         icon: 'â¬›',  color: '#607d8b', desc: '512MB max, 30dâ€“1yr retention, no key required.' },
+        local:      { label: 'Local Storage',  icon: 'ðŸ’¾',  color: '#4caf50', desc: 'Store files on your own server.' },
+        multicloud: { label: 'Multi-Cloud Pool', icon: 'ðŸ”€', color: '#00f0ff', desc: 'R2 â†’ B2 â†’ Cloudinary â†’ Bunny, sequential fallback.' },
     },
 
     async render(container) {
-        if (!App.currentUser || App.currentUser.role !== 'admin') {
-            container.innerHTML = '<h2>Access Denied</h2>';
+        if (!App.currentUser || !['admin', 'superadmin'].includes(App.currentUser.role)) {
+            container.innerHTML = '<div class="empty-state"><h3>Access Denied</h3><p>Admin only.</p></div>';
             return;
         }
 
@@ -28,10 +28,10 @@ var ImagesAdminPage = {
             <div class="admin-page" style="max-width:860px">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
                     <div>
-                        <h2 style="margin:0;font-size:1.4rem">🎬 Media & Embed Settings</h2>
+                        <h2 style="margin:0;font-size:1.4rem">ðŸŽ¬ Media & Embed Settings</h2>
                         <p style="margin:4px 0 0;color:var(--text-muted);font-size:0.85rem">Configure where uploaded files are stored.</p>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/admin'">← Back</button>
+                    <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/admin'">â† Back</button>
                 </div>
 
                 <!-- Upload toggle -->
@@ -96,7 +96,7 @@ var ImagesAdminPage = {
             const msgs = {
                 local: 'Files will be stored in <code>/public/uploads/</code> on your server. No additional configuration needed.',
                 catbox: 'Files are uploaded anonymously to Catbox.moe. No API key required.',
-                nullpointer: 'Files are uploaded to 0x0.st. No API key required. Files expire after 30 days–1 year depending on size.'
+                nullpointer: 'Files are uploaded to 0x0.st. No API key required. Files expire after 30 daysâ€“1 year depending on size.'
             };
             panel.innerHTML = `<div class="card" style="padding:1rem 1.25rem;color:var(--text-muted);font-size:0.875rem">${msgs[val]}</div>`;
             return;
@@ -150,7 +150,7 @@ var ImagesAdminPage = {
 
         if (val === 'bunny') {
             panel.innerHTML = this._card('Bunny.net Configuration', `
-                ${this._field('bunny_access_key',     'Storage Zone Password (AccessKey)', 'From Storage Zone → FTP & API Access')}
+                ${this._field('bunny_access_key',     'Storage Zone Password (AccessKey)', 'From Storage Zone â†’ FTP & API Access')}
                 ${this._field('bunny_storage_zone',   'Storage Zone Name',                 'my-storage-zone')}
                 ${this._field('bunny_region',         'Region (de / ny / la / sg / syd)',  'de')}
                 ${this._field('bunny_public_hostname','Pull Zone Hostname (optional)',      'cdn.yourdomain.com')}
@@ -166,14 +166,14 @@ var ImagesAdminPage = {
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
                         <div>
                             <div style="font-weight:600;font-size:0.95rem">Storage Key Pool</div>
-                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">Tried in order: all R2 → all B2 → all Cloudinary → all Bunny</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">Tried in order: all R2 â†’ all B2 â†’ all Cloudinary â†’ all Bunny</div>
                         </div>
                         <div style="display:flex;gap:8px;align-items:center">
                             <select id="mc-add-provider" class="input-field" style="width:auto;font-size:0.8rem;padding:6px 10px">
-                                <option value="r2">☁️ Cloudflare R2</option>
-                                <option value="b2">🔥 Backblaze B2</option>
-                                <option value="cloudinary">🌤 Cloudinary</option>
-                                <option value="bunny">🐰 Bunny.net</option>
+                                <option value="r2">â˜ï¸ Cloudflare R2</option>
+                                <option value="b2">ðŸ”¥ Backblaze B2</option>
+                                <option value="cloudinary">ðŸŒ¤ Cloudinary</option>
+                                <option value="bunny">ðŸ° Bunny.net</option>
                             </select>
                             <button class="btn btn-primary btn-sm" onclick="ImagesAdminPage.addKey()">+ Add Key</button>
                         </div>
@@ -199,12 +199,12 @@ var ImagesAdminPage = {
                 No keys added yet. Select a provider and click + Add Key.</div>`;
             return;
         }
-        const pInfo = { r2:'☁️ Cloudflare R2', b2:'🔥 Backblaze B2', cloudinary:'🌤 Cloudinary', bunny:'🐰 Bunny.net' };
+        const pInfo = { r2:'â˜ï¸ Cloudflare R2', b2:'ðŸ”¥ Backblaze B2', cloudinary:'ðŸŒ¤ Cloudinary', bunny:'ðŸ° Bunny.net' };
         list.innerHTML = this.multiKeys.map((k, i) => `
             <div style="border:1px solid var(--border-subtle);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--bg-tertiary)">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                    <span style="font-weight:600;font-size:0.85rem">${pInfo[k.provider] || k.provider} — Key #${i + 1}</span>
-                    <button class="btn btn-ghost btn-sm" style="color:var(--neon-pink);padding:2px 8px" onclick="ImagesAdminPage.removeKey(${i})">✕</button>
+                    <span style="font-weight:600;font-size:0.85rem">${pInfo[k.provider] || k.provider} â€” Key #${i + 1}</span>
+                    <button class="btn btn-ghost btn-sm" style="color:var(--neon-pink);padding:2px 8px" onclick="ImagesAdminPage.removeKey(${i})">âœ•</button>
                 </div>
                 <input type="text" class="input-field" style="margin-bottom:6px;font-size:0.8rem" placeholder="Label (e.g. Account 1)"
                     value="${App.escapeHtml(k.label||'')}" oninput="ImagesAdminPage.updateKey(${i},'label',this.value)">

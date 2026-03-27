@@ -135,7 +135,7 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
     - **Property 8: Superadmin immutability via web**
     - **Validates: Requirements 10.6**
 
-- [ ] 13. Final checkpoint — full integration
+- [x] 13. Final checkpoint — full integration
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

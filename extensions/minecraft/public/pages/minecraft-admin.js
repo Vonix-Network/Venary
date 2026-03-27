@@ -7,7 +7,7 @@ var MinecraftAdminPage = {
     editingServer: null,
 
     async render(container) {
-        if (!App.currentUser || App.currentUser.role !== 'admin') {
+        if (!App.currentUser || !['admin', 'superadmin'].includes(App.currentUser.role)) {
             container.innerHTML = '<div class="empty-state"><h3>Access Denied</h3><p>Admin only.</p></div>';
             return;
         }

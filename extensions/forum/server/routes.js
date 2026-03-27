@@ -30,7 +30,7 @@ module.exports = function createForumRoutes(extDb) {
     // Helpers
     async function isModOrAdmin(userId) {
         const user = await coreDb.get('SELECT role FROM users WHERE id = ?', [userId]);
-        return user && (user.role === 'admin' || user.role === 'moderator');
+        return user && (user.role === 'admin' || user.role === 'superadmin' || user.role === 'moderator');
     }
 
     // ==========================================
