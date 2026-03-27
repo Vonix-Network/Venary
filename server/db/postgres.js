@@ -18,7 +18,7 @@ class PostgresAdapter {
         // Set search_path for all clients in the pool
         if (this.schemaName && this.schemaName !== 'public') {
             this.pool.on('connect', client => {
-                client.query(`SET search_path TO ${this.schemaName}, public`).catch(err => {
+                client.query(`SET search_path TO "${this.schemaName}", public`).catch(err => {
                     console.error(`[Postgres] Failed to set search_path for schema ${this.schemaName}:`, err.message);
                 });
             });
@@ -32,8 +32,8 @@ class PostgresAdapter {
         try {
             // Ensure schema exists if isolated
             if (this.schemaName && this.schemaName !== 'public') {
-                await client.query(`CREATE SCHEMA IF NOT EXISTS ${this.schemaName};`);
-                await client.query(`SET search_path TO ${this.schemaName}, public;`);
+                await client.query(`CREATE SCHEMA IF NOT EXISTS "${this.schemaName}";`);
+                await client.query(`SET search_path TO "${this.schemaName}", public;`);
             }
 
             // Strip SQL comments (single-line and multi-line)
