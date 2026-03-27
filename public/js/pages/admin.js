@@ -146,7 +146,7 @@ var AdminPage = {
         '  <div class="stat-value" style="color:var(--neon-orange)">' + stats.pending_reports + '</div>' +
         '  <div class="stat-trend" style="color:' + (stats.pending_reports > 0 ? 'var(--neon-magenta)' : 'var(--text-muted)') + '">' + (stats.pending_reports > 0 ? '⚠ Attention required' : '✓ All clear') + '</div>' +
         '</div>';
-    } catch (err) { console.error(\'Load admin stats error:\', err); }
+    } catch (err) { console.error('Load admin stats error:', err); }
   },
 
   userFilters: { page: 1, search: '', role: 'all', sort: 'created_at', order: 'desc' },
