@@ -182,10 +182,17 @@ class PterodactylClient {
       const { event, args = [] } = msg;
 
       if (event === 'auth success') {
-        // After successful auth, request recent logs
+        // Request logs and initial stats
         ws.send(JSON.stringify({ event: 'send logs', args: [] }));
-        // Also request current status
         ws.send(JSON.stringify({ event: 'send stats', args: [] }));
+        // Wings pushes stats on its own interval, but we also request every 1s
+        // to ensure continuous live data regardless of daemon config
+        if (this._statsInterval) clearInterval(this._statsInterval);
+        this._statsInterval = setInterval(() => {
+          if (ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify({ event: 'send stats', args: [] }));
+          }
+        }, 1000);
       } else if (event === 'console output') {
         const line = args[0] ?? '';
         this._bufferLine(line);
@@ -208,7 +215,7 @@ class PterodactylClient {
 
     ws.on('close', (code, reason) => {
       this._ws = null;
-      // Don't reconnect on intentional close (code 1000)
+      if (this._statsInterval) { clearInterval(this._statsInterval); this._statsInterval = null; }
       if (code === 1000) return;
       this._scheduleReconnect(onLine, onStatus, onError, attempt);
     });
@@ -262,6 +269,7 @@ class PterodactylClient {
    * Gracefully close the active WebSocket connection (if any).
    */
   disconnect() {
+    if (this._statsInterval) { clearInterval(this._statsInterval); this._statsInterval = null; }
     if (this._ws) {
       this._ws.removeAllListeners();
       this._ws.close();

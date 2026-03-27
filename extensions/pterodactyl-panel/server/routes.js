@@ -410,8 +410,7 @@ module.exports = function (extDb) {
             consoleStreams.delete(serverId);
         });
 
-        // Poll REST /resources every 3s as the primary stats source.
-        // Pterodactyl's WS 'stats' event is unreliable without a daemon subscription.
+        // REST poll every 1s as fallback when WS stats aren't flowing
         stream._statsPoll = setInterval(async () => {
             try {
                 const result = await streamClient._request('GET', '/api/client/servers/' + serverId + '/resources');
@@ -421,8 +420,8 @@ module.exports = function (extDb) {
                 const state = attrs.current_state;
                 if (state) ns.to('server:' + serverId).emit('status:update', { state });
                 if (attrs.resources) ns.to('server:' + serverId).emit('stats:update', attrs.resources);
-            } catch { /* ignore — WS error handler will clean up */ }
-        }, 3000);
+            } catch { /* ignore */ }
+        }, 1000);
 
         // Poll player count every 15s using the server's allocation IP/port.
         // Uses the Minecraft pinger if available — no console pollution.

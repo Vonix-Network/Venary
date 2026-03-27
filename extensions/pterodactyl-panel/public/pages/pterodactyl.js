@@ -12,6 +12,7 @@ var PterodactylPage = {
     _cmdHistory: [],
     _cmdHistoryIdx: -1,
     _statusPoll: null,
+    _resourcePoll: null,
     // Stats history for mini-graphs (last 60 samples)
     _cpuHistory: [],
     _ramHistory: [],
@@ -165,6 +166,7 @@ var PterodactylPage = {
             this._updateConsoleLabel(servers[0].name);
             this._fetchServerInfo();
             this._fetchStatus();
+            this._fetchResources(); // immediate stats on load
             this._connectSocket();
         } catch (err) {
             this._showError(err.message || 'Failed to load servers. Check extension settings.');
@@ -183,6 +185,7 @@ var PterodactylPage = {
         this._ramHistory = [];
         this._fetchServerInfo();
         this._fetchStatus();
+        this._fetchResources();
         this._connectSocket();
     },
 
@@ -222,6 +225,26 @@ var PterodactylPage = {
                 this._updateStats(r.resources);
             }
         } catch { this._setStatus('offline'); }
+    },
+
+    /** Fetch live resources directly and update stats immediately. */
+    async _fetchResources() {
+        if (!this._serverId) return;
+        try {
+            const r = await API.get('/api/ext/pterodactyl-panel/resources?server=' + encodeURIComponent(this._serverId));
+            if (r.state) this._setStatus(r.state);
+            if (r.resources) this._updateStats(r.resources);
+        } catch { /* non-critical */ }
+    },
+
+    /** Start a client-side resource poll every 3s as a reliable fallback. */
+    _startResourcePoll() {
+        if (this._resourcePoll) return;
+        this._resourcePoll = setInterval(() => this._fetchResources(), 1000);
+    },
+
+    _stopResourcePoll() {
+        if (this._resourcePoll) { clearInterval(this._resourcePoll); this._resourcePoll = null; }
     },
 
     _setStatus(state) {
@@ -437,6 +460,8 @@ var PterodactylPage = {
             this._dismissError();
             if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; }
             if (this._playerPoll) { clearInterval(this._playerPoll); this._playerPoll = null; }
+            // Socket is live — server-side push handles stats, stop client poll
+            this._stopResourcePoll();
         });
         socket.on('history', ({ lines }) => {
             lines.forEach(l => this._appendLine(l, false));
@@ -449,15 +474,18 @@ var PterodactylPage = {
         socket.on('console:error', ({ message }) => {
             this._showError(message || 'Console stream unavailable.');
             this._startStatusPoll();
+            this._startResourcePoll(); // fall back to REST polling
         });
         socket.on('connect_error', (err) => {
             this._showError('Connection failed: ' + (err.message || 'unknown'));
             this._startStatusPoll();
+            this._startResourcePoll();
         });
         socket.on('disconnect', (reason) => {
             if (reason === 'io client disconnect') return;
             this._showError('Disconnected: ' + reason);
             this._startStatusPoll();
+            this._startResourcePoll();
         });
     },
 
@@ -586,6 +614,7 @@ var PterodactylPage = {
     destroy() {
         if (this._socket) { this._socket.off(); this._socket.disconnect(); this._socket = null; }
         if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; }
+        this._stopResourcePoll();
         this._busy = false;
         this._autoScroll = true;
         this._serverId = null;
