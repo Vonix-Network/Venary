@@ -1357,17 +1357,19 @@ input[type="range"]::-moz-range-thumb {
 
 /* Responsive Admin - Major Redesign */
 @media (max-width: 1200px) {
-    .admin-page {
+    .admin-page,
+    .admin-fullscreen .admin-page {
         grid-template-columns: 1fr;
         display: block;
     }
     
-    .admin-sidebar {
-        flex-direction: row;
+    .admin-sidebar,
+    .admin-fullscreen .admin-sidebar {
+        flex-direction: row !important;
         overflow-x: auto;
         overflow-y: hidden;
         padding: var(--space-sm) var(--space-md);
-        height: auto;
+        height: auto !important;
         position: sticky;
         top: calc(56px + env(safe-area-inset-top));
         z-index: 50;
@@ -1383,7 +1385,8 @@ input[type="range"]::-moz-range-thumb {
         -webkit-overflow-scrolling: touch;
     }
     
-    .admin-sidebar::-webkit-scrollbar {
+    .admin-sidebar::-webkit-scrollbar,
+    .admin-fullscreen .admin-sidebar::-webkit-scrollbar {
         display: none;
     }
     
@@ -1396,6 +1399,7 @@ input[type="range"]::-moz-range-thumb {
         width: max-content;
         gap: var(--space-xs);
         padding-right: var(--space-md);
+        height: auto;
     }
     
     .admin-nav-item {
@@ -1410,6 +1414,8 @@ input[type="range"]::-moz-range-thumb {
         display: flex;
         align-items: center;
         gap: 6px;
+        height: auto;
+        width: auto;
     }
     
     .admin-nav-item i,
