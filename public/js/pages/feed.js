@@ -6,6 +6,7 @@ const FeedPage = {
   loading: false,
 
   async render(container) {
+    var isMobile = window.innerWidth <= 768;
     container.innerHTML = `
       <div class="feed-page">
         <div class="page-header animate-fade-up">
@@ -14,18 +15,21 @@ const FeedPage = {
         </div>
         <div class="post-composer animate-fade-up" style="animation-delay: 0.1s">
           <div class="composer-input">
-            <div class="avatar">${App.currentUser && App.currentUser.avatar ? `<img src="${App.escapeHtml(App.currentUser.avatar)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : App.getInitials()}</div>
-            <textarea class="composer-textarea input-field" id="post-content" placeholder="Share your latest achievement, strategy, or gaming moment..." maxlength="1000"></textarea>
+            <div class="avatar" style="flex-shrink:0">${App.currentUser && App.currentUser.avatar ? `<img src="${App.escapeHtml(App.currentUser.avatar)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : App.getInitials()}</div>
+            <textarea class="composer-textarea input-field" id="post-content" placeholder="What's happening?" maxlength="1000"></textarea>
+            <button class="btn btn-primary mobile-post-btn" id="mobile-post-btn" style="display:none;flex-shrink:0;padding:8px 14px;border-radius:var(--radius-full)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
           </div>
           <div class="composer-actions">
-            <div style="display:flex;align-items:center;gap:15px">
+            <div style="display:flex;align-items:center;gap:10px">
               <button class="btn btn-ghost btn-sm emoji-btn" onclick="App.toggleEmojiPicker(this, 'post-content')" title="Add emoji">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
               </button>
             </div>
-            <div style="display:flex;align-items:center;gap:15px">
+            <div style="display:flex;align-items:center;gap:10px">
               <span class="char-count" id="char-count">0 / 1000</span>
-              <select id="post-visibility" class="input-field" style="padding: 4px 8px; font-size: 0.9em; height: 32px; min-width: 100px;">
+              <select id="post-visibility" class="input-field" style="padding:4px 8px;font-size:0.9em;height:32px;min-width:100px;">
                 <option value="public">Public</option>
                 <option value="friends_only">Friends Only</option>
               </select>
@@ -41,14 +45,28 @@ const FeedPage = {
         <div id="feed-empty" class="empty-state hidden">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <h3>No posts yet</h3>
-          <p>Be the first to share something with the community!</p>
+          <p>Be the first to share something!</p>
         </div>
       </div>
     `;
     this.bindEvents(container);
     await this.loadFeed();
 
-    // Dispatch event for extensions to hook into
+    // Show mobile inline post button when textarea is focused
+    var textarea = container.querySelector('#post-content');
+    var mobileBtn = container.querySelector('#mobile-post-btn');
+    if (mobileBtn) {
+      textarea.addEventListener('focus', function() {
+        if (window.innerWidth <= 768) mobileBtn.style.display = 'flex';
+      });
+      textarea.addEventListener('blur', function() {
+        setTimeout(function() {
+          if (!textarea.value.trim()) mobileBtn.style.display = 'none';
+        }, 150);
+      });
+      mobileBtn.addEventListener('click', function() { FeedPage.createPost(textarea); });
+    }
+
     document.dispatchEvent(new CustomEvent('feed:rendered', { detail: { container } }));
   },
 

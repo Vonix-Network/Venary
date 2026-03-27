@@ -1540,3 +1540,188 @@ input[type="range"]::-moz-range-thumb {
         grid-template-columns: 1fr;
     }
 }
+
+/* ========== Mobile Feed Optimizations ========== */
+@media (max-width: 768px) {
+    /* Feed container — full width, no side padding */
+    .feed-page {
+        max-width: 100%;
+        padding: 0;
+    }
+
+    /* Hide desktop page header — title shown in mobile top bar */
+    .feed-page .page-header {
+        display: none;
+    }
+
+    /* Post cards — edge-to-edge like native apps */
+    .post-card {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        margin-bottom: 0;
+        border-bottom: 1px solid var(--border-subtle);
+        padding: 14px 14px 10px;
+        /* No hover lift on touch */
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .post-card:hover {
+        border-color: var(--border-subtle);
+        box-shadow: none;
+        transform: none;
+    }
+
+    /* Post header tighter */
+    .post-header {
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    /* Post content */
+    .post-content {
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+    }
+
+    /* Post actions — full width, larger tap targets */
+    .post-actions {
+        gap: 0;
+        padding-top: 8px;
+        justify-content: space-around;
+    }
+
+    .post-action-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 10px 8px;
+        font-size: 0.85rem;
+        border-radius: var(--radius-sm);
+        min-height: 40px;
+    }
+
+    /* Comments section */
+    .comments-section {
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+
+    .comment-input-wrapper {
+        gap: 8px;
+        padding: 0 2px;
+    }
+
+    .comment-input {
+        font-size: 16px; /* prevent iOS zoom */
+    }
+
+    /* Composer — compact sticky bar on mobile */
+    .post-composer {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        border-top: none;
+        margin-bottom: 0;
+        padding: 10px 14px;
+        position: sticky;
+        top: calc(56px + env(safe-area-inset-top));
+        z-index: 10;
+        background: rgba(5, 6, 10, 0.97);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+
+    .post-composer:focus-within {
+        box-shadow: 0 2px 20px rgba(41,182,246,0.15);
+    }
+
+    /* Composer input row */
+    .composer-input {
+        gap: 10px;
+        align-items: center;
+    }
+
+    /* Textarea compact by default, expands on focus */
+    .composer-textarea {
+        min-height: 36px;
+        max-height: 36px;
+        padding: 8px 12px;
+        border-radius: var(--radius-full);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-subtle);
+        font-size: 16px;
+        transition: max-height 0.2s ease, border-radius 0.2s ease;
+        overflow: hidden;
+    }
+
+    .composer-textarea:focus {
+        max-height: 120px;
+        border-radius: var(--radius-md);
+        overflow: auto;
+        border-color: var(--border-accent);
+    }
+
+    /* Composer actions — hidden until textarea focused */
+    .composer-actions {
+        display: none;
+        margin-top: 8px;
+        padding-top: 8px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .post-composer:focus-within .composer-actions {
+        display: flex;
+    }
+
+    /* Simplify composer actions on mobile */
+    .composer-actions > div:first-child {
+        order: 2;
+    }
+
+    .composer-actions > div:last-child {
+        order: 1;
+        flex: 1;
+        justify-content: flex-end;
+    }
+
+    /* Char count hidden on mobile */
+    .char-count {
+        display: none;
+    }
+
+    /* Gallery images full width */
+    .post-gallery.two-imgs,
+    .post-gallery.three-imgs,
+    .post-gallery.four-plus-imgs {
+        height: 260px;
+    }
+
+    .post-gallery.one-img img {
+        max-height: 400px;
+        object-fit: cover;
+    }
+
+    /* Feed posts container — no gap between cards */
+    #feed-posts {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        border-top: 1px solid var(--border-subtle);
+    }
+
+    /* Empty state full width */
+    .empty-state {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        margin: 0;
+    }
+
+    /* Stagger animation faster on mobile */
+    .stagger-children > * {
+        animation-duration: 0.2s;
+    }
+}
