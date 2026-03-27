@@ -139,15 +139,6 @@ const ProfilePage = {
       if (isOwnProfile) {
         var customizeBtn = document.getElementById('customize-skin-btn');
         if (customizeBtn) customizeBtn.addEventListener('click', function () { ProfilePage.showCustomizeModal(profile); });
-
-        // Close avatar menu on outside click
-        document.addEventListener('click', function onOutsideClick(e) {
-          var menu = document.getElementById('profile-avatar-menu');
-          var trigger = document.getElementById('profile-avatar-trigger');
-          if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && e.target !== trigger && !trigger.contains(e.target)) {
-            menu.classList.add('hidden');
-          }
-        });
       }
     } catch (err) {
       container.innerHTML = '<div class="empty-state"><h3>User not found</h3><p>' + (err.message || '') + '</p></div>';
