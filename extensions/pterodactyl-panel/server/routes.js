@@ -319,13 +319,12 @@ module.exports = function (extDb) {
     async function ensureConsoleStream(serverId, ns) {
         if (consoleStreams.has(serverId)) return;
 
-        const baseClient = await getClient();
-        if (!baseClient) return;
-
-        // Create a dedicated client instance for this server's WS stream
         const rows = await extDb.all('SELECT key, value FROM pterodactyl_settings');
         const cfg = Object.fromEntries(rows.map(r => [r.key, r.value]));
-        if (!cfg.base_url || !cfg.api_key) return;
+        if (!cfg.base_url || !cfg.api_key) {
+            console.error('[Pterodactyl] Cannot start stream: settings not configured');
+            return;
+        }
 
         const streamClient = new PterodactylClient({
             baseUrl: cfg.base_url,
@@ -333,17 +332,15 @@ module.exports = function (extDb) {
             serverId,
         });
 
-        const stream = { client: streamClient, started: true, buffer: [] };
+        const stream = { client: streamClient, buffer: [] };
         consoleStreams.set(serverId, stream);
 
         console.log('[Pterodactyl] Starting console stream for server:', serverId);
 
         streamClient.connectConsole(
             (line) => {
-                // Buffer up to 500 lines
                 stream.buffer.push(line);
                 if (stream.buffer.length > 500) stream.buffer.shift();
-                // Emit to all clients watching this server
                 ns.to('server:' + serverId).emit('console:line', { line, timestamp: new Date().toISOString() });
             },
             (state) => {
@@ -401,36 +398,45 @@ module.exports = function (extDb) {
         });
 
         ns.on('connection', async (socket) => {
-            const serverId = socket.handshake.query && socket.handshake.query.server;
+            // server id can come from query param or auth object
+            const serverId = (socket.handshake.query && socket.handshake.query.server)
+                || (socket.handshake.auth && socket.handshake.auth.server);
+
+            console.log('[Pterodactyl] Socket connected. User:', socket.user && socket.user.id, 'Server:', serverId, 'Query:', JSON.stringify(socket.handshake.query), 'Auth keys:', Object.keys(socket.handshake.auth || {}));
+
             if (!serverId) {
+                console.error('[Pterodactyl] Disconnecting: no server param');
                 socket.emit('console:error', { message: 'No server specified' });
                 socket.disconnect();
                 return;
             }
 
-            console.log('[Pterodactyl] Client connected to console for server:', serverId);
-
             // Join the room for this server
             socket.join('server:' + serverId);
 
-            // Send buffered history immediately
-            const stream = consoleStreams.get(serverId);
-            if (stream && stream.buffer.length > 0) {
-                socket.emit('history', { lines: [...stream.buffer] });
+            // If stream already exists, send buffered history immediately
+            const existingStream = consoleStreams.get(serverId);
+            if (existingStream && existingStream.buffer.length > 0) {
+                console.log('[Pterodactyl] Sending', existingStream.buffer.length, 'buffered lines to new client');
+                socket.emit('history', { lines: [...existingStream.buffer] });
             }
 
             // Start the Pterodactyl WS stream if not already running for this server
             if (!consoleStreams.has(serverId)) {
+                console.log('[Pterodactyl] No existing stream, starting new one for:', serverId);
                 await ensureConsoleStream(serverId, ns);
-                // Send any buffer that was populated during connection setup
-                const newStream = consoleStreams.get(serverId);
-                if (newStream && newStream.buffer.length > 0) {
-                    socket.emit('history', { lines: [...newStream.buffer] });
-                }
+                // Give the WS 2s to receive the initial log burst from 'send logs',
+                // then flush whatever was buffered as history to this socket
+                setTimeout(() => {
+                    const s = consoleStreams.get(serverId);
+                    if (s && s.buffer.length > 0 && socket.connected) {
+                        socket.emit('history', { lines: [...s.buffer] });
+                    }
+                }, 2000);
             }
 
-            socket.on('disconnect', () => {
-                console.log('[Pterodactyl] Client disconnected from console for server:', serverId);
+            socket.on('disconnect', (reason) => {
+                console.log('[Pterodactyl] Client disconnected from console for server:', serverId, 'reason:', reason);
             });
         });
     }

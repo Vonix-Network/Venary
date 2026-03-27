@@ -183,12 +183,21 @@ class PterodactylClient {
 
       const { event, args = [] } = msg;
 
-      if (event === 'console output') {
+      if (event === 'auth success') {
+        // After successful auth, request recent logs
+        ws.send(JSON.stringify({ event: 'send logs', args: [] }));
+        // Also request current status
+        ws.send(JSON.stringify({ event: 'send stats', args: [] }));
+      } else if (event === 'console output') {
         const line = args[0] ?? '';
         this._bufferLine(line);
         onLine(line);
       } else if (event === 'status') {
         onStatus(args[0] ?? '');
+      } else if (event === 'stats') {
+        // stats event contains current_state
+        const state = args[0] && args[0].state;
+        if (state) onStatus(state);
       } else if (event === 'token expiring') {
         // Pterodactyl sends this ~60s before token expires — re-auth proactively
         this._refreshWsToken(ws);

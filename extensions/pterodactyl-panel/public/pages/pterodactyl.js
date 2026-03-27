@@ -202,7 +202,7 @@ var PterodactylPage = {
         if (this._socket) { this._socket.off(); this._socket.disconnect(); this._socket = null; }
 
         const socket = io('/pterodactyl-console', {
-            auth: { token: API.token },
+            auth: { token: API.token, server: this._serverId },
             query: { server: this._serverId },
             transports: ['websocket'],
             reconnection: false,
@@ -211,10 +211,10 @@ var PterodactylPage = {
 
         socket.on('connect', () => {
             this._dismissError();
-            // Stop polling once WS is live
             if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; }
         });
         socket.on('history', ({ lines }) => {
+            // History = initial burst, render without auto-scroll then jump to bottom once
             lines.forEach(l => this._appendLine(l, false));
             this._scrollToBottom();
         });
