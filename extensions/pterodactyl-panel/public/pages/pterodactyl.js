@@ -293,27 +293,34 @@ var PterodactylPage = {
     // ── Stats ─────────────────────────────────────────────────────────────────
 
     _updateStats(stats) {
-        // stats: { memory_bytes, memory_limit_bytes, cpu_absolute, disk_bytes, network_rx_bytes, network_tx_bytes, uptime }
+        // Guard: skip if stats object is empty or clearly invalid
+        if (!stats || typeof stats !== 'object') return;
+
         const cpu = parseFloat(stats.cpu_absolute) || 0;
-        const ramMB = Math.round((stats.memory_bytes || 0) / 1048576);
+        const ramBytes = stats.memory_bytes || 0;
+        const ramMB = Math.round(ramBytes / 1048576);
         const ramLimitMB = Math.round((stats.memory_limit_bytes || 0) / 1048576);
         const diskMB = Math.round((stats.disk_bytes || 0) / 1048576);
         const rx = this._fmtBytes(stats.network_rx_bytes || 0);
         const tx = this._fmtBytes(stats.network_tx_bytes || 0);
         const uptime = this._fmtUptime(stats.uptime || 0);
 
-        // Push to history
-        this._cpuHistory.push(cpu);
-        if (this._cpuHistory.length > this._GRAPH_SAMPLES) this._cpuHistory.shift();
-        this._ramHistory.push(ramMB);
-        if (this._ramHistory.length > this._GRAPH_SAMPLES) this._ramHistory.shift();
+        // Only push to graph history when server is running and we have real data.
+        // This prevents the graph spiking to 0 between polls or when offline.
+        const hasRealData = this._status === 'running' && (cpu > 0 || ramBytes > 0);
+        if (hasRealData) {
+            this._cpuHistory.push(cpu);
+            if (this._cpuHistory.length > this._GRAPH_SAMPLES) this._cpuHistory.shift();
+            this._ramHistory.push(ramMB);
+            if (this._ramHistory.length > this._GRAPH_SAMPLES) this._ramHistory.shift();
+        }
 
-        // Update text values
+        // Always update text values when we have any data
         const cpuEl = document.getElementById('ptero-cpu-val');
         if (cpuEl) cpuEl.textContent = cpu.toFixed(1) + '%';
 
         const ramEl = document.getElementById('ptero-ram-val');
-        if (ramEl) ramEl.textContent = ramMB + ' / ' + (ramLimitMB || '∞') + ' MB';
+        if (ramEl) ramEl.textContent = ramMB + ' / ' + (ramLimitMB > 0 ? ramLimitMB : '∞') + ' MB';
 
         const diskEl = document.getElementById('ptero-disk-val');
         if (diskEl) diskEl.textContent = diskMB + ' MB';
@@ -331,9 +338,12 @@ var PterodactylPage = {
             diskBar.style.width = pct + '%';
         }
 
-        // Draw graphs
-        this._drawGraph('ptero-cpu-graph', this._cpuHistory, 100, '#29b6f6');
-        this._drawGraph('ptero-ram-graph', this._ramHistory, ramLimitMB || Math.max(...this._ramHistory, 1), '#ab47bc');
+        // Only redraw graphs when we actually added new data points
+        if (hasRealData) {
+            this._drawGraph('ptero-cpu-graph', this._cpuHistory, 100, '#29b6f6');
+            const ramMax = ramLimitMB > 0 ? ramLimitMB : (this._ramHistory.length ? Math.max(...this._ramHistory) : 1);
+            this._drawGraph('ptero-ram-graph', this._ramHistory, ramMax, '#ab47bc');
+        }
     },
 
     _drawGraph(canvasId, data, maxVal, color) {
