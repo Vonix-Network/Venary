@@ -9,7 +9,7 @@ const ChatPage = {
     var targetUserId = (params && params[0]) || null;
     container.innerHTML = '<div class="chat-page">' +
       '<div class="conversation-list animate-fade-up">' +
-      '<div class="conversation-list-header"><h2>💬 MESSAGES</h2></div>' +
+      '<div class="conversation-list-header"><h2>💬 Messages</h2></div>' +
       '<div class="conversation-items" id="conversation-items"><div class="loading-spinner"></div></div>' +
       '</div>' +
       '<div class="chat-window" id="chat-window">' +
@@ -59,11 +59,22 @@ const ChatPage = {
       container.innerHTML = conversations.map(function (c) {
         var initials = (c.display_name || c.username || '?').charAt(0).toUpperCase();
         var isActive = self.activeChat === c.id;
+        var avatarContent = c.avatar
+          ? '<img src="' + App.escapeHtml(c.avatar) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+          : initials;
         return '<div class="conversation-item ' + (isActive ? 'active' : '') + '" onclick="ChatPage.openChat(\'' + c.id + '\')" data-user-id="' + c.id + '">' +
-          '<div class="avatar" style="position:relative;width:36px;height:36px;font-size:0.8rem">' + initials + '<span class="status-dot ' + (c.status || 'offline') + '"></span></div>' +
-          '<div class="conversation-preview"><h4>' + App.escapeHtml(c.display_name || c.username) + '</h4><p class="last-message">' + App.escapeHtml(c.last_message || '') + '</p></div>' +
-          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="conversation-time">' + App.timeAgo(c.last_message_time) + '</span>' +
-          (c.unread_count > 0 ? '<span class="unread-dot"></span>' : '') + '</div></div>';
+          '<div class="avatar" style="position:relative;width:42px;height:42px;font-size:0.9rem;flex-shrink:0">' + avatarContent + '<span class="status-dot ' + (c.status || 'offline') + '"></span></div>' +
+          '<div class="conversation-preview">' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">' +
+          '<h4 style="font-size:0.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + App.escapeHtml(c.display_name || c.username) + '</h4>' +
+          '<span class="conversation-time">' + (c.last_message_time ? App.timeAgo(c.last_message_time) : '') + '</span>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px">' +
+          '<p class="last-message" style="flex:1">' + App.escapeHtml(c.last_message || '') + '</p>' +
+          (c.unread_count > 0 ? '<span class="unread-dot"></span>' : '') +
+          '</div>' +
+          '</div>' +
+          '</div>';
       }).join('');
     } catch (err) { console.error('Load conversations error:', err); }
   },
@@ -73,6 +84,11 @@ const ChatPage = {
     document.querySelectorAll('.conversation-item').forEach(function (item) {
       item.classList.toggle('active', item.dataset.userId === userId);
     });
+
+    // Mobile: slide to chat view
+    var chatPage = document.querySelector('.chat-page');
+    if (chatPage) chatPage.classList.add('chat-open');
+
     var chatWindow = document.getElementById('chat-window');
     chatWindow.innerHTML = '<div class="loading-spinner" style="flex:1"></div>';
 
@@ -81,23 +97,33 @@ const ChatPage = {
       var messages = results[0];
       var user = results[1];
       var initials = (user.display_name || user.username || '?').charAt(0).toUpperCase();
+      var avatarContent = user.avatar
+        ? '<img src="' + App.escapeHtml(user.avatar) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+        : initials;
 
       var messagesHtml = '';
       if (messages.length === 0) {
-        messagesHtml = '<div class="empty-state" style="flex:1"><p style="color:var(--text-muted)">Start of your conversation with ' + App.escapeHtml(user.display_name || user.username) + '</p></div>';
+        messagesHtml = '<div class="empty-state" style="flex:1;padding:var(--space-xl)"><p style="color:var(--text-muted)">Start of your conversation with ' + App.escapeHtml(user.display_name || user.username) + '</p></div>';
       } else {
         messagesHtml = messages.map(function (m) { return ChatPage.renderMessage(m); }).join('');
       }
 
-      chatWindow.innerHTML = '<div class="chat-header">' +
-        '<div class="avatar" style="width:36px;height:36px;font-size:0.8rem;cursor:pointer" onclick="window.location.hash=\'#/profile/' + userId + '\'">' + initials + '</div>' +
-        '<div class="chat-header-info"><h3>' + App.escapeHtml(user.display_name || user.username) + '</h3><span id="typing-indicator" class="typing-indicator"></span></div>' +
-        '<span class="badge badge-' + (user.status === 'online' ? 'online' : 'offline') + '">' + (user.status || 'offline') + '</span>' +
+      chatWindow.innerHTML =
+        '<div class="chat-header">' +
+        '  <button class="chat-back-btn" onclick="ChatPage.closeChat()" title="Back">' +
+        '    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>' +
+        '  </button>' +
+        '  <div class="avatar" style="width:36px;height:36px;font-size:0.8rem;cursor:pointer;flex-shrink:0" onclick="window.location.hash=\'#/profile/' + userId + '\'">' + avatarContent + '</div>' +
+        '  <div class="chat-header-info" style="flex:1;min-width:0">' +
+        '    <h3 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + App.escapeHtml(user.display_name || user.username) + '</h3>' +
+        '    <span id="typing-indicator" class="typing-indicator"></span>' +
+        '  </div>' +
+        '  <span class="badge badge-' + (user.status === 'online' ? 'online' : 'offline') + '" style="flex-shrink:0">' + (user.status || 'offline') + '</span>' +
         '</div>' +
         '<div class="chat-messages" id="chat-messages">' + messagesHtml + '</div>' +
         '<div class="chat-input-area">' +
-        '<textarea class="chat-input" id="chat-input" placeholder="Type a message..." rows="1"></textarea>' +
-        '<button class="chat-send-btn" id="chat-send-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>' +
+        '  <textarea class="chat-input" id="chat-input" placeholder="Message..." rows="1"></textarea>' +
+        '  <button class="chat-send-btn" id="chat-send-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>' +
         '</div>';
 
       var messagesEl = document.getElementById('chat-messages');
@@ -123,6 +149,16 @@ const ChatPage = {
     } catch (err) {
       chatWindow.innerHTML = '<div class="empty-state" style="flex:1"><h3>Could not load chat</h3><p>' + (err.message || '') + '</p></div>';
     }
+  },
+
+  closeChat() {
+    // Mobile: slide back to conversation list
+    var chatPage = document.querySelector('.chat-page');
+    if (chatPage) chatPage.classList.remove('chat-open');
+    this.activeChat = null;
+    document.querySelectorAll('.conversation-item').forEach(function (item) {
+      item.classList.remove('active');
+    });
   },
 
   renderMessage(msg) {

@@ -73,11 +73,21 @@ var Router = {
             mainNav.classList.remove('mobile-expanded');
         }
 
+        // Close mobile drawer if open
+        if (typeof App !== 'undefined' && App.closeMobileDrawer) {
+            App.closeMobileDrawer();
+        }
+
         // Update nav (core + extension links)
         var activePage = segments[0] || '';
         document.querySelectorAll('.nav-link').forEach(function (link) {
             link.classList.toggle('active', link.dataset.page === activePage);
         });
+
+        // Sync mobile bottom nav active state
+        if (typeof App !== 'undefined' && App._syncMobileNavActive) {
+            App._syncMobileNavActive();
+        }
 
         // Page transition
         var container = document.getElementById('page-container');

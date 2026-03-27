@@ -306,6 +306,9 @@ var App = {
             }
         }
 
+        // Initialize mobile UI
+        this._initMobileNav();
+
         // Connect socket
         if (API.token) {
             SocketClient.connect(API.token);
@@ -318,6 +321,139 @@ var App = {
         this.updateFriendRequestBadge();
     },
 
+    // ===========================================
+    // Mobile Nav & Drawer
+    // ===========================================
+    _initMobileNav() {
+        var u = this.currentUser;
+        if (!u) return;
+
+        // Show mobile UI
+        var mobileHeader = document.getElementById('mobile-header');
+        var mobileBottomNav = document.getElementById('mobile-bottom-nav');
+        if (mobileHeader) mobileHeader.classList.remove('hidden');
+        if (mobileBottomNav) mobileBottomNav.classList.remove('hidden');
+
+        // Sync avatar in mobile header
+        var mobileAvatarInner = document.getElementById('mobile-avatar-inner');
+        if (mobileAvatarInner) {
+            if (u.avatar) {
+                mobileAvatarInner.outerHTML = '<img src="' + this.escapeHtml(u.avatar) + '" style="width:34px;height:34px;border-radius:50%;object-fit:cover;display:block" id="mobile-avatar-inner">';
+            } else {
+                mobileAvatarInner.textContent = this.getInitials();
+            }
+        }
+
+        // Sync avatar in bottom tab
+        var mbnAvatarTab = document.getElementById('mbn-avatar-tab');
+        if (mbnAvatarTab) {
+            if (u.avatar) {
+                mbnAvatarTab.innerHTML = '<img src="' + this.escapeHtml(u.avatar) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+            } else {
+                mbnAvatarTab.textContent = this.getInitials();
+            }
+        }
+
+        // Sync drawer user info
+        var drawerAvatar = document.getElementById('mobile-drawer-avatar');
+        var drawerUsername = document.getElementById('mobile-drawer-username');
+        var drawerRole = document.getElementById('mobile-drawer-role');
+        if (drawerAvatar) {
+            if (u.avatar) {
+                drawerAvatar.outerHTML = '<img src="' + this.escapeHtml(u.avatar) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover" id="mobile-drawer-avatar">';
+            } else {
+                drawerAvatar.textContent = this.getInitials();
+            }
+        }
+        if (drawerUsername) drawerUsername.textContent = u.display_name || u.username;
+        if (drawerRole) drawerRole.textContent = u.role;
+
+        // Show admin button in drawer if applicable
+        var drawerAdminBtn = document.getElementById('mobile-drawer-admin-btn');
+        if (drawerAdminBtn) {
+            if (['admin', 'superadmin', 'moderator'].includes(u.role)) {
+                drawerAdminBtn.classList.remove('hidden');
+            }
+        }
+    },
+
+    toggleMobileDrawer() {
+        var overlay = document.getElementById('mobile-drawer-overlay');
+        var drawer = document.getElementById('mobile-drawer');
+        if (!drawer) return;
+
+        var isHidden = drawer.classList.contains('hidden');
+        if (isHidden) {
+            // Populate drawer with extension links
+            this._populateMobileDrawer();
+            overlay.classList.remove('hidden');
+            drawer.classList.remove('hidden');
+            // Mark "more" tab as active
+            document.querySelectorAll('.mbn-tab').forEach(function(t) { t.classList.remove('active'); });
+            var moreBtn = document.getElementById('mbn-more-btn');
+            if (moreBtn) moreBtn.classList.add('active');
+        } else {
+            this.closeMobileDrawer();
+        }
+    },
+
+    closeMobileDrawer() {
+        var overlay = document.getElementById('mobile-drawer-overlay');
+        var drawer = document.getElementById('mobile-drawer');
+        if (overlay) overlay.classList.add('hidden');
+        if (drawer) drawer.classList.add('hidden');
+        // Remove active from more btn, restore current page active
+        var moreBtn = document.getElementById('mbn-more-btn');
+        if (moreBtn) moreBtn.classList.remove('active');
+        this._syncMobileNavActive();
+    },
+
+    _populateMobileDrawer() {
+        var container = document.getElementById('mobile-drawer-links');
+        if (!container) return;
+
+        var html = '';
+        var accessMap = this._extAccessMap || {};
+
+        // Extension nav links
+        (this.extensions || []).forEach(function(ext) {
+            if (!ext.enabled) return;
+            if (accessMap.hasOwnProperty(ext.id) && !accessMap[ext.id]) return;
+            (ext.nav || []).forEach(function(nav) {
+                if (nav.dropdown && nav.children) {
+                    nav.children.forEach(function(child) {
+                        var icon = App._getNavIcon(child.icon || nav.icon);
+                        var page = child.route.replace('/', '');
+                        html += '<a href="#' + child.route + '" class="nav-link" data-page="' + page + '" onclick="App.closeMobileDrawer()">' + icon + '<span>' + child.label + '</span></a>';
+                    });
+                } else {
+                    var icon = App._getNavIcon(nav.icon);
+                    var page = nav.route ? nav.route.replace('/', '') : '';
+                    html += '<a href="#' + nav.route + '" class="nav-link" data-page="' + page + '" onclick="App.closeMobileDrawer()">' + icon + '<span>' + nav.label + '</span></a>';
+                }
+            });
+        });
+
+        container.innerHTML = html || '<div style="padding:12px 14px;color:var(--text-muted);font-size:0.85rem">No additional pages</div>';
+    },
+
+    _syncMobileNavActive() {
+        var hash = window.location.hash || '#/feed';
+        var path = hash.replace('#/', '');
+        var page = path.split('/')[0];
+
+        document.querySelectorAll('.mbn-tab').forEach(function(tab) {
+            tab.classList.toggle('active', tab.dataset.page === page);
+        });
+
+        // Update mobile header title
+        var titleEl = document.getElementById('mobile-page-title');
+        if (titleEl) {
+            var titles = { feed: 'Feed', friends: 'Friends', chat: 'Chat', profile: 'Profile', admin: 'Admin', mod: 'Moderation' };
+            titleEl.textContent = titles[page] || (App.siteSettings && App.siteSettings.siteName) || 'Venary';
+        }
+    },
+
     logout() {
         API.setToken(null);
         this.currentUser = null;
@@ -325,8 +461,13 @@ var App = {
 
         var nav = document.getElementById('main-nav');
         var page = document.getElementById('page-container');
+        var mobileHeader = document.getElementById('mobile-header');
+        var mobileBottomNav = document.getElementById('mobile-bottom-nav');
         if (nav) nav.classList.add('hidden');
         if (page) page.classList.add('full-width');
+        if (mobileHeader) mobileHeader.classList.add('hidden');
+        if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
+        this.closeMobileDrawer();
 
         window.location.hash = '#/login';
         this.showToast('Logged out successfully', 'info');
@@ -336,26 +477,28 @@ var App = {
         try {
             var counts = await API.get('/api/notifications/counts');
             
-            // Chat Message Badge
+            // Chat Message Badge — desktop + mobile
             var chatBadge = document.getElementById('unread-badge');
-            if (chatBadge) {
-                if (counts.unread_messages > 0) {
-                    chatBadge.textContent = counts.unread_messages > 99 ? '99+' : counts.unread_messages;
-                    chatBadge.classList.remove('hidden');
-                } else {
-                    chatBadge.classList.add('hidden');
-                }
+            var mbnChatBadge = document.getElementById('mbn-chat-badge');
+            if (counts.unread_messages > 0) {
+                var chatTxt = counts.unread_messages > 99 ? '99+' : counts.unread_messages;
+                if (chatBadge) { chatBadge.textContent = chatTxt; chatBadge.classList.remove('hidden'); }
+                if (mbnChatBadge) { mbnChatBadge.textContent = chatTxt; mbnChatBadge.classList.remove('hidden'); }
+            } else {
+                if (chatBadge) chatBadge.classList.add('hidden');
+                if (mbnChatBadge) mbnChatBadge.classList.add('hidden');
             }
 
-            // Notification Bell Badge
+            // Notification Bell Badge — desktop + mobile header
             var notifBadge = document.getElementById('notification-badge');
-            if (notifBadge) {
-                if (counts.unread_notifications > 0) {
-                    notifBadge.textContent = counts.unread_notifications > 99 ? '99+' : counts.unread_notifications;
-                    notifBadge.classList.remove('hidden');
-                } else {
-                    notifBadge.classList.add('hidden');
-                }
+            var mobileNotifBadge = document.getElementById('mobile-notif-badge');
+            if (counts.unread_notifications > 0) {
+                var notifTxt = counts.unread_notifications > 99 ? '99+' : counts.unread_notifications;
+                if (notifBadge) { notifBadge.textContent = notifTxt; notifBadge.classList.remove('hidden'); }
+                if (mobileNotifBadge) { mobileNotifBadge.textContent = notifTxt; mobileNotifBadge.classList.remove('hidden'); }
+            } else {
+                if (notifBadge) notifBadge.classList.add('hidden');
+                if (mobileNotifBadge) mobileNotifBadge.classList.add('hidden');
             }
         } catch (e) { /* ignore */ }
     },
@@ -363,15 +506,13 @@ var App = {
     async updateFriendRequestBadge() {
         try {
             var data = await API.getFriendRequests();
+            var count = data.incoming && data.incoming.length > 0 ? data.incoming.length : 0;
+            // Desktop badge
             var badge = document.getElementById('friend-request-badge');
-            if (badge) {
-                if (data.incoming && data.incoming.length > 0) {
-                    badge.textContent = data.incoming.length;
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.classList.add('hidden');
-                }
-            }
+            if (badge) { badge.textContent = count; badge.classList.toggle('hidden', count === 0); }
+            // Mobile bottom nav badge
+            var mbnBadge = document.getElementById('mbn-friend-badge');
+            if (mbnBadge) { mbnBadge.textContent = count; mbnBadge.classList.toggle('hidden', count === 0); }
         } catch (e) { /* ignore */ }
     },
 

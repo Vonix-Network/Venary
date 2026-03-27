@@ -49,6 +49,23 @@
   <!-- Particle Canvas Background -->
   <canvas id="particle-canvas"></canvas>
 
+  <!-- Mobile Top Header (shown only on mobile when logged in) -->
+  <header id="mobile-header" class="mobile-header hidden">
+    <div class="mobile-header-left">
+      <span class="mobile-header-title" id="mobile-page-title">Venary</span>
+    </div>
+    <div class="mobile-header-right">
+      <button class="mobile-header-btn" id="mobile-notif-btn" onclick="App.toggleNotifications(event)" title="Notifications">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="mobile-header-badge hidden" id="mobile-notif-badge">0</span>
+      </button>
+      <div class="mobile-header-avatar" id="mobile-avatar" onclick="App.toggleProfileMenu(event)">
+        <div class="avatar-placeholder" id="mobile-avatar-inner">?</div>
+        <span class="status-dot online" id="mobile-status-dot"></span>
+      </div>
+    </div>
+  </header>
+
   <!-- Main App Container -->
   <div id="app">
     <!-- Navigation (hidden until logged in) -->
@@ -185,6 +202,64 @@
     <main id="page-container" class="page-container full-width">
       <!-- Pages rendered here by router -->
     </main>
+  </div>
+
+  <!-- Mobile Bottom Nav (app-like tab bar) -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav hidden">
+    <a href="#/feed" class="mbn-tab" data-page="feed" id="mbn-feed">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Feed</span>
+    </a>
+    <a href="#/friends" class="mbn-tab" data-page="friends" id="mbn-friends">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Friends</span>
+      <span class="mbn-badge hidden" id="mbn-friend-badge">0</span>
+    </a>
+    <a href="#/chat" class="mbn-tab" data-page="chat" id="mbn-chat">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Chat</span>
+      <span class="mbn-badge hidden" id="mbn-chat-badge">0</span>
+    </a>
+    <button class="mbn-tab mbn-more-btn" id="mbn-more-btn" onclick="App.toggleMobileDrawer()">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
+      <span>More</span>
+    </button>
+    <a href="#/profile" class="mbn-tab" data-page="profile" id="mbn-profile">
+      <div class="mbn-avatar" id="mbn-avatar-tab">?</div>
+      <span>Profile</span>
+    </a>
+  </nav>
+
+  <!-- Mobile Drawer (bottom sheet for "More") -->
+  <div id="mobile-drawer-overlay" class="mobile-drawer-overlay hidden" onclick="App.closeMobileDrawer()"></div>
+  <div id="mobile-drawer" class="mobile-drawer hidden">
+    <div class="mobile-drawer-handle"></div>
+    <div class="mobile-drawer-header">
+      <div class="mobile-drawer-user" id="mobile-drawer-user">
+        <div class="avatar-placeholder" id="mobile-drawer-avatar">?</div>
+        <div>
+          <div class="mobile-drawer-username" id="mobile-drawer-username">Loading...</div>
+          <div class="mobile-drawer-role" id="mobile-drawer-role"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mobile-drawer-links" id="mobile-drawer-links">
+      <!-- Extension nav links + admin/mod links injected here -->
+    </div>
+    <div class="mobile-drawer-actions">
+      <button class="mobile-drawer-action-btn" onclick="App.showThemesModal(); App.closeMobileDrawer()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Themes
+      </button>
+      <button class="mobile-drawer-action-btn hidden" id="mobile-drawer-admin-btn" onclick="App.handleShieldClick(); App.closeMobileDrawer()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Admin
+      </button>
+      <button class="mobile-drawer-action-btn mobile-drawer-logout" onclick="App.logout()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </button>
+    </div>
   </div>
 
   <!-- Toast Container -->
