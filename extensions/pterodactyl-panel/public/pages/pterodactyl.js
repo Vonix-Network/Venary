@@ -167,6 +167,7 @@ var PterodactylPage = {
             this._fetchServerInfo();
             this._fetchStatus();
             this._fetchResources(); // immediate stats on load
+            this._startResourcePoll(); // keep polling every 2s
             this._connectSocket();
         } catch (err) {
             this._showError(err.message || 'Failed to load servers. Check extension settings.');
@@ -183,9 +184,11 @@ var PterodactylPage = {
         this._setStatus('offline');
         this._cpuHistory = [];
         this._ramHistory = [];
+        this._stopResourcePoll();
         this._fetchServerInfo();
         this._fetchStatus();
         this._fetchResources();
+        this._startResourcePoll();
         this._connectSocket();
     },
 
@@ -240,7 +243,7 @@ var PterodactylPage = {
     /** Start a client-side resource poll every 3s as a reliable fallback. */
     _startResourcePoll() {
         if (this._resourcePoll) return;
-        this._resourcePoll = setInterval(() => this._fetchResources(), 1000);
+        this._resourcePoll = setInterval(() => this._fetchResources(), 2000);
     },
 
     _stopResourcePoll() {
@@ -305,9 +308,9 @@ var PterodactylPage = {
         const tx = this._fmtBytes(stats.network_tx_bytes || 0);
         const uptime = this._fmtUptime(stats.uptime || 0);
 
-        // Only push to graph history when server is running and we have real data.
+        // Only push to graph history when we have real non-zero data.
         // This prevents the graph spiking to 0 between polls or when offline.
-        const hasRealData = this._status === 'running' && (cpu > 0 || ramBytes > 0);
+        const hasRealData = (cpu > 0 || ramBytes > 0);
         if (hasRealData) {
             this._cpuHistory.push(cpu);
             if (this._cpuHistory.length > this._GRAPH_SAMPLES) this._cpuHistory.shift();
@@ -470,8 +473,7 @@ var PterodactylPage = {
             this._dismissError();
             if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; }
             if (this._playerPoll) { clearInterval(this._playerPoll); this._playerPoll = null; }
-            // Socket is live — server-side push handles stats, stop client poll
-            this._stopResourcePoll();
+            // Keep resource poll running — server push + client poll both feed _updateStats
         });
         socket.on('history', ({ lines }) => {
             lines.forEach(l => this._appendLine(l, false));

@@ -410,7 +410,7 @@ module.exports = function (extDb) {
             consoleStreams.delete(serverId);
         });
 
-        // REST poll every 1s as fallback when WS stats aren't flowing
+        // REST poll every 2s — primary stats source pushed to all connected clients
         stream._statsPoll = setInterval(async () => {
             try {
                 const result = await streamClient._request('GET', '/api/client/servers/' + serverId + '/resources');
@@ -421,7 +421,7 @@ module.exports = function (extDb) {
                 if (state) ns.to('server:' + serverId).emit('status:update', { state });
                 if (attrs.resources) ns.to('server:' + serverId).emit('stats:update', attrs.resources);
             } catch { /* ignore */ }
-        }, 1000);
+        }, 2000);
 
         // Poll player count every 15s using the server's allocation IP/port.
         // Uses the Minecraft pinger if available — no console pollution.
