@@ -147,7 +147,12 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
     try {
         const targetUser = await db.get('SELECT role FROM users WHERE id = ?', [req.params.id]);
         if (!targetUser) return res.status(404).json({ error: 'User not found' });
-        
+
+        // Superadmins cannot be deleted via web UI — use CLI only
+        if (targetUser.role === 'superadmin') {
+            return res.status(403).json({ error: 'Cannot delete a superadmin via the web UI' });
+        }
+
         // Only admins can delete moderators/admins
         if (targetUser.role === 'admin' || (targetUser.role === 'moderator' && req.userRole !== 'admin')) {
             return res.status(403).json({ error: 'Cannot delete this user' });
@@ -167,6 +172,13 @@ router.post('/users/:id/role', authenticateToken, requireAdmin, async (req, res)
         const { role } = req.body;
         if (!['user', 'moderator', 'admin'].includes(role)) {
             return res.status(400).json({ error: 'Invalid role' });
+        }
+
+        // Superadmin role cannot be assigned or revoked via web UI — use CLI only
+        const targetUser = await db.get('SELECT role FROM users WHERE id = ?', [req.params.id]);
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
+        if (targetUser.role === 'superadmin') {
+            return res.status(403).json({ error: 'Cannot change a superadmin\'s role via the web UI' });
         }
 
         // Only admins can promote to admin

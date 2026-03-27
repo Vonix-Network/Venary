@@ -94,6 +94,9 @@ async function start() {
         const discordBot = require('./discordBot');
         await discordBot.init();
 
+        // Make io available to extensions via app.get('io')
+        app.set('io', io);
+
         // Load extensions (PHPBB-style module system)
         const extensionLoader = require('./extension-loader');
         await extensionLoader.loadAll(app, dbConfig);

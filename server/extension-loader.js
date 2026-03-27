@@ -133,6 +133,15 @@ class ExtensionLoader {
 
                 const prefix = manifest.routes.prefix || '/api/ext/' + manifest.id;
                 app.use(prefix, router);
+
+                // Wire Socket.IO namespace if the router exposes attachConsoleNamespace
+                if (typeof router.attachConsoleNamespace === 'function') {
+                    const io = app.get('io');
+                    if (io) {
+                        router.attachConsoleNamespace(io);
+                        console.log('    🔌 Socket.IO namespace attached for: ' + manifest.id);
+                    }
+                }
             }
         }
 

@@ -21,9 +21,10 @@ async function menu() {
     console.log('4. Unban User');
     console.log('5. Execute raw SQL query');
     console.log('6. Promote User to Superadmin');
-    console.log('7. Exit');
+    console.log('7. Demote Superadmin to Admin');
+    console.log('8. Exit');
     
-    const choice = await prompt('\nSelect an option (1-7): ');
+    const choice = await prompt('\nSelect an option (1-8): ');
     
     try {
         switch(choice.trim()) {
@@ -94,6 +95,26 @@ async function menu() {
                 }
                 break;
             case '7':
+                // Demote a superadmin back to admin (safety option — CLI only).
+                const demoteUser = await prompt('Enter superadmin username to demote to admin: ');
+                const u5 = await db.get('SELECT id, role FROM users WHERE username = ?', [demoteUser]);
+                if (u5) {
+                    if (u5.role !== 'superadmin') {
+                        console.log(`\n[INFO] ${demoteUser} is not a superadmin (current role: ${u5.role}).`);
+                    } else {
+                        const confirmDemote = await prompt(`Demote ${demoteUser} from superadmin to admin? [y/N]: `);
+                        if (confirmDemote.trim().toLowerCase() === 'y') {
+                            await db.run("UPDATE users SET role = 'admin' WHERE id = ?", [u5.id]);
+                            console.log(`\n[SUCCESS] Demoted ${demoteUser} to admin.`);
+                        } else {
+                            console.log('\n[CANCELLED]');
+                        }
+                    }
+                } else {
+                    console.log('\n[ERROR] User not found.');
+                }
+                break;
+            case '8':
                 console.log('Exiting...');
                 process.exit(0);
                 break;

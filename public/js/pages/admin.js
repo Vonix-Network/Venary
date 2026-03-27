@@ -190,6 +190,17 @@ var AdminPage = {
         '<button class="btn btn-primary" onclick="AdminPage.applyUserFilters()">Filter</button>' +
         '</div>';
 
+      // Fetch pterodactyl panel access state for all users (if extension enabled)
+      var isPteroEnabled = App.extensions.some(function(e) { return e.id === 'pterodactyl-panel' && e.enabled; });
+      var isSuperadmin = App.currentUser && App.currentUser.role === 'superadmin';
+      var pteroGrantedSet = new Set();
+      if (isPteroEnabled) {
+        try {
+          var pteroAccess = await API.get('/api/ext/pterodactyl-panel/access/users');
+          pteroAccess.forEach(function(r) { pteroGrantedSet.add(r.user_id); });
+        } catch { /* extension may not be configured yet — ignore */ }
+      }
+
       var tableHtml = '<div class="admin-table-container animate-fade-up" style="animation-delay: 0.1s; overflow-x:auto;">' +
         '<table class="admin-table"><thead><tr>' +
         '  <th>User</th>' +
@@ -205,6 +216,28 @@ var AdminPage = {
           var statusClass = u.banned ? 'badge-admin' : (u.status === 'online' ? 'badge-online' : 'badge-offline');
           var statusText = u.banned ? 'BANNED' : u.status.toUpperCase();
           var isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);
+          // Role dropdown — superadmin shown as read-only when applicable
+          var isSuperadminTarget = u.role === 'superadmin';
+          var roleSelect = isSuperadminTarget
+            ? '<select class="input-field" style="padding:4px 8px;font-size:0.8rem;background:var(--bg-tertiary);width:auto;height:32px;" disabled title="Superadmin role can only be changed via CLI">' +
+              '  <option value="superadmin" selected>Superadmin</option>' +
+              '</select>'
+            : '<select class="input-field" style="padding:4px 8px;font-size:0.8rem;background:var(--bg-tertiary);width:auto;height:32px;" onchange="AdminPage.changeRole(\'' + u.id + '\', this.value)">' +
+              '  <option value="user"' + (u.role === 'user' ? ' selected' : '') + '>User</option>' +
+              '  <option value="moderator"' + (u.role === 'moderator' ? ' selected' : '') + '>Moderator</option>' +
+              '  <option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
+              '</select>';
+          // Panel access toggle (only when pterodactyl-panel extension is enabled)
+          var pteroToggle = '';
+          if (isPteroEnabled) {
+            var isGranted = pteroGrantedSet.has(u.id);
+            var toggleDisabled = !isSuperadmin ? ' disabled title="Only superadmins can manage panel access"' : '';
+            pteroToggle = '<label style="display:flex;align-items:center;gap:5px;font-size:0.75rem;color:var(--text-muted);cursor:' + (isSuperadmin ? 'pointer' : 'not-allowed') + ';opacity:' + (isSuperadmin ? '1' : '0.5') + '" title="Panel Access">' +
+              '<input type="checkbox" class="ptero-access-toggle"' + (isGranted ? ' checked' : '') + toggleDisabled +
+              ' onchange="AdminPage.togglePanelAccess(\'' + u.id + '\', this)"' +
+              ' style="accent-color:var(--neon-cyan);width:14px;height:14px;">' +
+              'Panel</label>';
+          }
           return '<tr>' +
             '<td>' +
             '  <div class="admin-user-row">' +
@@ -216,18 +249,13 @@ var AdminPage = {
             '  </div>' +
             '</td>' +
             '<td style="font-family: var(--font-mono); font-size: 0.8rem">' + App.escapeHtml(u.email) + '</td>' +
-            '<td>' +
-            '  <select class="input-field" style="padding:4px 8px;font-size:0.8rem;background:var(--bg-tertiary);width:auto; height: 32px;" onchange="AdminPage.changeRole(\'' + u.id + '\', this.value)">' +
-            '    <option value="user"' + (u.role === 'user' ? ' selected' : '') + '>User</option>' +
-            '    <option value="moderator"' + (u.role === 'moderator' ? ' selected' : '') + '>Moderator</option>' +
-            '    <option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
-            '  </select>' +
-            '</td>' +
+            '<td>' + roleSelect + '</td>' +
             '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
             '<td><span class="badge badge-level">LVL ' + u.level + '</span></td>' +
             '<td style="color:var(--text-muted);font-size:0.8rem">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
             '<td>' +
-            '  <div style="display:flex;gap:4px;justify-content:flex-end;">' +
+            '  <div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;">' +
+            pteroToggle +
             (u.banned ? '<button class="btn btn-sm btn-secondary" onclick="AdminPage.unbanUser(\'' + u.id + '\')" title="Unban User">Unban</button>' : '<button class="btn btn-sm btn-danger" onclick="AdminPage.showBanModal(\'' + u.id + '\', \'' + App.escapeHtml(u.username) + '\')" title="Ban User">Ban</button>') +
             (isMinecraftEnabled ? '<button class="btn btn-sm btn-primary" onclick="AdminPage.assignMinecraftUuid(\'' + u.id + '\')" title="Assign MC UUID">UUID</button>' : '') +
             '    <button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button>' +
@@ -421,6 +449,23 @@ var AdminPage = {
     var note = await App.prompt('Resolve Report', 'Admin note (optional):');
     if (note === null) return;
     try { await API.resolveReport(reportId, note || ''); App.showToast('Report resolved', 'success'); this.loadReports(); this.loadStats(); } catch (err) { App.showToast(err.message, 'error'); }
+  },
+
+  /** Toggle Pterodactyl panel access for a user (superadmin only). */
+  async togglePanelAccess(userId, checkbox) {
+    var grant = checkbox.checked;
+    try {
+      if (grant) {
+        await API.post('/api/ext/pterodactyl-panel/access/' + userId);
+      } else {
+        await API.delete('/api/ext/pterodactyl-panel/access/' + userId);
+      }
+      App.showToast('Panel access ' + (grant ? 'granted' : 'revoked') + '.', 'success');
+    } catch (err) {
+      // Revert toggle on failure
+      checkbox.checked = !grant;
+      App.showToast(err.message || 'Failed to update panel access.', 'error');
+    }
   },
 
   // ==========================================

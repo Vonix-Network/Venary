@@ -6,19 +6,19 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
 
 ## Tasks
 
-- [-] 1. Scaffold extension directory and manifest
+- [x] 1. Scaffold extension directory and manifest
   - Create `extensions/pterodactyl-panel/manifest.json` with `id`, `name`, `version`, `description`, `routes`, `pages`, `css`, `nav`, and `admin_route` fields matching the minecraft extension format
   - The `nav` entry must include a `requiresAccess` or equivalent flag so the router only shows it to users with Panel_Access
   - The `admin_route` must point to `/pterodactyl-admin`
   - _Requirements: 1.1, 1.2, 1.4_
 
-- [~] 2. Create extension database schema
+- [x] 2. Create extension database schema
   - Create `extensions/pterodactyl-panel/server/schema.sql`
   - Define `pterodactyl_access` table: `user_id TEXT PRIMARY KEY`, `granted_at TEXT`, with a FOREIGN KEY to `users.id`
   - Define `pterodactyl_settings` table: `key TEXT PRIMARY KEY`, `value TEXT` — used to store `base_url`, `api_key`, `server_id`
   - _Requirements: 3.1, 2.2, 8.1_
 
-- [~] 3. Implement PterodactylClient class
+- [x] 3. Implement PterodactylClient class
   - Create `extensions/pterodactyl-panel/server/pterodactyl-client.js`
   - Class constructor accepts `{ baseUrl, apiKey, serverId }`
   - Implement `sendPowerAction(action)` — POST to Pterodactyl REST power endpoint with Bearer auth
@@ -36,7 +36,7 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
     - **Property 2: Console buffer capacity invariant**
     - **Validates: Requirements 5.8**
 
-- [~] 4. Implement server routes
+- [x] 4. Implement server routes
   - Create `extensions/pterodactyl-panel/server/routes.js` as a factory function `module.exports = function(extDb) { ... }`
   - Implement `requirePanelAccess(req, res, next)` middleware: checks JWT via `authenticateToken`, then queries `pterodactyl_access` for `req.user.id`; returns 401 if no token, 403 if no row
   - Implement `requireSuperadmin(req, res, next)` middleware: checks `users.role === 'superadmin'` via core db; returns 403 otherwise
@@ -61,7 +61,7 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
     - **Property 5: API key non-disclosure**
     - **Validates: Requirements 8.2, 2.3, 2.6**
 
-- [~] 5. Wire Socket.IO console namespace
+- [x] 5. Wire Socket.IO console namespace
   - In `routes.js` factory, accept the `io` instance (pass it from the extension loader or expose a `setIo(io)` method)
   - Register namespace `/pterodactyl-console`
   - On namespace `connection`: authenticate the socket via handshake token using `authenticateToken` logic; check `pterodactyl_access`; disconnect if either check fails
@@ -78,7 +78,7 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
 - [ ] 6. Checkpoint — server layer complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [~] 7. Implement panel UI page
+- [x] 7. Implement panel UI page
   - Create `extensions/pterodactyl-panel/public/pages/pterodactyl.js` exporting `PterodactylPage` global
   - `init()`: call `GET /api/ext/pterodactyl-panel/status`; if 401/403 render access-denied message and return early (no console or buttons rendered)
   - Render console output area: `<pre>` or `<div>` using `var(--font-mono)` and `var(--bg-tertiary)` background, scrollable, `animate-fade-up`
@@ -92,7 +92,7 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
     - **Property 7: Auto-scroll suppression invariant**
     - **Validates: Requirements 5.4**
 
-- [~] 8. Implement admin settings page
+- [x] 8. Implement admin settings page
   - Create `extensions/pterodactyl-panel/public/pages/pterodactyl-admin.js` exporting `PterodactylAdminPage` global
   - `init()`: fetch `GET /api/ext/pterodactyl-panel/settings`; populate `base_url` and `server_id` fields; leave `api_key` input empty
   - Render form with three `input-field` inputs: Base URL, API Key (type=password, placeholder only), Server ID; submit button using `btn btn-primary`
@@ -100,7 +100,7 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
   - Use `admin-settings-card` CSS class for the card wrapper
   - _Requirements: 2.1–2.3, 8.3, 9.1–9.2_
 
-- [~] 9. Create extension CSS
+- [x] 9. Create extension CSS
   - Create `extensions/pterodactyl-panel/public/css/pterodactyl.css`
   - Style the console output area: `background: var(--bg-tertiary)`, `font-family: var(--font-mono)`, `color: var(--neon-cyan)`, `overflow-y: auto`, `max-height: 400px`, `border-radius` consistent with existing cards
   - Style the power controls row: flex layout, gap, responsive wrap at 360 px
@@ -108,7 +108,7 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
   - Style the Kill secondary button as a smaller variant attached to the Stop button
   - _Requirements: 9.1–9.4_
 
-- [~] 10. Surgical edit — admin.js Panel Access toggle
+- [x] 10. Surgical edit — admin.js Panel Access toggle
   - In `public/js/pages/admin.js`, inside the `loadUsers()` user row map function, add a Panel Access toggle cell
   - Check `App.extensions.some(e => e.id === 'pterodactyl-panel' && e.enabled)` before rendering the toggle (same pattern as the Minecraft UUID button)
   - Fetch current access state from `GET /api/ext/pterodactyl-panel/access` once before rendering the table; build a Set of granted user IDs
@@ -117,14 +117,14 @@ Build the `extensions/pterodactyl-panel/` extension from the ground up, followin
   - `onchange` handler calls `POST` or `DELETE /api/ext/pterodactyl-panel/access/:userId` and reverts the toggle on error
   - _Requirements: 3.2–3.4, 10.3–10.4_
 
-- [~] 11. Surgical edit — admin_menu.js superadmin demote option
+- [x] 11. Surgical edit — admin_menu.js superadmin demote option
   - In `admin_menu.js`, add menu option 7 "Demote Superadmin to Admin" and renumber the current "Exit" from 7 to 8
   - Update the prompt string to show options 1–8
   - Implement case `'7'`: prompt for username; fetch user; if role is `superadmin` confirm then `UPDATE users SET role = 'admin'`; else print info message
   - Update case `'8'` (was `'7'`) to call `process.exit(0)`
   - _Requirements: 10.2_
 
-- [~] 12. Surgical edit — superadmin protection on core ban/role-change routes
+- [x] 12. Surgical edit — superadmin protection on core ban/role-change routes
   - Locate the ban and role-change route handlers in `server/routes/` (or `server/index.js`)
   - Add a guard: if the target user's role is `superadmin`, return 403 before executing the ban or role update
   - This applies to: ban user, unban user, change role, delete user endpoints

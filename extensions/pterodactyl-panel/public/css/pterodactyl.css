@@ -1,1 +1,252 @@
-/* Pterodactyl Panel styles — implemented in task 9 */
+/* =======================================
+   Pterodactyl Panel Extension — Styles
+   ======================================= */
+
+/* ── Page layout ── */
+.ptero-page {
+    padding-bottom: 2rem;
+}
+
+.ptero-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+/* ── Error banner ── */
+.ptero-error-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: var(--radius-md, 8px);
+    padding: 10px 14px;
+    margin-bottom: 1rem;
+    color: #fca5a5;
+    font-size: 0.85rem;
+    animation: ptero-slide-in 0.2s ease;
+}
+
+.ptero-error-banner svg {
+    flex-shrink: 0;
+    color: #f87171;
+}
+
+.ptero-error-banner span {
+    flex: 1;
+}
+
+.ptero-banner-close {
+    background: none;
+    border: none;
+    color: #f87171;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0 2px;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+
+.ptero-banner-close:hover {
+    opacity: 1;
+}
+
+/* ── Power controls ── */
+.ptero-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+/* Start — green */
+.ptero-btn-start {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #86efac;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.ptero-btn-start:hover:not(:disabled) {
+    background: rgba(34, 197, 94, 0.25);
+    border-color: rgba(34, 197, 94, 0.7);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+}
+
+/* Stop group — amber */
+.ptero-stop-group {
+    display: flex;
+    align-items: stretch;
+    border-radius: var(--radius-md, 8px);
+    overflow: hidden;
+    border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.ptero-stop-group .ptero-btn-stop,
+.ptero-stop-group .ptero-btn-kill {
+    border-radius: 0;
+    border: none;
+}
+
+.ptero-btn-stop {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fde68a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+    border-right: 1px solid rgba(251, 191, 36, 0.3) !important;
+}
+
+.ptero-btn-stop:hover:not(:disabled) {
+    background: rgba(251, 191, 36, 0.22);
+}
+
+/* Kill — smaller, more muted */
+.ptero-btn-kill {
+    background: rgba(251, 191, 36, 0.08);
+    color: #fbbf24;
+    font-size: 0.75rem;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s;
+}
+
+.ptero-btn-kill:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+/* Restart — blue/cyan */
+.ptero-btn-restart {
+    background: rgba(6, 182, 212, 0.12);
+    border: 1px solid rgba(6, 182, 212, 0.35);
+    color: var(--neon-cyan, #06b6d4);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.ptero-btn-restart:hover:not(:disabled) {
+    background: rgba(6, 182, 212, 0.22);
+    border-color: rgba(6, 182, 212, 0.6);
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
+}
+
+/* Disabled state for all power buttons */
+.ptero-btn-start:disabled,
+.ptero-btn-stop:disabled,
+.ptero-btn-kill:disabled,
+.ptero-btn-restart:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ── Console ── */
+.ptero-console-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+}
+
+.ptero-console {
+    background: var(--bg-tertiary, #0d0d0d);
+    font-family: var(--font-mono, 'Courier New', monospace);
+    font-size: 0.78rem;
+    color: var(--neon-cyan, #06b6d4);
+    line-height: 1.55;
+    overflow-y: auto;
+    max-height: 480px;
+    min-height: 200px;
+    padding: 12px 14px;
+    scroll-behavior: smooth;
+}
+
+.ptero-line {
+    white-space: pre-wrap;
+    word-break: break-all;
+    padding: 1px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.ptero-line:last-child {
+    border-bottom: none;
+}
+
+/* Subtle scrollbar */
+.ptero-console::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ptero-console::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ptero-console::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.ptero-console::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Animations ── */
+@keyframes ptero-slide-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+    .ptero-controls {
+        gap: 8px;
+    }
+
+    .ptero-btn-start,
+    .ptero-btn-restart {
+        flex: 1;
+        justify-content: center;
+        min-width: 0;
+    }
+
+    .ptero-stop-group {
+        flex: 1;
+    }
+
+    .ptero-btn-stop {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .ptero-console {
+        max-height: 320px;
+        font-size: 0.72rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .ptero-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ptero-stop-group {
+        width: 100%;
+    }
+}
