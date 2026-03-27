@@ -1416,6 +1416,7 @@ input[type="range"]::-moz-range-thumb {
         gap: 0;
         height: auto;
         overflow: hidden;
+        max-width: 100vw;
     }
 
     /* Conversation list — full width panel, slides out when chat is open */

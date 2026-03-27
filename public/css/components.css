@@ -1451,6 +1451,9 @@ textarea.input-field {
 
     /* Prevent horizontal scroll */
     body { overflow-x: hidden; }
+    html { overflow-x: hidden; }
+    #app { overflow-x: hidden; }
+    .page-container { overflow-x: hidden; }
 }
 
 /* ── Smooth page transitions ── */
