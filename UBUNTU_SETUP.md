@@ -1,77 +1,213 @@
 # 🐧 Venary Ubuntu / Linux Setup Guide
 
-This guide helps you set up **Venary** on an Ubuntu/Debian server and resolves the common **"invalid ELF header"** error caused by platform-incompatible binary files.
+A complete guide for deploying **Venary** on a fresh Ubuntu 22.04 LTS VPS with Nginx, SSL via Let's Encrypt, and PM2 for process management.
 
-## 🛠️ Prerequisites
+---
 
-Before installing Venary, ensure your system has the necessary build tools and Node.js installed.
+## � Prerequisites
 
-### 1. Update System & Install Build Tools
-Native modules like `better-sqlite3` require a C++ compiler to build correctly on Linux.
+- A fresh Ubuntu 22.04 LTS VPS
+- A domain name pointed to your VPS IP (A record)
+- Root or sudo access
+
+---
+
+## 1. Initial Server Hardening
+
 ```bash
-sudo apt update
-sudo apt install -y build-essential python3
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Create a non-root deploy user (recommended)
+sudo adduser deploy
+sudo usermod -aG sudo deploy
+
+# Switch to deploy user for the rest of the setup
+su - deploy
 ```
 
-### 2. Install Node.js (Version 20+)
-We recommend using NodeSource or NVM.
+---
+
+## 2. Install Build Tools & Node.js 20
+
+Native modules like `better-sqlite3` require a C++ compiler.
+
 ```bash
+# Install build essentials
+sudo apt install -y build-essential python3 git curl ufw
+
+# Install Node.js 20 via NodeSource
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
+
+# Verify
+node -v   # should be v20.x.x
+npm -v
 ```
 
 ---
 
-## 🚀 Installation
+## 3. Configure Firewall (UFW)
 
-### 1. Clone the Repository
 ```bash
-git clone <your-repo-url> /var/www/Venary
-cd /var/www/Venary
+sudo ufw allow OpenSSH
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw enable
+sudo ufw status
 ```
 
-### 2. Install Dependencies
+---
+
+## 4. Install Nginx
+
 ```bash
+sudo apt install -y nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+```
+
+---
+
+## 5. Install Certbot (Let's Encrypt)
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+```
+
+---
+
+## 5b. Alternative: Run in Screen (instead of PM2)
+
+If you prefer to see live console output with `screen -r`, use this instead of PM2.
+
+### Install Screen
+
+```bash
+sudo apt install -y screen
+```
+
+### Create a systemd service that runs in Screen
+
+```bash
+sudo nano /etc/systemd/system/venary.service
+```
+
+```ini
+[Unit]
+Description=Venary Node.js Application
+After=network.target
+
+[Service]
+Type=forking
+User=deploy
+WorkingDirectory=/var/www/venary
+ExecStart=/usr/bin/screen -dmS venary node server/index.js
+ExecStop=/usr/bin/screen -S venary -X quit
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable venary
+sudo systemctl start venary
+
+# Check status
+sudo systemctl status venary
+```
+
+### Using Screen
+
+```bash
+# Attach to see live output
+screen -r venary
+
+# Detach: press Ctrl+A, then D
+
+# List running screens
+screen -ls
+```
+
+---
+
+## 7. Clone & Install Venary
+
+```bash
+# Clone the repo
+sudo mkdir -p /var/www/venary
+sudo chown deploy:deploy /var/www/venary
+git clone <your-repo-url> /var/www/venary
+cd /var/www/venary
+
+# Install dependencies
 npm install
-```
 
-### 3. Fix "invalid ELF header"
-If you see the error:
-`Database connection failed: .../better_sqlite3.node: invalid ELF header`
-
-It means the `node_modules` were likely copied from a Windows machine. You must rebuild the native dependencies for Linux:
-```bash
+# If you see "invalid ELF header" (modules copied from Windows), rebuild:
 npm run rebuild
 ```
-*This command runs `npm rebuild --build-from-source`, which recompiles `better-sqlite3` specifically for your Ubuntu environment.*
 
 ---
 
-## 🏃 Running Venary
+## 8. Configure Venary
 
-### Start the Server
+Run the app once to trigger setup, or manually create your config:
+
 ```bash
 npm start
-```
-
-### Running in Background (Recommended)
-Use **PM2** to keep the server running after you close your terminal:
-```bash
-sudo npm install -g pm2
-pm2 start server/index.js --name "venary"
-pm2 save
-pm2 startup
+# Follow the setup wizard at http://<your-ip>:3000/setup
+# Then stop it with Ctrl+C
 ```
 
 ---
 
-## 🔧 Nginx Reverse Proxy (Optional)
-To point your domain (e.g., `gaming.yourdomain.com`) to Venary, use an Nginx config:
+## 9. Set Up PM2 (Process Manager)
+
+PM2 keeps Venary running after you close your terminal and restarts it on crash.
+
+```bash
+# Install PM2 globally
+sudo npm install -g pm2
+
+# Start Venary
+pm2 start server/index.js --name "venary"
+
+# Save the process list
+pm2 save
+
+# Generate and enable the startup script
+pm2 startup systemd -u deploy --hp /home/deploy
+# PM2 will print a command — copy and run it, e.g.:
+# sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u deploy --hp /home/deploy
+
+# Verify it's running
+pm2 status
+pm2 logs venary
+```
+
+---
+
+## 10. Configure Nginx Reverse Proxy
+
+Replace `gaming.yourdomain.com` with your actual domain.
+
+```bash
+sudo nano /etc/nginx/sites-available/venary
+```
+
+Paste the following:
 
 ```nginx
 server {
     listen 80;
     server_name gaming.yourdomain.com;
+
+    # Increase upload limit if using the images extension
+    client_max_body_size 20M;
 
     location / {
         proxy_pass http://localhost:3000;
@@ -79,18 +215,108 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
-## 🔒 Permissions
-Ensure the `data/` directory is writable by the user running the process:
 ```bash
-sudo chown -R $USER:$USER /var/www/Venary/data
-chmod -R 755 /var/www/Venary/data
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/venary /etc/nginx/sites-enabled/
+
+# Remove default site (optional but clean)
+sudo rm /etc/nginx/sites-enabled/default
+
+# Test config
+sudo nginx -t
+
+# Reload Nginx
+sudo systemctl reload nginx
 ```
 
-## 🆘 Troubleshooting
-- **Database Locked**: Ensure only one instance of Venary is running.
-- **Port 3000 Busy**: Change the port in `data/config.json` after the initial setup.
+---
+
+## 11. Enable HTTPS with Let's Encrypt
+
+Make sure your domain's DNS A record is pointing to your VPS IP before running this.
+
+```bash
+sudo certbot --nginx -d gaming.yourdomain.com
+
+# Follow the prompts:
+# - Enter your email
+# - Agree to ToS
+# - Choose option 2 to redirect HTTP → HTTPS (recommended)
+```
+
+Certbot will automatically modify your Nginx config to handle SSL and set up auto-renewal.
+
+### Verify Auto-Renewal
+
+```bash
+sudo certbot renew --dry-run
+```
+
+Certbot installs a systemd timer that renews certificates automatically before they expire. No cron job needed.
+
+---
+
+## 12. Fix Permissions
+
+```bash
+sudo chown -R deploy:deploy /var/www/venary
+chmod -R 755 /var/www/venary/data
+```
+
+---
+
+## 13. Verify Everything
+
+```bash
+# Check PM2
+pm2 status
+
+# Check Nginx
+sudo systemctl status nginx
+
+# Check your site
+curl -I https://gaming.yourdomain.com
+```
+
+---
+
+## 14. Updating Venary
+
+```bash
+cd /var/www/venary
+git pull
+npm install
+pm2 restart venary
+```
+
+---
+
+## 15. Troubleshooting
+
+| Issue | Fix |
+|---|---|
+| `invalid ELF header` | Run `npm run rebuild` to recompile native modules for Linux |
+| Database locked | Ensure only one PM2 instance is running: `pm2 list` |
+| Port 3000 busy | Change port in `data/config.json`, then `pm2 restart venary` |
+| 502 Bad Gateway | Venary isn't running — check `pm2 logs venary` |
+| SSL cert not renewing | Check `sudo systemctl status certbot.timer` |
+| Nginx config error | Run `sudo nginx -t` to diagnose |
+
+---
+
+## 16. Key Paths
+
+| Path | Purpose |
+|---|---|
+| `/var/www/venary` | Application root |
+| `/var/www/venary/data/` | Config, database, uploads |
+| `/etc/nginx/sites-available/venary` | Nginx site config |
+| `/etc/letsencrypt/live/` | SSL certificates |
