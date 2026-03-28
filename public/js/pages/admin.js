@@ -34,18 +34,21 @@ var AdminPage = {
 
     var backIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>';
 
+    var moreIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle><circle cx="5" cy="12" r="2"></circle></svg>';
+
     container.innerHTML = '<div class="admin-page">' +
       '<aside class="admin-sidebar">' +
       '  <div class="admin-sidebar-header"><h2>SYSTEM CONTROL</h2></div>' +
       '  <nav class="admin-nav">' +
-      '    <button class="admin-nav-item active" data-tab="overview">' + this.icons.overview + ' Overview</button>' +
-      '    <button class="admin-nav-item" data-tab="users">' + this.icons.users + ' Users</button>' +
-      '    <button class="admin-nav-item" data-tab="reports">' + this.icons.reports + ' Reports</button>' +
-      (isAdmin ? '<button class="admin-nav-item" data-tab="extensions">' + this.icons.extensions + ' Extensions</button>' : '') +
-      (isAdmin && isDonationsEnabled ? '<button class="admin-nav-item" data-tab="donations">' + this.icons.donations + ' Donations</button>' : '') +
-      (isAdmin ? '<button class="admin-nav-item" data-tab="settings">' + this.icons.settings + ' Settings</button>' : '') +
-      (isAdmin && isForumEnabled ? '<button class="admin-nav-item" data-tab="forum">' + this.icons.forum + ' Forum Categories</button>' : '') +
-      (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item" data-tab="discord">' + this.icons.discord + ' Discord Settings</button>' : '') +
+      '    <button class="admin-nav-item active" data-tab="overview">' + this.icons.overview + ' <span>Overview</span></button>' +
+      '    <button class="admin-nav-item" data-tab="users">' + this.icons.users + ' <span>Users</span></button>' +
+      '    <button class="admin-nav-item" data-tab="reports">' + this.icons.reports + ' <span>Reports</span></button>' +
+      (isAdmin ? '<button class="admin-nav-item" data-tab="settings">' + this.icons.settings + ' <span>Settings</span></button>' : '') +
+      (isAdmin ? '<button class="admin-nav-item desktop-only-tab" data-tab="extensions">' + this.icons.extensions + ' <span>Extensions</span></button>' : '') +
+      (isAdmin && isDonationsEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="donations">' + this.icons.donations + ' <span>Donations</span></button>' : '') +
+      (isAdmin && isForumEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="forum">' + this.icons.forum + ' <span>Forum</span></button>' : '') +
+      (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="discord">' + this.icons.discord + ' <span>Discord</span></button>' : '') +
+      '    <button class="admin-nav-item admin-more-btn" onclick="AdminPage.showMoreMenu()">' + moreIcon + ' <span>More</span></button>' +
       '  </nav>' +
       '  <div class="admin-sidebar-footer">' +
       '    <button class="admin-nav-item admin-back-btn" onclick="window.location.hash=\'#/feed\'">' + backIcon + ' Back to Site</button>' +
@@ -66,6 +69,23 @@ var AdminPage = {
 
     this.bindTabs();
     this.showOverview();
+  },
+
+  showMoreMenu() {
+    const isAdmin = App.currentUser.role === 'admin' || App.currentUser.role === 'superadmin';
+    const isDonationsEnabled = App.extensions.some(e => e.id === 'donations' && e.enabled);
+    const isForumEnabled = App.extensions.some(e => e.id === 'forum' && e.enabled);
+    const isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);
+
+    var html = '<div style="display:flex;flex-direction:column;gap:10px">';
+    if (isAdmin) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=extensions]\').click()">' + this.icons.extensions + ' Extensions</button>';
+    if (isAdmin && isDonationsEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=donations]\').click()">' + this.icons.donations + ' Donations</button>';
+    if (isAdmin && isForumEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=forum]\').click()">' + this.icons.forum + ' Forum Settings</button>';
+    if (isAdmin && isMinecraftEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=discord]\').click()">' + this.icons.discord + ' Discord Settings</button>';
+    html += '<button class="btn btn-danger" onclick="App.closeModal(); window.location.hash=\'#/feed\'">Exit Admin Dashboard</button>';
+    html += '</div>';
+
+    App.showModal('More Settings', html);
   },
 
   bindTabs() {

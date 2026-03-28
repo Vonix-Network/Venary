@@ -1460,6 +1460,20 @@ input[type="range"]::-moz-range-thumb {
     }
 }
 
+.admin-more-btn {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    .desktop-only-tab {
+        display: none !important;
+    }
+    
+    .admin-more-btn {
+        display: flex !important;
+    }
+}
+
 @media (max-width: 600px) {
     .admin-stats {
         grid-template-columns: 1fr;

@@ -115,6 +115,9 @@ var Router = {
             container.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             container.style.opacity = '1';
             container.style.transform = 'translateY(0)';
+            setTimeout(function() {
+                container.style.transform = 'none';
+            }, 300);
         });
 
         this.currentPage = segments[0];
