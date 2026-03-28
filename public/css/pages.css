@@ -1465,7 +1465,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (max-width: 768px) {
-    .desktop-only-tab {
+    .desktop-only-tab,
+    .admin-nav-item.desktop-only-tab {
         display: none !important;
     }
     
