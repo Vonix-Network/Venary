@@ -36,7 +36,10 @@ module.exports = function cryptoRoutes(extDb) {
                 if (!u || !['admin', 'superadmin', 'moderator'].includes(u.role))
                     return res.status(403).json({ error: 'Admin access required' });
                 next();
-            }).catch(() => res.status(500).json({ error: 'Server error' }));
+            }).catch(err => {
+                console.error('[Donations/Crypto] requireAdmin DB error:', err);
+                res.status(500).json({ error: 'Database error checking permissions' });
+            });
     }
 
     function requireSuperadmin(req, res, next) {
@@ -45,7 +48,10 @@ module.exports = function cryptoRoutes(extDb) {
                 if (!u || u.role !== 'superadmin')
                     return res.status(403).json({ error: 'Superadmin access required' });
                 next();
-            }).catch(() => res.status(500).json({ error: 'Server error' }));
+            }).catch(err => {
+                console.error('[Donations/Crypto] requireSuperadmin DB error:', err);
+                res.status(500).json({ error: 'Database error checking permissions' });
+            });
     }
 
     // ── HMAC webhook signature verification ──
@@ -202,6 +208,7 @@ module.exports = function cryptoRoutes(extDb) {
                 rank_id: intent.rank_id,
             });
         } catch (err) {
+            console.error('[Donations/Crypto] GET /crypto/intent/:id error:', err);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -217,6 +224,7 @@ module.exports = function cryptoRoutes(extDb) {
             if (!result.changes) return res.status(404).json({ error: 'Intent not found or cannot be cancelled' });
             res.json({ success: true });
         } catch (err) {
+            console.error('[Donations/Crypto] POST /crypto/intent/:id/cancel error:', err);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -281,6 +289,7 @@ module.exports = function cryptoRoutes(extDb) {
                 ledger,
             });
         } catch (err) {
+            console.error('[Donations/Crypto] GET /crypto/balance error:', err);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -295,6 +304,7 @@ module.exports = function cryptoRoutes(extDb) {
             await balanceMgr.setDisplayCurrency(req.user.id, currency, extDb);
             res.json({ success: true, currency: currency.toLowerCase() });
         } catch (err) {
+            console.error('[Donations/Crypto] POST /crypto/balance/currency error:', err);
             res.status(500).json({ error: 'Server error' });
         }
     });
@@ -465,7 +475,8 @@ module.exports = function cryptoRoutes(extDb) {
                 litecoin_seed_masked: isSuperadmin && ltcSeedEnc ? wallet.getMaskedSeedDisplay(ltcSeedEnc) : null,
             });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] GET /admin/crypto/config error:', err);
+            res.status(500).json({ error: err.message || 'Failed to load crypto config' });
         }
     });
 
@@ -492,7 +503,8 @@ module.exports = function cryptoRoutes(extDb) {
 
             res.json({ message: 'Crypto config updated' });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] PUT /admin/crypto/config error:', err);
+            res.status(500).json({ error: err.message || 'Failed to save crypto config' });
         }
     });
 
@@ -515,8 +527,8 @@ module.exports = function cryptoRoutes(extDb) {
 
             res.json({ message: 'Wallet seed updated successfully' });
         } catch (err) {
-            console.error('[Donations/Crypto] Wallet update error:', err.message);
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] Wallet update error:', err);
+            res.status(500).json({ error: err.message || 'Failed to save wallet seed' });
         }
     });
 
@@ -527,7 +539,8 @@ module.exports = function cryptoRoutes(extDb) {
             // Return plaintext ONCE — admin must save it; we do not store it here
             res.json({ mnemonic, word_count: mnemonic.split(' ').length });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] generate-seed error:', err);
+            res.status(500).json({ error: err.message || 'Failed to generate seed phrase' });
         }
     });
 
@@ -594,7 +607,8 @@ module.exports = function cryptoRoutes(extDb) {
 
             res.json(result);
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] GET /admin/crypto/status error:', err);
+            res.status(500).json({ error: err.message || 'Failed to check chain status' });
         }
     });
 
@@ -641,7 +655,8 @@ module.exports = function cryptoRoutes(extDb) {
 
             res.json({ intents, total: total.c, page, limit });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] GET /admin/crypto/intents error:', err);
+            res.status(500).json({ error: err.message || 'Failed to load intents' });
         }
     });
 
@@ -661,7 +676,8 @@ module.exports = function cryptoRoutes(extDb) {
             console.log(`[Donations/Crypto] Admin ${req.user.id} manually confirmed intent ${intent.id}`);
             res.json({ success: true });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] Intent confirm error:', err);
+            res.status(500).json({ error: err.message || 'Failed to confirm intent' });
         }
     });
 
@@ -714,7 +730,8 @@ module.exports = function cryptoRoutes(extDb) {
 
             res.json({ balances: rows, total: countRow.c, page, limit });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] GET /admin/balances error:', err);
+            res.status(500).json({ error: err.message || 'Failed to load balances' });
         }
     });
 
@@ -745,7 +762,8 @@ module.exports = function cryptoRoutes(extDb) {
             const ledger = await balanceMgr.getLedger(req.params.userId, 100, extDb);
             res.json(ledger);
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] GET /admin/balances/:userId/ledger error:', err);
+            res.status(500).json({ error: err.message || 'Failed to load ledger' });
         }
     });
 
@@ -766,7 +784,8 @@ module.exports = function cryptoRoutes(extDb) {
                 total_ltc_usd:   totalLtc.t,
             });
         } catch (err) {
-            res.status(500).json({ error: 'Server error' });
+            console.error('[Donations/Crypto] GET /admin/crypto/stats error:', err);
+            res.status(500).json({ error: err.message || 'Failed to load stats' });
         }
     });
 
