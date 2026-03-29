@@ -11,6 +11,44 @@ module.exports = function (extDb) {
     const Config = require('../../../server/config');
     const Mailer = require('../../../server/mail');
 
+    // ── Startup migration: ensure user_id and rank_id are nullable ──
+    // SQLite doesn't support ALTER COLUMN, so we rebuild the table if needed.
+    (async () => {
+        try {
+            const tableInfo = await extDb.all("PRAGMA table_info(donations)");
+            const userIdCol = tableInfo.find(c => c.name === 'user_id');
+            const rankIdCol = tableInfo.find(c => c.name === 'rank_id');
+            // notnull=1 means NOT NULL constraint is set
+            if ((userIdCol && userIdCol.notnull) || (rankIdCol && rankIdCol.notnull)) {
+                await extDb.run('PRAGMA foreign_keys = OFF');
+                await extDb.run(`CREATE TABLE IF NOT EXISTS donations_new (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    rank_id TEXT,
+                    amount REAL NOT NULL,
+                    currency TEXT DEFAULT 'usd',
+                    payment_type TEXT DEFAULT 'one-time',
+                    stripe_session_id TEXT UNIQUE,
+                    stripe_payment_intent TEXT,
+                    stripe_subscription_id TEXT,
+                    status TEXT DEFAULT 'pending',
+                    minecraft_uuid TEXT,
+                    minecraft_username TEXT,
+                    discord_notified INTEGER DEFAULT 0,
+                    expires_at TEXT,
+                    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )`);
+                await extDb.run(`INSERT OR IGNORE INTO donations_new SELECT * FROM donations`);
+                await extDb.run(`DROP TABLE donations`);
+                await extDb.run(`ALTER TABLE donations_new RENAME TO donations`);
+                await extDb.run('PRAGMA foreign_keys = ON');
+                console.log('[Donations] ✅ Migrated donations table: user_id and rank_id are now nullable');
+            }
+        } catch (err) {
+            console.error('[Donations] Migration error:', err.message);
+        }
+    })();
+
     function requireAdmin(req, res, next) {
         coreDb.get('SELECT role FROM users WHERE id = ?', [req.user.id]).then(u => {
             if (!u || !['admin', 'superadmin', 'moderator'].includes(u.role)) return res.status(403).json({ error: 'Admin access required' });

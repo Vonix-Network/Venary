@@ -20,10 +20,11 @@ CREATE TABLE IF NOT EXISTS donation_ranks (
 );
 
 -- Individual donations / transactions
+-- user_id and rank_id are nullable to support guest one-time donations (no rank)
 CREATE TABLE IF NOT EXISTS donations (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    rank_id TEXT NOT NULL,
+    user_id TEXT,
+    rank_id TEXT,
     amount REAL NOT NULL,
     currency TEXT DEFAULT 'usd',
     payment_type TEXT DEFAULT 'one-time',
