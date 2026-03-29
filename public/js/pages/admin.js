@@ -359,19 +359,11 @@ var AdminPage = {
       const activeCount = extensions.filter(e => e.enabled).length;
       
       let html = `
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-          <div>
-            <h2 style="font-size: 1.5rem; margin: 0 0 0.5rem 0; color: var(--text-primary); font-weight: 800; display:flex; align-items:center; gap: 10px;">
-              <span style="font-size: 1.8rem; opacity: 0.9;">🧩</span> Platform Extensions
-            </h2>
-            <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">Manage, enable, or disable additional platform functionality.</p>
-          </div>
-          <div>
-            <div style="background: linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9)); border: 1px solid rgba(255,255,255,0.05); padding: 10px 16px; border-radius: 12px; display:flex; align-items:center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-              <div style="text-align:right">
-                <div style="font-size: 0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700">Active Extensions</div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: var(--neon-cyan)">${activeCount} <span style="color:var(--text-muted); font-size: 0.9rem">/ ${extensions.length}</span></div>
-              </div>
+        <div style="display:flex; justify-content:flex-end; margin-bottom: 2rem;">
+          <div style="background: linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9)); border: 1px solid rgba(255,255,255,0.05); padding: 10px 16px; border-radius: 12px; display:flex; align-items:center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <div style="text-align:right">
+              <div style="font-size: 0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700">Active Extensions</div>
+              <div style="font-size: 1.2rem; font-weight: 800; color: var(--neon-cyan)">${activeCount} <span style="color:var(--text-muted); font-size: 0.9rem">/ ${extensions.length}</span></div>
             </div>
           </div>
         </div>
