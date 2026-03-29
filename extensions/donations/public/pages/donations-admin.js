@@ -27,6 +27,7 @@ window.DonationsAdminPage = {
                 <div class="mc-chart-controls" style="margin-bottom:1.5rem">
                     <button class="mc-chart-btn ${this.activeTab === 'overview' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('overview', this)">Overview</button>
                     <button class="mc-chart-btn ${this.activeTab === 'ranks' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('ranks', this)">Ranks</button>
+                    <button class="mc-chart-btn ${this.activeTab === 'ranked-users' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('ranked-users', this)">Ranked Users</button>
                     <button class="mc-chart-btn ${this.activeTab === 'history' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('history', this)">Donations</button>
                     <button class="mc-chart-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('settings', this)">Settings</button>
                     <button class="mc-chart-btn ${this.activeTab === 'crypto' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('crypto', this)">Crypto Settings</button>
@@ -58,6 +59,7 @@ window.DonationsAdminPage = {
         switch (this.activeTab) {
             case 'overview': return this.renderOverview(area);
             case 'ranks': return this.renderRanks(area);
+            case 'ranked-users': return this.renderRankedUsers(area);
             case 'history': return this.renderHistory(area);
             case 'settings': return this.renderSettings(area);
             case 'crypto': return this.renderCryptoSettings(area);
@@ -71,29 +73,46 @@ window.DonationsAdminPage = {
         try {
             const stats = await API.get('/api/ext/donations/admin/stats');
             area.innerHTML = `
-                <div class="donate-stats-grid">
-                    <div class="donate-stat-card">
-                        <div class="stat-value">$${stats.total_revenue.toFixed(2)}</div>
-                        <div class="stat-label">Total Revenue</div>
+                <div style="display:flex;flex-direction:column;gap:1.5rem">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:1rem;">
+                        <div style="background:linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9));border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1.5rem;box-shadow:0 8px 16px rgba(0,0,0,0.2);position:relative;overflow:hidden">
+                            <div style="position:absolute;top:-10px;right:-10px;font-size:4rem;opacity:0.05">💰</div>
+                            <div style="color:var(--text-muted);font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem">Total Revenue</div>
+                            <div style="font-size:2rem;font-weight:800;color:#fff">$${stats.total_revenue.toFixed(2)}</div>
+                        </div>
+                        <div style="background:linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9));border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1.5rem;box-shadow:0 8px 16px rgba(0,0,0,0.2);position:relative;overflow:hidden">
+                            <div style="position:absolute;top:-10px;right:-10px;font-size:4rem;opacity:0.05">📈</div>
+                            <div style="color:var(--text-muted);font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem">This Month</div>
+                            <div style="font-size:2rem;font-weight:800;color:var(--neon-green)">$${stats.month_revenue.toFixed(2)}</div>
+                        </div>
+                        <div style="background:linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9));border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1.5rem;box-shadow:0 8px 16px rgba(0,0,0,0.2);position:relative;overflow:hidden">
+                            <div style="position:absolute;top:-10px;right:-10px;font-size:4rem;opacity:0.05">🤝</div>
+                            <div style="color:var(--text-muted);font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem">Total Donations</div>
+                            <div style="font-size:2rem;font-weight:800;color:var(--neon-cyan)">${stats.total_donations}</div>
+                        </div>
+                        <div style="background:linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9));border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1.5rem;box-shadow:0 8px 16px rgba(0,0,0,0.2);position:relative;overflow:hidden">
+                            <div style="position:absolute;top:-10px;right:-10px;font-size:4rem;opacity:0.05">⭐</div>
+                            <div style="color:var(--text-muted);font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem">Active Ranked Users</div>
+                            <div style="font-size:2rem;font-weight:800;color:var(--neon-magenta)">${stats.active_ranks}</div>
+                        </div>
                     </div>
-                    <div class="donate-stat-card">
-                        <div class="stat-value">${stats.total_donations}</div>
-                        <div class="stat-label">Total Donations</div>
+                    
+                    <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem">
+                        <h3 style="margin:0 0 1rem 0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+                            <span style="color:#f5a623">⚡</span> Quick Actions
+                        </h3>
+                        <div style="display:flex;gap:1rem;flex-wrap:wrap">
+                            <button class="mc-btn" style="background:linear-gradient(135deg, rgba(41,182,246,0.1), rgba(41,182,246,0.2));color:var(--neon-cyan);border:1px solid rgba(41,182,246,0.3);padding:12px 20px;font-weight:600;flex:1;min-width:150px;justify-content:center" onclick="DonationsAdminPage.switchTab('ranks')">
+                                <span style="font-size:1.2rem;margin-right:6px">🏅</span> Manage Ranks
+                            </button>
+                            <button class="mc-btn" style="background:linear-gradient(135deg, rgba(171,71,188,0.1), rgba(171,71,188,0.2));color:var(--neon-magenta);border:1px solid rgba(171,71,188,0.3);padding:12px 20px;font-weight:600;flex:1;min-width:150px;justify-content:center" onclick="DonationsAdminPage.showGrantRankModal()">
+                                <span style="font-size:1.2rem;margin-right:6px">🎁</span> Grant Rank
+                            </button>
+                            <button class="mc-btn" style="background:linear-gradient(135deg, rgba(102,187,106,0.1), rgba(102,187,106,0.2));color:var(--neon-green);border:1px solid rgba(102,187,106,0.3);padding:12px 20px;font-weight:600;flex:1;min-width:150px;justify-content:center" onclick="DonationsAdminPage.showManualDonationModal()">
+                                <span style="font-size:1.2rem;margin-right:6px">💵</span> Add Donation
+                            </button>
+                        </div>
                     </div>
-                    <div class="donate-stat-card">
-                        <div class="stat-value">${stats.active_ranks}</div>
-                        <div class="stat-label">Active Ranks</div>
-                    </div>
-                    <div class="donate-stat-card">
-                        <div class="stat-value" style="color:var(--neon-green)">$${stats.month_revenue.toFixed(2)}</div>
-                        <div class="stat-label">This Month</div>
-                    </div>
-                </div>
-                <h3 style="margin-bottom:1rem;font-size:1rem;color:var(--text-secondary)">Quick Actions</h3>
-                <div style="display:flex;gap:var(--space-md);flex-wrap:wrap">
-                    <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)" onclick="DonationsAdminPage.switchTab('ranks')">Manage Ranks</button>
-                    <button class="mc-btn" style="background:rgba(171,71,188,0.1);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)" onclick="DonationsAdminPage.showGrantRankModal()">Grant Rank</button>
-                    <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.switchTab('settings')">Settings</button>
                 </div>`;
         } catch (err) {
             area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load stats.</p>';
@@ -105,35 +124,126 @@ window.DonationsAdminPage = {
         try {
             const ranks = await API.get('/api/ext/donations/admin/ranks');
             let html = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+                    <h3 style="margin:0;font-size:1.2rem;color:var(--text-primary);font-weight:700">Donation Ranks</h3>
+                    <button class="mc-btn" style="background:var(--neon-green);color:#000;border:none;padding:8px 16px;font-weight:600;box-shadow:0 0 10px rgba(102,187,106,0.3)" onclick="DonationsAdminPage.showRankEditor()">
+                        + Create New Rank
+                    </button>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:1.5rem">`;
+
+            if (!ranks.length) {
+                html += `<div style="grid-column:1/-1;text-align:center;padding:3rem;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed var(--border-subtle);color:var(--text-muted)">
+                    No ranks created yet. Click "Create New Rank" to get started.
+                </div>`;
+            }
+
+            for (const r of ranks) {
+                const perkCount = (r.perks || []).length;
+                html += `
+                    <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;transition:transform 0.2s, box-shadow 0.2s;display:flex;flex-direction:column;position:relative" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='none'">
+                        <div style="height:4px;background:${App.escapeHtml(r.color)};width:100%"></div>
+                        <div style="padding:1.5rem;flex:1;display:flex;flex-direction:column">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">
+                                <div style="display:flex;align-items:center;gap:12px">
+                                    <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:1px solid rgba(255,255,255,0.1)">
+                                        ${r.icon}
+                                    </div>
+                                    <div>
+                                        <h4 style="margin:0;font-size:1.2rem;color:${App.escapeHtml(r.color)};font-weight:800">${App.escapeHtml(r.name)}</h4>
+                                        <div style="color:var(--text-muted);font-size:0.8rem;margin-top:2px">Order: ${r.sort_order}</div>
+                                    </div>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:20px;font-weight:700;font-size:1.1rem;color:#fff">
+                                    $${r.price.toFixed(2)}
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom:1.5rem;flex:1">
+                                <p style="color:var(--text-secondary);font-size:0.9rem;margin:0 0 1rem 0;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis">
+                                    ${App.escapeHtml(r.description || 'No description provided.')}
+                                </p>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                    <span style="font-size:0.75rem;padding:2px 8px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--text-muted);border:1px solid var(--border-subtle)">
+                                        Group: <span style="color:#fff">${App.escapeHtml(r.luckperms_group || 'none')}</span>
+                                    </span>
+                                    <span style="font-size:0.75rem;padding:2px 8px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--text-muted);border:1px solid var(--border-subtle)">
+                                        Perks: <span style="color:#fff">${perkCount}</span>
+                                    </span>
+                                    ${r.active ? 
+                                        `<span style="font-size:0.75rem;padding:2px 8px;background:rgba(74,222,128,0.1);border-radius:4px;color:var(--neon-green);border:1px solid rgba(74,222,128,0.2)">Active</span>` : 
+                                        `<span style="font-size:0.75rem;padding:2px 8px;background:rgba(239,68,68,0.1);border-radius:4px;color:#ef4444;border:1px solid rgba(239,68,68,0.2)">Inactive</span>`
+                                    }
+                                </div>
+                            </div>
+                            
+                            <div style="display:flex;gap:8px;margin-top:auto;border-top:1px solid var(--border-subtle);padding-top:1rem">
+                                <button class="mc-btn" style="flex:1;background:rgba(255,255,255,0.05);color:#fff;border-color:rgba(255,255,255,0.1)" onclick="DonationsAdminPage.showRankEditor('${r.id}')">
+                                    Edit Rank
+                                </button>
+                                <button class="mc-btn" style="width:40px;background:rgba(239,68,68,0.05);color:#ef4444;border-color:rgba(239,68,68,0.2);display:flex;align-items:center;justify-content:center" onclick="DonationsAdminPage.deleteRank('${r.id}', '${App.escapeHtml(r.name)}')" title="Delete Rank">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+
+            html += '</div>';
+            area.innerHTML = html;
+        } catch (err) {
+            area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load ranks.</p>';
+        }
+    },
+
+    // ── RANKED USERS ──
+    async renderRankedUsers(area) {
+        try {
+            const data = await API.get('/api/ext/donations/admin/ranked-users?limit=50');
+            let html = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                    <h3 style="margin:0;font-size:1rem;color:var(--text-secondary)">Donation Ranks</h3>
-                    <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.showRankEditor()">+ Add Rank</button>
+                    <h3 style="margin:0;font-size:1rem;color:var(--text-secondary)">Users with Active Ranks</h3>
+                    <div style="font-size:0.85rem;color:var(--text-muted)">Total: ${data.total}</div>
                 </div>
                 <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
                 <table class="donate-table">
                     <thead><tr>
-                        <th>Rank</th><th>Price</th><th>LP Group</th><th>Active</th><th>Actions</th>
+                        <th>User</th><th>Rank</th><th>Started</th><th>Expires</th>
                     </tr></thead>
                     <tbody>`;
 
-            for (const r of ranks) {
+            for (const u of data.users) {
+                const expires = u.expires_at ? new Date(u.expires_at) : null;
+                const isPermanent = !expires;
+                const isExpired = expires && expires < new Date();
+                
+                let expiryHtml = '';
+                if (isPermanent) {
+                    expiryHtml = '<span style="color:var(--text-muted)">Permanent</span>';
+                } else if (isExpired) {
+                    expiryHtml = '<span style="color:var(--neon-magenta)">Expired</span>';
+                } else {
+                    const daysLeft = Math.ceil((expires - new Date()) / (1000 * 60 * 60 * 24));
+                    expiryHtml = `<span>${expires.toLocaleDateString()}</span> <span style="font-size:0.75rem;color:var(--text-muted)">(${daysLeft} days)</span>`;
+                }
+
                 html += `
                     <tr>
-                        <td><span style="color:${App.escapeHtml(r.color)};font-weight:700">${r.icon} ${App.escapeHtml(r.name)}</span></td>
-                        <td>$${r.price.toFixed(2)}</td>
-                        <td><code style="font-size:0.75rem;background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px">${App.escapeHtml(r.luckperms_group || '—')}</code></td>
-                        <td>${r.active ? '<span style="color:var(--neon-green)">✓</span>' : '<span style="color:var(--text-muted)">✗</span>'}</td>
-                        <td style="display:flex;gap:6px">
-                            <button class="mc-btn" style="padding:4px 10px;font-size:0.75rem" onclick="DonationsAdminPage.showRankEditor('${r.id}')">Edit</button>
-                            <button class="mc-btn" style="padding:4px 10px;font-size:0.75rem;color:var(--neon-magenta);border-color:rgba(239,68,68,0.3)" onclick="DonationsAdminPage.deleteRank('${r.id}', '${App.escapeHtml(r.name)}')">Delete</button>
-                        </td>
+                        <td style="font-weight:600">${App.escapeHtml(u.username)}</td>
+                        <td><span style="color:${App.escapeHtml(u.rank_color || '#fff')};font-weight:700;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:12px">${App.escapeHtml(u.rank_name || '—')}</span></td>
+                        <td style="font-size:0.85rem;color:var(--text-muted)">${u.started_at ? new Date(u.started_at).toLocaleDateString() : '—'}</td>
+                        <td style="font-size:0.85rem">${expiryHtml}</td>
                     </tr>`;
+            }
+
+            if (!data.users.length) {
+                html += '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:2rem">No users currently have an active rank.</td></tr>';
             }
 
             html += '</tbody></table></div>';
             area.innerHTML = html;
         } catch (err) {
-            area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load ranks.</p>';
+            area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load ranked users.</p>';
         }
     },
 

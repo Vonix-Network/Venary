@@ -625,6 +625,34 @@ module.exports = function (extDb) {
     // ADMIN ENDPOINTS
     // ══════════════════════════════════════════════════════
 
+    router.get('/admin/ranked-users', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+            const offset = (page - 1) * limit;
+
+            const rankedUsers = await extDb.all(
+                `SELECT ur.*, r.name as rank_name, r.color as rank_color
+                 FROM user_ranks ur
+                 LEFT JOIN donation_ranks r ON ur.rank_id = r.id
+                 WHERE ur.active = 1
+                 ORDER BY ur.started_at DESC LIMIT ? OFFSET ?`,
+                [limit, offset]
+            );
+
+            for (const ur of rankedUsers) {
+                const user = await coreDb.get('SELECT username, display_name FROM users WHERE id = ?', [ur.user_id]);
+                ur.username = user?.display_name || user?.username || 'Unknown';
+            }
+
+            const total = await extDb.get('SELECT COUNT(*) as count FROM user_ranks WHERE active = 1');
+            res.json({ users: rankedUsers, total: total.count, page, limit });
+        } catch (err) {
+            console.error('[Donations] Admin ranked users error:', err);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
     router.get('/admin/donations', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const page = parseInt(req.query.page) || 1;
