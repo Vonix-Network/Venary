@@ -89,20 +89,20 @@ window.DonationsPage = {
             return `<button class="donate-rank-btn current" disabled>Current Rank</button>`;
         }
         if (!App.currentUser) {
-            // Guest view: login prompt + optional Minecraft username for MC-Heads.net avatar
-            return '<div class="donate-guest-purchase">' +
+            // Guest view: MC username required to donate; shown with MC-Heads preview
+            var rid = rank.id;
+            return '<div class="donate-guest-purchase" data-rank-id="' + rid + '">' +
                 '<p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;text-align:center">' +
-                '🔒 You must be logged in to purchase</p>' +
+                'Enter your Minecraft username to donate as a guest</p>' +
                 '<div style="margin-bottom:8px">' +
-                '<input type="text" class="input-field donate-mc-username" placeholder="Minecraft username (optional)"' +
+                '<input type="text" class="input-field donate-mc-username" placeholder="Minecraft username (required)"' +
                 ' style="font-size:0.8rem;padding:6px 10px;text-align:center"' +
-                ' title="Enter your Minecraft username to display your skin">' +
+                ' title="Your Minecraft username — used for rank delivery and avatar">' +
                 '<small style="display:block;margin-top:4px;font-size:0.7rem;color:var(--text-muted);text-align:center">' +
-                'Used for MC-Heads.net avatar display</small>' +
+                'Used for rank delivery and MC-Heads.net avatar</small>' +
                 '</div>' +
-                '<button class="donate-rank-btn"' +
-                ' onclick="App.showAuthModal ? App.showAuthModal(\'login\') : (window.location.hash=\'#/login\')">' +
-                'Login to Purchase</button>' +
+                '<button class="donate-rank-btn" onclick="DonationsPage.purchaseAsGuest(\''+rid+'\', this)">' +
+                'Donate as Guest</button>' +
                 '</div>';
         }
         // If user has a rank already, show convert option
@@ -190,6 +190,27 @@ window.DonationsPage = {
         } catch (err) {
             App.showToast(err.message || 'Payment error', 'error');
             if (btn) { btn.disabled = false; btn.textContent = 'Purchase'; }
+        }
+    },
+
+    /** Guest donation: sends mc_username to server instead of auth token. */
+    async purchaseAsGuest(rankId, btn) {
+        var card = btn.closest('.donate-guest-purchase');
+        var mcInput = card ? card.querySelector('.donate-mc-username') : null;
+        var mcUsername = mcInput ? mcInput.value.trim() : '';
+        if (!mcUsername) { App.showToast('Please enter your Minecraft username', 'warning'); return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
+        try {
+            var result = await API.post('/api/ext/donations/checkout', { rank_id: rankId, mc_username: mcUsername });
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                App.showToast('Could not create checkout session', 'error');
+                if (btn) { btn.disabled = false; btn.textContent = 'Donate as Guest'; }
+            }
+        } catch (err) {
+            App.showToast(err.message || 'Payment error', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Donate as Guest'; }
         }
     },
 

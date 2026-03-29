@@ -49,7 +49,7 @@ var Router = {
         var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password';
         // Guest-accessible routes when guest mode is enabled
         var guestAllowed = App.siteSettings && App.siteSettings.guestMode;
-        var guestRoutes = ['/donate', '/forum'];
+        var guestRoutes = ['/donate', '/forum', '/servers', '/mc-leaderboard'];
         var isGuestRoute = guestAllowed && guestRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); });
 
         if (!API.token && !isAuthPage && !isGuestRoute) {

@@ -55,6 +55,8 @@ module.exports = function (extDb) {
                 const user = await coreDb.get('SELECT username, display_name, avatar FROM users WHERE id = ?', [d.user_id || '']);
                 d.username = user?.display_name || user?.username || d.minecraft_username || 'Anonymous';
                 d.avatar = user?.avatar || null;
+                // mc_username exposed for MC-Heads avatar fallback on guest donations
+                if (!d.minecraft_uuid && d.minecraft_username) d.mc_username = d.minecraft_username;
                 delete d.user_id;
             }
             res.json(donations);
@@ -179,8 +181,8 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /checkout — create Stripe checkout session
-    router.post('/checkout', authenticateToken, async (req, res) => {
+    // POST /checkout — create Stripe checkout session (supports guest donations via mc_username)
+    router.post('/checkout', optionalAuth, async (req, res) => {
         try {
             const stripe = getStripe();
             if (!stripe) return res.status(503).json({ error: 'Payment system not configured. Contact an administrator.' });
@@ -191,8 +193,18 @@ module.exports = function (extDb) {
             const rank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ? AND active = 1', [rank_id]);
             if (!rank) return res.status(404).json({ error: 'Rank not found' });
 
-            const user = await coreDb.get('SELECT username, email FROM users WHERE id = ?', [req.user.id]);
-            if (!user) return res.status(401).json({ error: 'User not found' });
+            // Support both authenticated users and guests (guest provides mc_username)
+            const isGuest = !req.user;
+            const guestMcUsername = (req.body.mc_username || '').trim().slice(0, 64);
+            if (isGuest && !guestMcUsername) {
+                return res.status(400).json({ error: 'Minecraft username is required for guest donations' });
+            }
+
+            let user = null;
+            if (!isGuest) {
+                user = await coreDb.get('SELECT username, email FROM users WHERE id = ?', [req.user.id]);
+                if (!user) return res.status(401).json({ error: 'User not found' });
+            }
 
             const siteUrl = Config.get('siteUrl', 'http://localhost:3000');
 
@@ -212,29 +224,33 @@ module.exports = function (extDb) {
                 mode: 'payment',
                 success_url: siteUrl + '/#/donate?status=success&session_id={CHECKOUT_SESSION_ID}',
                 cancel_url: siteUrl + '/#/donate?status=cancelled',
-                customer_email: user.email !== `${user.username.toLowerCase()}@mc.local` ? user.email : undefined,
+                customer_email: (!isGuest && user.email && user.email !== `${user.username.toLowerCase()}@mc.local`) ? user.email : undefined,
                 metadata: {
-                    user_id: req.user.id,
+                    user_id: isGuest ? null : req.user.id,
                     rank_id: rank.id,
-                    username: user.username,
+                    username: isGuest ? guestMcUsername : user.username,
+                    is_guest: isGuest ? '1' : '0',
+                    mc_username: isGuest ? guestMcUsername : '',
                 },
             });
 
             const donationId = uuidv4();
-            let mcUuid = null, mcUsername = null;
-            try {
-                const extLoader = require('../../../server/extension-loader');
-                const mcDb = extLoader.getExtensionDb('minecraft');
-                if (mcDb) {
-                    const link = await mcDb.get('SELECT minecraft_uuid, minecraft_username FROM linked_accounts WHERE user_id = ?', [req.user.id]);
-                    if (link) { mcUuid = link.minecraft_uuid; mcUsername = link.minecraft_username; }
-                }
-            } catch { /* minecraft ext may not be loaded */ }
+            let mcUuid = null, mcUsername = isGuest ? guestMcUsername : null;
+            if (!isGuest) {
+                try {
+                    const extLoader = require('../../../server/extension-loader');
+                    const mcDb = extLoader.getExtensionDb('minecraft');
+                    if (mcDb) {
+                        const link = await mcDb.get('SELECT minecraft_uuid, minecraft_username FROM linked_accounts WHERE user_id = ?', [req.user.id]);
+                        if (link) { mcUuid = link.minecraft_uuid; mcUsername = link.minecraft_username; }
+                    }
+                } catch { /* minecraft ext may not be loaded */ }
+            }
 
             await extDb.run(
                 `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_uuid, minecraft_username, expires_at)
                  VALUES (?, ?, ?, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?)`,
-                [donationId, req.user.id, rank.id, rank.price, session.id, mcUuid, mcUsername,
+                [donationId, isGuest ? null : req.user.id, rank.id, rank.price, session.id, mcUuid, mcUsername,
                     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()]
             );
 

@@ -66,7 +66,10 @@ var ForumPage = {
                 <div class=\"forum-page\">
                     <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem\">
                         <button class=\"btn btn-secondary\" onclick=\"window.location.hash='#/forum'\">← Back</button>
-                        <button class=\"btn btn-primary\" onclick=\"ForumPage.showNewThreadModal()\">+ New Thread</button>
+                        ${App.currentUser
+                            ? '<button class=\"btn btn-primary\" onclick=\"ForumPage.showNewThreadModal()\">+ New Thread</button>'
+                            : '<span style=\"font-size:0.85rem;color:var(--text-muted);padding:8px 12px;background:var(--bg-tertiary);border-radius:var(--radius-md)\">🔒 You must be logged in to create a thread</span>'
+                        }
                     </div>
                     <div id=\"thread-list\" class=\"stagger-children forum-thread-list\">
                         <div class=\"forum-thread-header\">
@@ -189,6 +192,12 @@ var ForumPage = {
 
             if (t.locked) {
                 html += '<div class=\"card\" style=\"text-align:center;color:var(--text-muted)\">🔒 This thread is locked</div>';
+            } else if (!App.currentUser) {
+                html += '<div class=\"card\" style=\"text-align:center;padding:1.5rem;color:var(--text-muted)\">' +
+                    '🔒 <strong style=\"color:var(--text-secondary)\">You must be logged in to reply.</strong>' +
+                    ' <a href=\"#/login\" style=\"color:var(--neon-cyan);text-decoration:none\">Log in</a> or ' +
+                    '<a href=\"#/register\" style=\"color:var(--neon-cyan);text-decoration:none\">create an account</a>.' +
+                    '</div>';
             } else {
                 html += `
                     <div class=\"card forum-composer animate-fade-up\">
