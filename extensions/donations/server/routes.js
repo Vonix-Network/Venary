@@ -59,7 +59,11 @@ module.exports = function (extDb) {
     function getStripe() {
         const key = Config.get('stripe_secret_key');
         if (!key || key === 'YOUR_STRIPE_SECRET_KEY') return null;
-        return require('stripe')(key);
+        if (!getStripe._instance || getStripe._key !== key) {
+            getStripe._instance = require('stripe')(key);
+            getStripe._key = key;
+        }
+        return getStripe._instance;
     }
 
     // ══════════════════════════════════════════════════════
@@ -80,6 +84,7 @@ module.exports = function (extDb) {
     router.get('/recent', async (req, res) => {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+            // Single query with LEFT JOIN to avoid N+1
             const donations = await extDb.all(
                 `SELECT d.id, d.user_id, d.amount, d.currency, d.payment_type, d.created_at, d.minecraft_username,
                         r.name as rank_name, r.color as rank_color
@@ -89,11 +94,17 @@ module.exports = function (extDb) {
                  ORDER BY d.created_at DESC LIMIT ?`,
                 [limit]
             );
+            // Batch user lookup — collect unique non-null user_ids
+            const userIds = [...new Set(donations.map(d => d.user_id).filter(Boolean))];
+            const userMap = {};
+            for (const uid of userIds) {
+                const u = await coreDb.get('SELECT id, username, display_name, avatar FROM users WHERE id = ?', [uid]);
+                if (u) userMap[uid] = u;
+            }
             for (const d of donations) {
-                const user = await coreDb.get('SELECT username, display_name, avatar FROM users WHERE id = ?', [d.user_id || '']);
+                const user = d.user_id ? userMap[d.user_id] : null;
                 d.username = user?.display_name || user?.username || d.minecraft_username || 'Anonymous';
                 d.avatar = user?.avatar || null;
-                // mc_username exposed for MC-Heads avatar fallback on guest donations
                 if (!d.minecraft_uuid && d.minecraft_username) d.mc_username = d.minecraft_username;
                 delete d.user_id;
             }
@@ -445,7 +456,9 @@ module.exports = function (extDb) {
             const uuid = req.query.uuid;
             if (!uuid) return res.status(400).json({ error: 'uuid required' });
 
+            // Validate UUID format before slicing
             const cleanUuid = uuid.replace(/-/g, '').toLowerCase();
+            if (!/^[0-9a-f]{32}$/.test(cleanUuid)) return res.status(400).json({ error: 'Invalid UUID format' });
             const formattedUuid = `${cleanUuid.slice(0, 8)}-${cleanUuid.slice(8, 12)}-${cleanUuid.slice(12, 16)}-${cleanUuid.slice(16, 20)}-${cleanUuid.slice(20)}`;
 
             let userId = null;
@@ -548,12 +561,16 @@ module.exports = function (extDb) {
     router.put('/admin/ranks/:id', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { name, price, color, icon, description, perks, luckperms_group, sort_order, active } = req.body;
+            if (!name || typeof name !== 'string' || name.trim().length === 0) return res.status(400).json({ error: 'name is required' });
+            const parsedPrice = parseFloat(price);
+            if (isNaN(parsedPrice) || parsedPrice < 0) return res.status(400).json({ error: 'price must be a non-negative number' });
             const perksJson = Array.isArray(perks) ? JSON.stringify(perks) : perks;
             await extDb.run(
                 `UPDATE donation_ranks SET name=?, price=?, color=?, icon=?, description=?, perks=?, luckperms_group=?, sort_order=?, active=? WHERE id=?`,
-                [name, price, color, icon || '⭐', description, perksJson, luckperms_group, sort_order || 0, active ? 1 : 0, req.params.id]
+                [name.trim(), parsedPrice, color || '#ffffff', icon || '⭐', description, perksJson, luckperms_group, sort_order || 0, active ? 1 : 0, req.params.id]
             );
             const updated = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [req.params.id]);
+            if (!updated) return res.status(404).json({ error: 'Rank not found' });
             try { updated.perks = JSON.parse(updated.perks || '[]'); } catch { updated.perks = []; }
             res.json(updated);
         } catch (err) {
@@ -696,43 +713,58 @@ module.exports = function (extDb) {
 
     // ══════════════════════════════════════════════════════
     // INTERNAL: Complete a donation + send receipt email
+    // Idempotent — safe to call multiple times for same session.
     // ══════════════════════════════════════════════════════
     async function completeDonation(stripeSessionId) {
         const donation = await extDb.get('SELECT * FROM donations WHERE stripe_session_id = ?', [stripeSessionId]);
-        if (!donation || donation.status === 'completed') return;
+        if (!donation || donation.status === 'completed') return; // idempotent
 
-        await extDb.run("UPDATE donations SET status = 'completed' WHERE id = ?", [donation.id]);
+        // Mark completed first to prevent double-processing under concurrent calls
+        const result = await extDb.run(
+            "UPDATE donations SET status = 'completed' WHERE id = ? AND status != 'completed'",
+            [donation.id]
+        );
+        if (!result.changes) return; // another process already completed it
 
-        const rank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [donation.rank_id]);
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        // Only grant rank if this donation is tied to a rank AND a user
+        if (donation.rank_id && donation.user_id) {
+            const rank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [donation.rank_id]);
+            const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-        const existing = await extDb.get('SELECT * FROM user_ranks WHERE user_id = ?', [donation.user_id]);
-        if (existing) {
-            let newExpiry = expiresAt;
-            if (existing.expires_at && new Date(existing.expires_at) > new Date()) {
-                newExpiry = new Date(new Date(existing.expires_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            const existing = await extDb.get('SELECT * FROM user_ranks WHERE user_id = ?', [donation.user_id]);
+            if (existing) {
+                // Stack time: if same rank extend, if different rank replace (switch was already handled by convert-rank)
+                let newExpiry = expiresAt;
+                if (existing.rank_id === donation.rank_id && existing.expires_at && new Date(existing.expires_at) > new Date()) {
+                    // Same rank — stack 30 days on top of existing expiry
+                    newExpiry = new Date(new Date(existing.expires_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                }
+                await extDb.run(
+                    'UPDATE user_ranks SET rank_id = ?, active = 1, expires_at = ?, started_at = ? WHERE user_id = ?',
+                    [donation.rank_id, newExpiry, new Date().toISOString(), donation.user_id]
+                );
+            } else {
+                await extDb.run(
+                    'INSERT INTO user_ranks (id, user_id, rank_id, active, expires_at) VALUES (?, ?, ?, 1, ?)',
+                    [uuidv4(), donation.user_id, donation.rank_id, expiresAt]
+                );
             }
-            await extDb.run(
-                'UPDATE user_ranks SET rank_id = ?, active = 1, expires_at = ?, started_at = ? WHERE user_id = ?',
-                [donation.rank_id, newExpiry, new Date().toISOString(), donation.user_id]
-            );
+
+            // Send receipt email
+            const user = await coreDb.get('SELECT username, display_name, email FROM users WHERE id = ?', [donation.user_id]);
+            if (user && user.email) {
+                sendReceiptEmail(user, donation, rank, expiresAt).catch(err => {
+                    console.error('[Donations] Receipt email error:', err);
+                });
+            }
+
+            await sendDiscordWebhook(donation, rank);
         } else {
-            await extDb.run(
-                'INSERT INTO user_ranks (id, user_id, rank_id, active, expires_at) VALUES (?, ?, ?, 1, ?)',
-                [uuidv4(), donation.user_id, donation.rank_id, expiresAt]
-            );
+            // Custom no-rank donation — just fire Discord webhook
+            await sendDiscordWebhook(donation, null);
         }
 
-        // Send receipt email
-        const user = await coreDb.get('SELECT username, display_name, email FROM users WHERE id = ?', [donation.user_id]);
-        if (user && user.email) {
-            sendReceiptEmail(user, donation, rank, expiresAt).catch(err => {
-                console.error('[Donations] Receipt email error:', err);
-            });
-        }
-
-        await sendDiscordWebhook(donation, rank);
-        console.log(`[Donations] ✅ Donation completed: ${donation.id} — ${rank?.name || 'Unknown'} for user ${donation.user_id}`);
+        console.log(`[Donations] ✅ Donation completed: ${donation.id} — user ${donation.user_id || 'guest'}`);
     }
 
     // ══════════════════════════════════════════════════════
