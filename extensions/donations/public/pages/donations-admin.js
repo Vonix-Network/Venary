@@ -550,6 +550,9 @@ window.DonationsAdminPage = {
                             <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.generateNewSeed()">
                                 ✨ Generate New Seed
                             </button>
+                            <button class="mc-btn" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)" onclick="DonationsAdminPage.revealSeed()">
+                                👁 Reveal Seed
+                            </button>
                         </div>
                         <p style="font-size:0.75rem;color:var(--text-muted);margin:0">
                             ⚠️ The seed phrase is encrypted with AES-256 and stored in config.json. Never share it. Changing the seed will re-derive all user addresses.
@@ -638,45 +641,108 @@ window.DonationsAdminPage = {
         }
     },
 
+    // Temporary stores for generated/revealed mnemonics — never persisted to DOM
+    _pendingMnemonic: null,
+    _revealedSeeds: null,
+
     async generateNewSeed() {
         if (!confirm('Generate a new random seed phrase? This will replace the existing seed and re-derive all addresses. Make sure to back it up!')) return;
         try {
             const data = await API.post('/api/ext/donations/admin/crypto/generate-seed', {});
+            // Store in module variable — never injected into onclick attributes
+            this._pendingMnemonic = data.mnemonic;
             App.showModal('New Seed Generated', `
                 <div style="display:grid;gap:var(--space-md)">
-                    <p style="color:var(--neon-magenta);font-size:0.85rem;font-weight:700">⚠️ Write this down and store it safely. It will not be shown again.</p>
-                    <div style="background:#0d1117;border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:16px;font-family:monospace;font-size:0.85rem;color:var(--neon-cyan);word-break:break-all;line-height:1.8">
+                    <p style="color:var(--neon-magenta);font-size:0.85rem;font-weight:700">⚠️ Write this down and store it safely. It will not be shown again unless you use Reveal Seed.</p>
+                    <div id="wallet-seed-display" style="background:#0d1117;border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:16px;font-family:monospace;font-size:0.85rem;color:var(--neon-cyan);word-break:break-all;line-height:1.8;user-select:all">
                         ${App.escapeHtml(data.mnemonic)}
                     </div>
                     <p style="color:var(--text-muted);font-size:0.75rem">${data.word_count} words · BIP39</p>
                     <div style="display:flex;gap:var(--space-md)">
                         <button class="mc-btn" style="flex:1;background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)"
-                            onclick="navigator.clipboard.writeText('${App.escapeHtml(data.mnemonic)}');App.showToast('Copied!','success')">
+                            onclick="DonationsAdminPage._copyPendingSeed()">
                             Copy to Clipboard
                         </button>
                         <button class="mc-btn" style="flex:1;background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
-                            onclick="DonationsAdminPage._applySeed('${App.escapeHtml(data.mnemonic)}')">
+                            onclick="DonationsAdminPage._applyPendingSeed()">
                             Apply as Both Seeds
                         </button>
                     </div>
                 </div>
             `);
         } catch (err) {
-            App.showToast('Failed to generate seed', 'error');
+            App.showToast('Failed to generate seed: ' + (err.message || 'Unknown error'), 'error');
         }
     },
 
-    async _applySeed(mnemonic) {
+    _copyPendingSeed() {
+        if (!this._pendingMnemonic) return;
+        navigator.clipboard.writeText(this._pendingMnemonic)
+            .then(() => App.showToast('Seed phrase copied to clipboard', 'success'))
+            .catch(() => App.showToast('Copy failed — select the text manually', 'warning'));
+    },
+
+    _copyRevealedSeed(coin) {
+        const mnemonic = coin === 'ltc'
+            ? this._revealedSeeds?.litecoin_mnemonic
+            : this._revealedSeeds?.solana_mnemonic;
+        if (!mnemonic) return;
+        navigator.clipboard.writeText(mnemonic)
+            .then(() => App.showToast('Seed phrase copied to clipboard', 'success'))
+            .catch(() => App.showToast('Copy failed — select the text manually', 'warning'));
+    },
+
+    async _applyPendingSeed() {
+        if (!this._pendingMnemonic) { App.showToast('No pending seed to apply', 'error'); return; }
         try {
             await API.put('/api/ext/donations/admin/crypto/wallet', {
-                solana_mnemonic: mnemonic,
-                litecoin_mnemonic: mnemonic,
+                solana_mnemonic: this._pendingMnemonic,
+                litecoin_mnemonic: this._pendingMnemonic,
             });
+            this._pendingMnemonic = null;
             App.showToast('Seed applied and encrypted!', 'success');
             App.closeModal();
             this.loadTab();
         } catch (err) {
             App.showToast(err.message || 'Failed to apply seed', 'error');
+        }
+    },
+
+    async revealSeed() {
+        if (!confirm('Reveal stored seed phrases? This is sensitive — your full mnemonic will be displayed on screen. Only do this in a secure, private environment.')) return;
+        try {
+            const data = await API.get('/api/ext/donations/admin/crypto/wallet/reveal');
+            this._revealedSeeds = data;
+            this._pendingMnemonic = data.solana_mnemonic || data.litecoin_mnemonic || null;
+
+            const sameSeed = data.solana_mnemonic && data.litecoin_mnemonic && data.solana_mnemonic === data.litecoin_mnemonic;
+
+            const buildSection = (label, mnemonic, copyKey) => mnemonic ? `
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                        <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">${label}</span>
+                        ${copyKey ? `<button class="mc-btn" style="padding:2px 10px;font-size:0.72rem;background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage._copyRevealedSeed(${JSON.stringify(copyKey)})">Copy</button>` : ''}
+                    </div>
+                    <div style="background:#0d1117;border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px;font-family:monospace;font-size:0.82rem;color:var(--neon-cyan);word-break:break-all;line-height:1.8;user-select:all">${App.escapeHtml(mnemonic)}</div>
+                </div>` : '';
+
+            App.showModal('Seed Phrase Recovery', `
+                <div style="display:grid;gap:var(--space-md)">
+                    <p style="color:var(--neon-magenta);font-size:0.85rem;font-weight:700;margin:0">⚠️ Keep this private. Close immediately after use. This access is logged.</p>
+                    ${sameSeed
+                        ? buildSection('Solana + Litecoin (shared seed)', data.solana_mnemonic, 'sol')
+                        : buildSection('Solana Seed', data.solana_mnemonic, 'sol') + buildSection('Litecoin Seed', data.litecoin_mnemonic, 'ltc')
+                    }
+                    <div style="text-align:right">
+                        <button class="mc-btn" style="background:rgba(255,255,255,0.05);color:var(--text-muted);border-color:var(--border-subtle)"
+                            onclick="App.closeModal()">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `);
+        } catch (err) {
+            App.showToast(err.message || 'Failed to retrieve seed phrase', 'error');
         }
     },
 

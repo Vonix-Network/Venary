@@ -1,4 +1,4 @@
-﻿/* =======================================
+/* =======================================
    Donations & Ranks - Public Page
    ======================================= */
 window.DonationsPage = {
@@ -236,7 +236,21 @@ window.DonationsPage = {
         try {
             const rank = await API.get('/api/ext/donations/my-rank');
             this.currentRank = rank;
-            if (!rank || !rank.active || !rank.rank_name) { area.innerHTML = ''; return; }
+            if (!rank || !rank.active || !rank.rank_name) {
+                area.innerHTML =
+                    '<div class="donate-dashboard" style="--rank-accent:var(--text-muted)">' +
+                        '<div class="donate-dashboard-left">' +
+                            '<div class="donate-dashboard-badge" style="opacity:0.6">&#128274;</div>' +
+                            '<div class="donate-dashboard-info">' +
+                                '<div class="donate-dashboard-label">Current Rank</div>' +
+                                '<div class="donate-dashboard-name" style="color:var(--text-muted)">No Active Rank</div>' +
+                                '<div class="donate-dashboard-time">0 days remaining</div>' +
+                                '<div class="donate-dashboard-bar-wrap"><div class="donate-dashboard-bar" style="width:0%;background:var(--text-muted)"></div></div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                return;
+            }
             const expiresDate = rank.expires_at ? new Date(rank.expires_at) : null;
             const daysLeft = expiresDate ? Math.max(0, Math.ceil((expiresDate - Date.now()) / 86400000)) : 'Permanent';
             const pct = (expiresDate && rank.started_at)

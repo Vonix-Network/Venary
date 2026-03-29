@@ -531,6 +531,36 @@ module.exports = function cryptoRoutes(extDb) {
         }
     });
 
+    /**
+     * GET /admin/crypto/wallet/reveal — decrypt and return stored seed phrase(s).
+     * Superadmin-only recovery endpoint. Every call is logged with the requesting user ID.
+     */
+    router.get('/admin/crypto/wallet/reveal', authenticateToken, requireSuperadmin, async (req, res) => {
+        try {
+            const solSeedEnc = Config.get('donations.crypto.solana_seed_encrypted');
+            const ltcSeedEnc = Config.get('donations.crypto.litecoin_seed_encrypted');
+
+            if (!solSeedEnc && !ltcSeedEnc) {
+                return res.status(404).json({ error: 'No seed phrases are configured' });
+            }
+
+            const result = {};
+            if (solSeedEnc) result.solana_mnemonic = wallet.decryptSeed(solSeedEnc);
+            if (ltcSeedEnc) {
+                // Avoid redundant decryption when both coins share the same encrypted seed
+                result.litecoin_mnemonic = ltcSeedEnc === solSeedEnc
+                    ? result.solana_mnemonic
+                    : wallet.decryptSeed(ltcSeedEnc);
+            }
+
+            console.warn(`[Donations/Crypto] 🔑 Seed reveal accessed by superadmin ${req.user.id} from ${req.ip}`);
+            res.json(result);
+        } catch (err) {
+            console.error('[Donations/Crypto] Seed reveal error:', err.message);
+            res.status(500).json({ error: 'Failed to decrypt seed phrase' });
+        }
+    });
+
     /** GET /admin/crypto/status — live blockchain connectivity */
     router.get('/admin/crypto/status', authenticateToken, requireAdmin, async (req, res) => {
         try {
@@ -587,14 +617,22 @@ module.exports = function cryptoRoutes(extDb) {
             if (date_from) { where += ' AND i.created_at >= ?'; params.push(date_from); }
             if (date_to)   { where += ' AND i.created_at <= ?'; params.push(date_to); }
 
+            // users lives in coreDb — fetch intents first, then enrich with user data
             const intents = await extDb.all(
-                `SELECT i.*, u.username, u.display_name
+                `SELECT i.*
                  FROM crypto_payment_intents i
-                 LEFT JOIN users u ON i.user_id = u.id
                  WHERE ${where}
                  ORDER BY i.created_at DESC LIMIT ? OFFSET ?`,
                 [...params, limit, offset]
             );
+
+            for (const intent of intents) {
+                if (intent.user_id) {
+                    const u = await coreDb.get('SELECT username, display_name FROM users WHERE id = ?', [intent.user_id]);
+                    intent.username = u?.username || null;
+                    intent.display_name = u?.display_name || null;
+                }
+            }
 
             const total = await extDb.get(
                 `SELECT COUNT(*) as c FROM crypto_payment_intents i WHERE ${where}`,
@@ -637,27 +675,44 @@ module.exports = function cryptoRoutes(extDb) {
             const page   = parseInt(req.query.page) || 1;
             const limit  = Math.min(parseInt(req.query.limit) || 25, 100);
             const offset = (page - 1) * limit;
-            const search = req.query.search ? `%${req.query.search}%` : null;
+            const searchRaw = req.query.search?.trim();
+
+            // users lives in coreDb — resolve matching IDs there first when searching
+            let userIdWhere = '';
+            let userIdParams = [];
+            if (searchRaw) {
+                const pattern = `%${searchRaw}%`;
+                const matched = await coreDb.all(
+                    'SELECT id FROM users WHERE username LIKE ? OR display_name LIKE ?',
+                    [pattern, pattern]
+                );
+                if (!matched.length) return res.json({ balances: [], total: 0, page, limit });
+                userIdWhere = `WHERE b.user_id IN (${matched.map(() => '?').join(',')})`;
+                userIdParams = matched.map(u => u.id);
+            }
 
             const rows = await extDb.all(
-                `SELECT b.user_id, b.usd_balance, b.updated_at,
-                        u.username, u.display_name,
-                        p.balance_display_currency
+                `SELECT b.user_id, b.usd_balance, b.updated_at, p.balance_display_currency
                  FROM user_balances b
-                 LEFT JOIN users u ON b.user_id = u.id
                  LEFT JOIN user_preferences p ON b.user_id = p.user_id
-                 ${search ? 'WHERE u.username LIKE ? OR u.display_name LIKE ?' : ''}
+                 ${userIdWhere}
                  ORDER BY b.usd_balance DESC LIMIT ? OFFSET ?`,
-                search ? [search, search, limit, offset] : [limit, offset]
+                [...userIdParams, limit, offset]
             );
 
-            const total = await extDb.get(
-                `SELECT COUNT(*) as c FROM user_balances b LEFT JOIN users u ON b.user_id = u.id
-                 ${search ? 'WHERE u.username LIKE ? OR u.display_name LIKE ?' : ''}`,
-                search ? [search, search] : []
+            // Enrich each row with username/display_name from coreDb
+            for (const row of rows) {
+                const u = await coreDb.get('SELECT username, display_name FROM users WHERE id = ?', [row.user_id]);
+                row.username = u?.username || null;
+                row.display_name = u?.display_name || null;
+            }
+
+            const countRow = await extDb.get(
+                `SELECT COUNT(*) as c FROM user_balances b ${userIdWhere}`,
+                userIdParams
             );
 
-            res.json({ balances: rows, total: total.c, page, limit });
+            res.json({ balances: rows, total: countRow.c, page, limit });
         } catch (err) {
             res.status(500).json({ error: 'Server error' });
         }
