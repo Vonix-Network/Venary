@@ -261,6 +261,75 @@ module.exports = function (extDb) {
         }
     });
 
+    // POST /custom-checkout — rankless custom-amount donation (guests + logged-in users)
+    router.post('/custom-checkout', optionalAuth, async (req, res) => {
+        try {
+            const stripe = getStripe();
+            if (!stripe) return res.status(503).json({ error: 'Payment system not configured. Contact an administrator.' });
+
+            const amount = parseFloat(req.body.amount);
+            if (!amount || amount < 1 || amount > 10000) {
+                return res.status(400).json({ error: 'Amount must be between $1 and $10,000' });
+            }
+
+            const isGuest = !req.user;
+            const guestMcUsername = (req.body.mc_username || '').trim().slice(0, 64);
+            if (isGuest && !guestMcUsername) {
+                return res.status(400).json({ error: 'Minecraft username is required for guest donations' });
+            }
+
+            let user = null;
+            if (!isGuest) {
+                user = await coreDb.get('SELECT username, email FROM users WHERE id = ?', [req.user.id]);
+                if (!user) return res.status(401).json({ error: 'User not found' });
+            }
+
+            const siteUrl = Config.get('siteUrl', 'http://localhost:3000');
+            const displayName = isGuest ? guestMcUsername : (user.username);
+
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                line_items: [{
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: 'Custom Donation',
+                            description: 'Thank you for supporting the server, ' + displayName + '!',
+                        },
+                        unit_amount: Math.round(amount * 100),
+                    },
+                    quantity: 1,
+                }],
+                mode: 'payment',
+                success_url: siteUrl + '/#/donate?status=success&session_id={CHECKOUT_SESSION_ID}',
+                cancel_url: siteUrl + '/#/donate?status=cancelled',
+                customer_email: (!isGuest && user.email && user.email !== (user.username.toLowerCase() + '@mc.local')) ? user.email : undefined,
+                metadata: {
+                    user_id: isGuest ? '' : req.user.id,
+                    rank_id: '',
+                    username: displayName,
+                    is_guest: isGuest ? '1' : '0',
+                    mc_username: isGuest ? guestMcUsername : '',
+                    is_custom: '1',
+                },
+            });
+
+            const donationId = uuidv4();
+            await extDb.run(
+                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_username, expires_at)
+                 VALUES (?, ?, NULL, ?, 'usd', 'one-time', ?, 'pending', ?, ?)`,
+                [donationId, isGuest ? null : req.user.id, amount, session.id,
+                    isGuest ? guestMcUsername : null,
+                    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()]
+            );
+
+            res.json({ url: session.url, sessionId: session.id });
+        } catch (err) {
+            console.error('[Donations] Custom checkout error:', err);
+            res.status(500).json({ error: 'Payment error: ' + (err.message || 'Unknown') });
+        }
+    });
+
     // POST /verify-session
     router.post('/verify-session', authenticateToken, async (req, res) => {
         try {

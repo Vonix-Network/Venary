@@ -423,3 +423,45 @@
     color: #000;
     box-shadow: 0 0 20px rgba(234, 179, 8, 0.3);
 }
+
+/* ── Custom Donation Panel ── */
+.donate-custom-panel {
+    margin-top: 2.5rem;
+    padding: var(--space-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+}
+
+.donate-preset-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.donate-preset-btn {
+    padding: 8px 18px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.donate-preset-btn:hover {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+.donate-preset-btn.active {
+    background: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    color: #000;
+}
+
+.donate-preset-custom {
+    border-style: dashed;
+}
