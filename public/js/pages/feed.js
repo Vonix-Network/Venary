@@ -14,8 +14,9 @@ const FeedPage = {
           <p>Share your victories, strategies, and gaming moments</p>
         </div>
         <div class="post-composer animate-fade-up" style="animation-delay: 0.1s">
+          ${App.currentUser ? `
           <div class="composer-input">
-            <div class="avatar" style="flex-shrink:0">${App.currentUser && App.currentUser.avatar ? `<img src="${App.escapeHtml(App.currentUser.avatar)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : App.getInitials()}</div>
+            <div class="avatar" style="flex-shrink:0">${App.currentUser.avatar ? `<img src="${App.escapeHtml(App.currentUser.avatar)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : App.getInitials()}</div>
             <textarea class="composer-textarea input-field" id="post-content" placeholder="What's happening?" maxlength="1000"></textarea>
             <button class="btn btn-primary mobile-post-btn" id="mobile-post-btn" style="display:none;flex-shrink:0;padding:8px 14px;border-radius:var(--radius-full)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -39,6 +40,18 @@ const FeedPage = {
               </button>
             </div>
           </div>
+          ` : `
+          <div class="feed-guest-banner">
+            <div class="feed-guest-text">
+              <strong>Join the conversation</strong>
+              <span>Log in or register to post, like, and comment.</span>
+            </div>
+            <div class="feed-guest-actions">
+              <a href="#/login" class="btn btn-primary btn-sm">Log In</a>
+              <a href="#/register" class="btn btn-ghost btn-sm">Register</a>
+            </div>
+          </div>
+          `}
         </div>
         <div id="feed-posts" class="stagger-children"></div>
         <div id="feed-loader" class="loading-spinner hidden"></div>
@@ -72,6 +85,7 @@ const FeedPage = {
 
   bindEvents(container) {
     const textarea = container.querySelector('#post-content');
+    if (!textarea) return; // guest view — no composer
     const charCount = container.querySelector('#char-count');
     const postBtn = container.querySelector('#post-btn');
     textarea.addEventListener('input', function () {
@@ -236,6 +250,7 @@ const FeedPage = {
   },
 
   async toggleLike(postId, btn) {
+    if (!App.currentUser) { window.location.hash = '#/login'; return; }
     try {
       var result = await API.toggleLike(postId);
       var countEl = btn.querySelector('.like-count');
@@ -334,6 +349,7 @@ const FeedPage = {
   },
 
   async addComment(postId) {
+    if (!App.currentUser) { window.location.hash = '#/login'; return; }
     var input = document.getElementById('comment-input-' + postId);
     if (!input) return;
     var content = input.value.trim();

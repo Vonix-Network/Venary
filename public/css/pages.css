@@ -2109,3 +2109,31 @@ input[type="range"]::-moz-range-thumb {
         padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
     }
 }
+
+/* ── Feed guest banner ── */
+.feed-guest-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    flex-wrap: wrap;
+}
+.feed-guest-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.feed-guest-text strong {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+.feed-guest-text span {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+.feed-guest-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
