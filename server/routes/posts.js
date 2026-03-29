@@ -3,7 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const Config = require('../config');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { createNotification } = require('./notifications');
 
 // Helper: recalculate and update user level from XP
@@ -68,32 +68,48 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-// Get feed
-router.get('/feed', authenticateToken, async (req, res) => {
+// Get feed — public for guests (optionalAuth), only public posts shown when unauthenticated
+router.get('/feed', optionalAuth, async (req, res) => {
     try {
         const { before, limit = 20 } = req.query;
+        const userId = req.user ? req.user.id : null;
 
-        let query = `
-          SELECT p.*, u.username, u.display_name, u.avatar, u.level, u.role,
-            (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
-            (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
-            (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as liked,
-            (SELECT COUNT(*) FROM post_subscriptions WHERE post_id = p.id AND user_id = ?) as is_subscribed
-          FROM posts p
-          JOIN users u ON p.user_id = u.id
-          WHERE (p.visibility = 'public' OR p.user_id = ? OR EXISTS (
-            SELECT 1 FROM friendships f 
-            WHERE f.status = 'accepted' AND 
-            ((f.user_id = p.user_id AND f.friend_id = ?) OR (f.friend_id = p.user_id AND f.user_id = ?))
-          ))
-        `;
-        const params = [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id];
+        let query, params;
+        if (userId) {
+            // Authenticated: show public posts + own posts + friends' posts
+            query = `
+              SELECT p.*, u.username, u.display_name, u.avatar, u.level, u.role,
+                (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
+                (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as liked,
+                (SELECT COUNT(*) FROM post_subscriptions WHERE post_id = p.id AND user_id = ?) as is_subscribed
+              FROM posts p
+              JOIN users u ON p.user_id = u.id
+              WHERE (p.visibility = 'public' OR p.user_id = ? OR EXISTS (
+                SELECT 1 FROM friendships f
+                WHERE f.status = 'accepted' AND
+                ((f.user_id = p.user_id AND f.friend_id = ?) OR (f.friend_id = p.user_id AND f.user_id = ?))
+              ))
+            `;
+            params = [userId, userId, userId, userId, userId];
+        } else {
+            // Guest: only public posts, no liked/subscribed state
+            query = `
+              SELECT p.*, u.username, u.display_name, u.avatar, u.level, u.role,
+                (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
+                0 as liked, 0 as is_subscribed
+              FROM posts p
+              JOIN users u ON p.user_id = u.id
+              WHERE p.visibility = 'public'
+            `;
+            params = [];
+        }
 
         if (before) {
             query += ' AND p.created_at < ?';
             params.push(before);
         }
-
         query += ' ORDER BY p.created_at DESC LIMIT ?';
         params.push(parseInt(limit));
 
@@ -235,7 +251,8 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
 });
 
 // Get comments for a post
-router.get('/:id/comments', authenticateToken, async (req, res) => {
+// Get comments for a post — public for guests
+router.get('/:id/comments', optionalAuth, async (req, res) => {
     try {
         const comments = await db.all(
             `SELECT c.*, u.username, u.display_name, u.avatar, u.level, u.role

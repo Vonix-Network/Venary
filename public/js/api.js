@@ -45,7 +45,9 @@ const API = {
             if (err.status === 401 || err.status === 403) {
                 this.setToken(null);
                 var currentPath = window.location.hash.split('?')[0];
-                if (currentPath !== '#/login' && currentPath !== '#/register' && currentPath !== '#/forgot-password' && currentPath !== '#/reset-password') {
+                var publicPaths = ['#/login', '#/register', '#/forgot-password', '#/reset-password', '#/donate', '#/feed'];
+                var isPublic = publicPaths.some(function(p) { return currentPath === p || currentPath.startsWith(p + '/'); });
+                if (!isPublic) {
                     window.location.hash = '#/login';
                 }
             }
