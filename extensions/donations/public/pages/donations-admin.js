@@ -187,19 +187,19 @@ window.DonationsAdminPage = {
                     <div class="donate-admin-form">
                         <div>
                             <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Stripe Secret Key</label>
-                            <input id="cfg-stripe-key" type="password" class="form-input" value="${App.escapeHtml(config.stripe_secret_key)}" placeholder="sk_live_..." style="width:100%">
+                            <input id="cfg-stripe-key" type="password" class="input-field" value="${App.escapeHtml(config.stripe_secret_key)}" placeholder="sk_live_..." style="width:100%">
                         </div>
                         <div>
                             <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Stripe Webhook Secret</label>
-                            <input id="cfg-stripe-webhook" type="password" class="form-input" value="${App.escapeHtml(config.stripe_webhook_secret)}" placeholder="whsec_..." style="width:100%">
+                            <input id="cfg-stripe-webhook" type="password" class="input-field" value="${App.escapeHtml(config.stripe_webhook_secret)}" placeholder="whsec_..." style="width:100%">
                         </div>
                         <div class="full-width">
                             <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Discord Donation Webhook URL</label>
-                            <input id="cfg-discord-webhook" class="form-input" value="${App.escapeHtml(config.discord_donation_webhook)}" placeholder="https://discord.com/api/webhooks/..." style="width:100%">
+                            <input id="cfg-discord-webhook" class="input-field" value="${App.escapeHtml(config.discord_donation_webhook)}" placeholder="https://discord.com/api/webhooks/..." style="width:100%">
                         </div>
                         <div class="full-width">
                             <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Site URL (for Stripe redirects)</label>
-                            <input id="cfg-site-url" class="form-input" value="${App.escapeHtml(config.siteUrl)}" placeholder="https://yourdomain.com" style="width:100%">
+                            <input id="cfg-site-url" class="input-field" value="${App.escapeHtml(config.siteUrl)}" placeholder="https://yourdomain.com" style="width:100%">
                         </div>
                         <div class="full-width" style="text-align:right">
                             <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.saveSettings()">Save Settings</button>
@@ -248,11 +248,11 @@ window.DonationsAdminPage = {
             <div class="donate-admin-form">
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Name</label>
-                    <input id="re-name" class="form-input" value="${App.escapeHtml(rank.name)}" style="width:100%">
+                    <input id="re-name" class="input-field" value="${App.escapeHtml(rank.name)}" style="width:100%">
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Price (USD)</label>
-                    <input id="re-price" type="number" step="0.01" class="form-input" value="${rank.price}" style="width:100%">
+                    <input id="re-price" type="number" step="0.01" class="input-field" value="${rank.price}" style="width:100%">
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Color</label>
@@ -260,23 +260,23 @@ window.DonationsAdminPage = {
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Icon</label>
-                    <input id="re-icon" class="form-input" value="${rank.icon}" style="width:100%">
+                    <input id="re-icon" class="input-field" value="${rank.icon}" style="width:100%">
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">LuckPerms Group</label>
-                    <input id="re-lp" class="form-input" value="${App.escapeHtml(rank.luckperms_group || '')}" style="width:100%">
+                    <input id="re-lp" class="input-field" value="${App.escapeHtml(rank.luckperms_group || '')}" style="width:100%">
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Sort Order</label>
-                    <input id="re-order" type="number" class="form-input" value="${rank.sort_order}" style="width:100%">
+                    <input id="re-order" type="number" class="input-field" value="${rank.sort_order}" style="width:100%">
                 </div>
                 <div class="full-width">
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Description</label>
-                    <input id="re-desc" class="form-input" value="${App.escapeHtml(rank.description || '')}" style="width:100%">
+                    <input id="re-desc" class="input-field" value="${App.escapeHtml(rank.description || '')}" style="width:100%">
                 </div>
                 <div class="full-width">
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Perks (one per line)</label>
-                    <textarea id="re-perks" class="form-input" rows="4" style="width:100%;resize:vertical">${App.escapeHtml(perksStr)}</textarea>
+                    <textarea id="re-perks" class="input-field" rows="4" style="width:100%;resize:vertical">${App.escapeHtml(perksStr)}</textarea>
                 </div>
                 <div class="full-width" style="display:flex;gap:var(--space-md);align-items:center">
                     <label style="font-size:0.8rem;color:var(--text-muted)">
@@ -340,17 +340,17 @@ window.DonationsAdminPage = {
             <div class="donate-admin-form">
                 <div class="full-width">
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">User ID</label>
-                    <input id="gr-user" class="form-input" placeholder="User UUID" style="width:100%">
+                    <input id="gr-user" class="input-field" placeholder="User UUID" style="width:100%">
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Rank</label>
-                    <select id="gr-rank" class="form-input" style="width:100%">
+                    <select id="gr-rank" class="input-field" style="width:100%">
                         ${ranks.map(r => `<option value="${r.id}">${App.escapeHtml(r.name)}</option>`).join('')}
                     </select>
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Duration (days, blank = permanent)</label>
-                    <input id="gr-days" type="number" class="form-input" value="30" style="width:100%">
+                    <input id="gr-days" type="number" class="input-field" value="30" style="width:100%">
                 </div>
                 <div class="full-width" style="text-align:right;margin-top:var(--space-md)">
                     <button class="mc-btn" style="background:rgba(171,71,188,0.1);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)" onclick="DonationsAdminPage.grantRank()">Grant Rank</button>
@@ -384,22 +384,22 @@ window.DonationsAdminPage = {
             <div class="donate-admin-form">
                 <div class="full-width">
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Username or ID</label>
-                    <input id="md-user" class="form-input" placeholder="User's username" style="width:100%">
+                    <input id="md-user" class="input-field" placeholder="User's username" style="width:100%">
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Amount (USD)</label>
-                    <input id="md-amount" type="number" step="0.01" class="form-input" value="10.00" style="width:100%">
+                    <input id="md-amount" type="number" step="0.01" class="input-field" value="10.00" style="width:100%">
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Rank (Optional)</label>
-                    <select id="md-rank" class="form-input" style="width:100%">
+                    <select id="md-rank" class="input-field" style="width:100%">
                         <option value="">None</option>
                         ${ranks.map(r => `<option value="${r.id}">${App.escapeHtml(r.name)}</option>`).join('')}
                     </select>
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Date</label>
-                    <input id="md-date" type="datetime-local" class="form-input" value="${new Date().toISOString().slice(0, 16)}" style="width:100%">
+                    <input id="md-date" type="datetime-local" class="input-field" value="${new Date().toISOString().slice(0, 16)}" style="width:100%">
                 </div>
                 <div style="display:flex;align-items:center;padding-top:24px">
                     <label style="font-size:0.8rem;color:var(--text-muted);cursor:pointer">
@@ -513,11 +513,11 @@ window.DonationsAdminPage = {
                                 <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;font-size:0.85rem;text-transform:uppercase;letter-spacing:1px">Solana RPCs</div>
                                 <div style="margin-bottom:10px">
                                     <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Primary Node URL</label>
-                                    <input id="cfg-sol-rpc-primary" class="form-input" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.solana_rpc_primary || '')}" placeholder="https://api.mainnet-beta.solana.com">
+                                    <input id="cfg-sol-rpc-primary" class="input-field" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.solana_rpc_primary || '')}" placeholder="https://api.mainnet-beta.solana.com">
                                 </div>
                                 <div>
                                     <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Fallback Node URL (Optional)</label>
-                                    <input id="cfg-sol-rpc-secondary" class="form-input" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.solana_rpc_secondary || '')}" placeholder="Optional fallback RPC">
+                                    <input id="cfg-sol-rpc-secondary" class="input-field" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.solana_rpc_secondary || '')}" placeholder="Optional fallback RPC">
                                 </div>
                             </div>
 
@@ -525,11 +525,11 @@ window.DonationsAdminPage = {
                                 <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;font-size:0.85rem;text-transform:uppercase;letter-spacing:1px">Litecoin RPCs</div>
                                 <div style="margin-bottom:10px">
                                     <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Primary Node URL</label>
-                                    <input id="cfg-ltc-rpc-primary" class="form-input" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.litecoin_rpc_primary || '')}" placeholder="https://api.blockcypher.com/v1/ltc/main">
+                                    <input id="cfg-ltc-rpc-primary" class="input-field" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.litecoin_rpc_primary || '')}" placeholder="https://api.blockcypher.com/v1/ltc/main">
                                 </div>
                                 <div>
                                     <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Fallback Node URL (Optional)</label>
-                                    <input id="cfg-ltc-rpc-secondary" class="form-input" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.litecoin_rpc_secondary || '')}" placeholder="Optional fallback RPC">
+                                    <input id="cfg-ltc-rpc-secondary" class="input-field" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.litecoin_rpc_secondary || '')}" placeholder="Optional fallback RPC">
                                 </div>
                             </div>
                         </div>
@@ -544,14 +544,14 @@ window.DonationsAdminPage = {
                                     <div>
                                         <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Solana Webhook Secret (Helius)</label>
                                         <div style="position:relative">
-                                            <input id="cfg-sol-webhook" type="password" class="form-input" placeholder="${cfg.solana_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
+                                            <input id="cfg-sol-webhook" type="password" class="input-field" placeholder="${cfg.solana_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
                                             ${cfg.solana_webhook_secret_set ? '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--neon-green);font-size:0.8rem;background:rgba(74,222,128,0.1);padding:2px 6px;border-radius:4px">✓ Set</span>' : ''}
                                         </div>
                                     </div>
                                     <div>
                                         <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Litecoin Webhook Secret (BlockCypher)</label>
                                         <div style="position:relative">
-                                            <input id="cfg-ltc-webhook" type="password" class="form-input" placeholder="${cfg.litecoin_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
+                                            <input id="cfg-ltc-webhook" type="password" class="input-field" placeholder="${cfg.litecoin_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
                                             ${cfg.litecoin_webhook_secret_set ? '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--neon-green);font-size:0.8rem;background:rgba(74,222,128,0.1);padding:2px 6px;border-radius:4px">✓ Set</span>' : ''}
                                         </div>
                                     </div>
@@ -651,11 +651,11 @@ window.DonationsAdminPage = {
                 </p>
                 <div>
                     <label class="donate-admin-label">Solana Seed Phrase (leave blank to keep existing)</label>
-                    <textarea id="ws-sol-seed" class="form-input" rows="3" placeholder="word1 word2 word3 ..." style="width:100%;resize:vertical;font-family:monospace"></textarea>
+                    <textarea id="ws-sol-seed" class="input-field" rows="3" placeholder="word1 word2 word3 ..." style="width:100%;resize:vertical;font-family:monospace"></textarea>
                 </div>
                 <div>
                     <label class="donate-admin-label">Litecoin Seed Phrase (leave blank to keep existing, or use same seed)</label>
-                    <textarea id="ws-ltc-seed" class="form-input" rows="3" placeholder="word1 word2 word3 ..." style="width:100%;resize:vertical;font-family:monospace"></textarea>
+                    <textarea id="ws-ltc-seed" class="input-field" rows="3" placeholder="word1 word2 word3 ..." style="width:100%;resize:vertical;font-family:monospace"></textarea>
                 </div>
                 <div style="text-align:right">
                     <button class="mc-btn" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)" onclick="DonationsAdminPage.saveWalletSeeds()">
@@ -845,7 +845,7 @@ window.DonationsAdminPage = {
             let html = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;gap:1rem;flex-wrap:wrap">
                     <h3 style="margin:0;font-size:1rem;color:var(--text-secondary)">User Balances</h3>
-                    <input class="form-input" placeholder="Search username..." value="${App.escapeHtml(search)}"
+                    <input class="input-field" placeholder="Search username..." value="${App.escapeHtml(search)}"
                         oninput="DonationsAdminPage._balanceSearch=this.value;clearTimeout(DonationsAdminPage._bsTimer);DonationsAdminPage._bsTimer=setTimeout(()=>DonationsAdminPage.loadTab(),400)"
                         style="max-width:220px">
                 </div>
@@ -890,11 +890,11 @@ window.DonationsAdminPage = {
                 </p>
                 <div>
                     <label class="donate-admin-label">Amount (USD)</label>
-                    <input id="adj-amount" type="number" step="0.01" class="form-input" placeholder="e.g. 10.00 or -5.00" style="width:100%">
+                    <input id="adj-amount" type="number" step="0.01" class="input-field" placeholder="e.g. 10.00 or -5.00" style="width:100%">
                 </div>
                 <div>
                     <label class="donate-admin-label">Reason (required)</label>
-                    <input id="adj-reason" class="form-input" placeholder="e.g. Refund for failed payment" style="width:100%">
+                    <input id="adj-reason" class="input-field" placeholder="e.g. Refund for failed payment" style="width:100%">
                 </div>
                 <div style="text-align:right">
                     <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)"
