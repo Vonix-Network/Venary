@@ -1,0 +1,343 @@
+# Implementation Plan: Crypto Donation Support
+
+## Overview
+
+Extends the donations extension with Solana and Litecoin payment support via HD wallet derivation, blockchain monitoring, a USD balance system, and three new admin tabs. All new code is isolated in new files or appended to existing ones — no core server files are touched.
+
+## Tasks
+
+- [x] 1. Schema migration — add crypto tables to extension database
+  - Append the six new `CREATE TABLE IF NOT EXISTS` blocks to `extensions/donations/server/schema.sql`: `user_crypto_addresses`, `crypto_payment_intents`, `anytime_address_txs`, `user_balances`, `balance_transactions`, `user_preferences`
+  - Add all indices defined in the design (`idx_crypto_intents_status`, `idx_crypto_intents_coin`, `idx_crypto_intents_user`, `idx_crypto_intents_expires`, `idx_anytime_txs_user`, `idx_anytime_txs_hash`, `idx_balance_txs_user`, `idx_user_crypto_addr_user`)
+  - Add a startup migration block in `routes.js` (alongside the existing nullable-columns migration) that runs each `CREATE TABLE IF NOT EXISTS` statement so the tables are created on first boot without dropping existing data
+  - Verify existing `donations`, `user_ranks`, `rank_conversions` tables are untouched after migration
+  - _Requirements: 6.1, 6.7, 22.1_
+
+- [x] 2. Implement `extensions/donations/server/crypto/errors.js`
+  - Define and export all seven custom error classes: `ExchangeRateUnavailableError`, `SeedDecryptionError`, `InsufficientBalanceError` (stores `required` + `available`), `InvalidMnemonicError`, `WebhookSignatureError`, `IntentExpiredError`, `DuplicateTransactionError`
+  - Each class extends `Error` and sets `this.name` to the class name for easy `instanceof` checks
+  - _Requirements: 11.1, 11.5_
+
+- [x] 3. Implement `extensions/donations/server/crypto/wallet.js`
+  - [x] 3.1 Implement seed encryption/decryption
+    - `encryptSeed(mnemonic)`: derive 32-byte AES key via `PBKDF2(JWT_SECRET + 'crypto-wallet-salt-v1', 100000, SHA-256)`, encrypt with AES-256-CBC using a random IV, return `iv_hex:ciphertext_hex`
+    - `decryptSeed(ciphertext)`: reverse the above; throw `SeedDecryptionError` on any failure; never log the mnemonic or key
+    - Read `JWT_SECRET` from `process.env.JWT_SECRET`
+    - _Requirements: 19.3, 19.4_
+  - [x] 3.2 Implement mnemonic validation
+    - `validateMnemonic(mnemonic)`: delegate to `bip39.validateMnemonic`; return boolean; throw `InvalidMnemonicError` when called from wallet-setup routes if invalid
+    - _Requirements: 19.2_
+  - [x] 3.3 Implement Solana address derivation
+    - `deriveSolanaAddress(mnemonic, index)`: derive seed via `bip39.mnemonicToSeedSync`, apply path `m/44'/501'/0'/0'/${index}'` via `ed25519-hd-key`, return `{ address: base58PublicKey, publicKey: Buffer }`
+    - Validate output is a valid Solana base58 public key (32-byte, non-zero)
+    - _Requirements: 1.1, 10.1, 21.1, 21.2_
+  - [x] 3.4 Implement Litecoin address derivation
+    - `deriveLitecoinAddress(mnemonic, index)`: derive via `bitcoinjs-lib` + `tiny-secp256k1` BIP32 factory, path `m/44'/2'/0'/0/${index}`, P2PKH address with Litecoin network params (`pubKeyHash: 0x30`)
+    - Validate output passes Litecoin base58check format
+    - _Requirements: 2.1, 10.1, 21.1, 21.2_
+  - [x] 3.5 Implement index allocation and address upsert
+    - `getOrCreateUserAddresses(userId, extDb)`: atomically `SELECT MAX(derivation_index)+1` then `INSERT OR IGNORE` into `user_crypto_addresses`; derive both addresses from decrypted seed; return `{ sol_address, ltc_address, derivation_index }`
+    - Index 0 is reserved — user indices start at 1
+    - _Requirements: 21.1, 21.2, 10.6_
+
+- [x] 4. Implement `extensions/donations/server/crypto/exchange.js`
+  - [x] 4.1 Implement rate fetching with dual-source fallback
+    - `getRates()`: fetch from CoinGecko (`/api/v3/simple/price?ids=solana,litecoin&vs_currencies=usd`) first; on failure fetch from Binance (`SOLUSDT` + `LTCUSDT` ticker endpoints); cache result for 60 s in module-level variable with `fetched_at` timestamp
+    - If both sources return values and they disagree by >2%, log `[Donations/Crypto] ⚠️ Exchange rate divergence` and use the median
+    - If all sources fail, throw `ExchangeRateUnavailableError`; if cache is ≤5 min stale, return stale cache with a warning log; if cache is >5 min stale, throw
+    - _Requirements: 3.1, 3.2, 3.4, 3.5, 3.6_
+  - [x] 4.2 Implement rate locking for payment intents
+    - `lockRate(usd_amount, coin)`: call `getRates()`, compute `crypto_amount = usd_amount / rate` (8 decimal precision), return `{ crypto_amount, rate_used }`
+    - `getDisplayRate(coin)`: return current cached rate for display conversion
+    - _Requirements: 3.3, 3.7, 3.8_
+
+- [x] 5. Implement `extensions/donations/server/crypto/balance.js`
+  - [x] 5.1 Implement credit and debit operations
+    - `credit(userId, amountUsd, source, description, extDb, referenceId?)`: `INSERT OR IGNORE` into `user_balances` then `UPDATE usd_balance = usd_balance + ?`; `INSERT` into `balance_transactions` with `type='credit'`; all in a single serialized sequence
+    - `debit(userId, amountUsd, source, description, extDb, referenceId?)`: fetch balance first; if `balance < amountUsd` throw `InsufficientBalanceError(amountUsd, balance)`; else `UPDATE usd_balance = usd_balance - ?` and insert ledger row
+    - _Requirements: 22.1, 22.2, 22.3, 22.6, 22.8_
+  - [x] 5.2 Implement balance read and ledger query
+    - `getBalance(userId, extDb)`: `SELECT usd_balance FROM user_balances WHERE user_id = ?`; return `0` if no row
+    - `getLedger(userId, limit, extDb)`: `SELECT * FROM balance_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`
+    - _Requirements: 22.8_
+  - [x] 5.3 Implement admin adjustment
+    - `adminAdjust(adminId, userId, amountUsd, reason, extDb)`: positive amount → `credit`; negative → `debit`; always insert a `balance_transactions` row with `source='admin_adjustment'` and `admin_id` set
+    - _Requirements: 22.12, 20.6_
+  - [x] 5.4 Implement display currency conversion
+    - `convertForDisplay(amountUsd, targetCurrency, rates)`: convert stored USD to `targetCurrency` using `rates`; return USD unchanged if `targetCurrency === 'usd'` or rates unavailable
+    - _Requirements: 22.9, 22.10, 23.1, 23.2_
+
+- [x] 6. Implement `extensions/donations/server/crypto/monitor.js`
+  - [x] 6.1 Implement Solana intent polling
+    - `pollSolanaIntents(extDb, balanceManager)`: query `crypto_payment_intents` where `status IN ('pending','detected') AND coin='sol' AND expires_at > now()`; for each, call Solana RPC `getSignaturesForAddress` on the stored `sol_address`; match any tx whose lamport value is within 5% tolerance of `locked_crypto_amount`; on match set `status='detected'`, store `tx_hash`; when `confirmations >= 1` call `completeCryptoIntent`
+    - Poll interval: 5 s via `setInterval`
+    - _Requirements: 1.4, 1.5, 4.1, 4.3, 4.4_
+  - [x] 6.2 Implement Litecoin intent polling
+    - `pollLitecoinIntents(extDb, balanceManager)`: same pattern against BlockCypher address endpoint; confirmation threshold 3; poll interval 10 s
+    - _Requirements: 2.4, 2.5, 4.2, 4.3, 4.5_
+  - [x] 6.3 Implement anytime address polling
+    - `pollAnytimeAddresses(extDb, balanceManager)`: `SELECT * FROM user_crypto_addresses`; for each user check both `sol_address` and `ltc_address` for new transactions not present in `anytime_address_txs`; call `processAnytimeTx` for each new tx; poll interval 3 min
+    - _Requirements: 21.4, 21.5, 21.6, 21.7_
+  - [x] 6.4 Implement `completeCryptoIntent`
+    - Atomically: `UPDATE crypto_payment_intents SET status='completed', completed_at=? WHERE id=? AND status != 'completed'`; `INSERT INTO donations` with `source='crypto_intent'`; call existing rank-grant logic (same as `completeDonation` in routes.js); call `balanceManager.credit` if `rank_id IS NULL` (custom amount); send Discord notification via existing `discord.js`
+    - Retry DB write up to 3× with 500 ms delay on failure; on persistent failure set `status='completed_pending_rank'`
+    - _Requirements: 1.6, 2.6, 6.2, 6.3, 6.4, 6.5, 10.7_
+  - [x] 6.5 Implement `processAnytimeTx`
+    - `INSERT OR IGNORE INTO anytime_address_txs`; on successful insert call `balanceManager.credit`; on UNIQUE constraint violation (duplicate tx) log at debug level and return — no error thrown
+    - _Requirements: 21.5, 21.6, 21.7, 10.7_
+  - [x] 6.6 Implement exponential backoff on RPC failure
+    - Wrap each RPC call in a retry loop with delays `[1000, 2000, 4000, 8000, 16000]` ms; after 5 failures log `[Donations/Crypto] ❌ RPC failure (attempt N/5): <error>` and skip the cycle; do not crash the process
+    - _Requirements: 4.8, 11.1_
+  - [x] 6.7 Implement intent expiry sweep
+    - Inside each polling function: `UPDATE crypto_payment_intents SET status='expired' WHERE status IN ('pending','detected') AND expires_at < ?` before processing active intents; expired intents must never transition back
+    - _Requirements: 1.7, 2.7, 4.6_
+  - [x] 6.8 Export `startMonitoring(extDb, balanceManager)`
+    - Start all three polling intervals; store interval handles so they can be cleared in tests; log `[Donations/Crypto] ✅ Blockchain monitor started`
+    - _Requirements: 4.1, 4.2_
+
+- [x] 7. Implement `extensions/donations/server/crypto-routes.js`
+  - [x] 7.1 Scaffold module and shared middleware
+    - Export `function cryptoRoutes(extDb)` returning an Express Router; import `wallet`, `exchange`, `balance`, `monitor`, `errors` from `./crypto/`; import `authenticateToken`, `optionalAuth` from core middleware; import `Config`, `coreDb`
+    - `requireAdmin`: same pattern as in routes.js — checks `role IN ('admin','superadmin','moderator')`
+    - `requireSuperadmin`: checks `role === 'superadmin'`; returns 403 otherwise
+    - _Requirements: 19.9, 20.3, 20.4_
+  - [x] 7.2 Implement public rate endpoint
+    - `GET /crypto/rates`: call `exchange.getRates()`; return `{ sol_usd, ltc_usd, fetched_at }`; on `ExchangeRateUnavailableError` return 503
+    - _Requirements: 3.1, 3.2_
+  - [x] 7.3 Implement payment intent creation
+    - `POST /crypto/intent` (`optionalAuth`): validate `rank_id` or `amount`, `coin` (`sol`|`ltc`), optional `mc_username` for guests; enforce max 5 active intents per user; call `exchange.lockRate`; call `wallet.getOrCreateUserAddresses`; insert into `crypto_payment_intents` with `expires_at = now + 240h`; generate QR code via `qrcode` library; return intent id, address, `locked_crypto_amount`, QR data URI
+    - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 3.8, 7.1, 7.2, 7.3_
+  - [x] 7.4 Implement intent status polling endpoint
+    - `GET /crypto/intent/:id` (`optionalAuth`): return full intent row; include `confirmations`, `status`, `expires_at`; mask address to last 6 chars for unauthenticated callers
+    - _Requirements: 7.4, 7.5, 7.6, 8.6_
+  - [x] 7.5 Implement intent cancellation
+    - `POST /crypto/intent/:id/cancel` (`authenticateToken`): `UPDATE ... SET status='cancelled' WHERE id=? AND user_id=? AND status='pending'`; return 404 if not found or not owned
+    - _Requirements: 1.7_
+  - [x] 7.6 Implement anytime address endpoint
+    - `GET /crypto/my-addresses` (`authenticateToken`): call `wallet.getOrCreateUserAddresses`; generate QR codes for both addresses; return `{ sol_address, ltc_address, sol_qr, ltc_qr }`
+    - _Requirements: 21.1, 21.3_
+  - [x] 7.7 Implement balance and ledger endpoints
+    - `GET /crypto/balance` (`authenticateToken`): call `balance.getBalance` + `balance.getLedger(userId, 50)`; fetch user display currency preference from `user_preferences`; call `balance.convertForDisplay`; return `{ usd_balance, display_balance, display_currency, ledger }`
+    - `POST /crypto/balance/spend` (`authenticateToken`): validate `rank_id`; fetch rank price; call `balance.debit`; grant rank (same upsert logic as `completeDonation`); on `InsufficientBalanceError` return 400 with `{ error, shortfall }`
+    - _Requirements: 22.5, 22.6, 22.7, 22.8, 22.9_
+  - [x] 7.8 Implement webhook endpoints
+    - `POST /crypto/webhook/solana` and `POST /crypto/webhook/litecoin` (raw body, public): verify HMAC-SHA256 signature using `crypto.timingSafeEqual`; on mismatch throw `WebhookSignatureError` → 401; on valid signature find matching intent and call `completeCryptoIntent`; always respond within 5 s; unknown intent → 200 + log
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.7, 10.5_
+  - [x] 7.9 Implement admin crypto config endpoints
+    - `GET /admin/crypto/config` (`requireAdmin`): return RPC endpoints, webhook secret presence flags, enabled toggles, masked seed status (first + last word only)
+    - `PUT /admin/crypto/config` (`requireAdmin`): update RPC endpoints, webhook secrets, enabled flags in `Config` under `donations.crypto.*`
+    - `PUT /admin/crypto/wallet` (`requireSuperadmin`): validate mnemonic via `wallet.validateMnemonic`; encrypt via `wallet.encryptSeed`; store in `Config`; never return or log plaintext
+    - `GET /admin/crypto/status` (`requireAdmin`): ping each enabled RPC endpoint; return `{ solana: 'connected'|'degraded'|'offline', litecoin: '...' }`
+    - _Requirements: 9.4, 9.5, 15.1, 15.4, 15.5, 19.1, 19.3, 19.4, 19.5, 19.9, 20.1, 20.3, 20.7_
+  - [x] 7.10 Implement admin intent management endpoints
+    - `GET /admin/crypto/intents` (`requireAdmin`): paginated list with filters `status`, `coin`, `date_from`, `date_to`; join username from core `users` table
+    - `POST /admin/crypto/intents/:id/confirm` (`requireAdmin`): manual confirmation — call `completeCryptoIntent` with admin-supplied `tx_hash`; log admin action
+    - _Requirements: 9.2, 9.3, 9.8, 12.3_
+  - [x] 7.11 Implement admin balance management endpoints
+    - `GET /admin/balances` (`requireAdmin`): paginated user balance list with search by username; join `user_balances` + core `users`
+    - `POST /admin/balances/:userId/adjust` (`requireAdmin`): validate `amount` (non-zero) and `reason` (required); call `balance.adminAdjust`
+    - _Requirements: 20.5, 20.6, 22.12_
+
+- [x] 8. Wire crypto-routes into `extensions/donations/server/routes.js`
+  - [x] 8.1 Import and mount crypto router
+    - At the top of the `module.exports` factory function, `require('./crypto-routes')` and call `router.use('/', cryptoRoutes(extDb))` — all crypto endpoints inherit the `/api/ext/donations` prefix automatically
+    - Start blockchain monitor after mount: `require('./crypto/monitor').startMonitoring(extDb, require('./crypto/balance'))`; guard with `if (Config.get('donations.crypto.solana_enabled') || Config.get('donations.crypto.litecoin_enabled'))`
+    - _Requirements: 4.1, 4.2, 15.7_
+  - [x] 8.2 Wire Stripe custom-checkout → balance credit
+    - In the existing `completeDonation` helper (inside routes.js), after the donation record is marked `completed` and `rank_id IS NULL`, call `balance.credit(userId, amount, 'stripe_custom', 'Custom donation via Stripe', extDb, donationId)`
+    - Guard with `if (userId)` — guests do not accumulate balance
+    - _Requirements: 22.2_
+
+- [x] 9. Checkpoint — server-side complete
+  - Ensure all new tables are created on boot, all crypto endpoints respond, monitor starts without errors, and existing Stripe flow still works. Ask the user if questions arise.
+
+- [x] 10. Implement frontend crypto checkout in `extensions/donations/public/pages/donations.js`
+  - [x] 10.1 Add payment method selector to rank checkout modal
+    - In the existing rank-checkout flow, after the user selects a rank, render three payment method buttons: "Pay with Card" (existing Stripe path), "Pay with Solana", "Pay with Litecoin"
+    - Fetch `/api/ext/donations/crypto/rates` on modal open to display live SOL/USD and LTC/USD rates next to each crypto option; hide crypto options if both `solana_enabled` and `litecoin_enabled` are false in site config
+    - _Requirements: 7.1, 13.1, 15.8_
+  - [x] 10.2 Implement crypto checkout modal (QR + status polling)
+    - On crypto method selection: `POST /api/ext/donations/crypto/intent` with `{ rank_id, coin, mc_username? }`; display returned QR code image, wallet address (with copy button), USD amount, and exact crypto amount
+    - Poll `GET /api/ext/donations/crypto/intent/:id` every 5 s; update confirmation progress bar; on `status='completed'` show success state and stop polling; on `status='expired'` show expiry message with "Generate new address" button; on `status='cancelled'` close modal
+    - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6, 8.6_
+  - [x] 10.3 Add balance widget and "Pay with Balance" option
+    - For authenticated users: fetch `GET /api/ext/donations/crypto/balance` on page load; display balance in a widget near the donation section showing `display_balance` + `display_currency`
+    - In the rank checkout modal, if `usd_balance >= rank.price`, show a "Pay with Balance ($X.XX)" button; on click `POST /api/ext/donations/crypto/balance/spend { rank_id }`; handle 400 insufficient-funds response by showing shortfall
+    - _Requirements: 22.5, 22.6, 22.7, 22.9_
+  - [x] 10.4 Add anytime address section
+    - For authenticated users: add a collapsible "Your Crypto Addresses" section on the donations page; fetch `GET /api/ext/donations/crypto/my-addresses`; display SOL and LTC addresses with QR codes and copy buttons; include a note that any amount sent to these addresses credits the user's balance
+    - _Requirements: 21.3_
+  - [x] 10.5 Handle guest Minecraft username requirement
+    - When an unauthenticated user selects a crypto payment method, show a username input field before proceeding to intent creation; pre-populate from linked account data if authenticated
+    - _Requirements: 7.7, 7.8_
+
+- [x] 11. Implement admin UI additions in `extensions/donations/public/pages/donations-admin.js`
+  - [x] 11.1 Add "Crypto Settings" tab
+    - Add a new tab entry to the existing tab bar; render: Solana enable/disable toggle, Litecoin enable/disable toggle, live connectivity status badge per chain (fetched from `GET /admin/crypto/status`), primary + secondary RPC endpoint inputs, webhook secret inputs (masked), pending/confirmed/failed intent summary counts
+    - Wallet Setup sub-section (visible only when `user.role === 'superadmin'`): seed phrase input (type=password), "Generate new seed" button (calls `bip39.generateMnemonic` client-side or a dedicated endpoint), derivation path display (read-only), masked confirmation showing first + last word after save
+    - For non-superadmin admins: render a "Superadmin only" notice in place of wallet fields
+    - Save via `PUT /admin/crypto/config` (RPC/webhook fields) and `PUT /admin/crypto/wallet` (seed phrase, superadmin only)
+    - _Requirements: 20.1, 20.3, 20.4, 20.7, 20.8, 19.5, 19.6_
+  - [x] 11.2 Add "Balance Settings" tab
+    - Render: allowed display currencies multi-select (checkboxes for USD, SOL, LTC, EUR, GBP), minimum balance threshold for rank purchase input, balance expiry toggle + duration input
+    - Save via `PUT /admin/crypto/config` under `donations.crypto.balance_display_currencies` and related keys
+    - _Requirements: 20.2, 23.6_
+  - [x] 11.3 Add "User Balances" tab
+    - Render a searchable table: username, USD balance, display currency, last transaction date; fetch from `GET /admin/balances?search=&page=`
+    - Per-row "Adjust" button opens a modal with: amount input (positive = credit, negative = debit), required reason textarea; submit via `POST /admin/balances/:userId/adjust`; show audit confirmation on success
+    - Per-row "View Ledger" expands an inline ledger showing all `balance_transactions` for that user
+    - _Requirements: 20.5, 20.6, 22.12_
+
+- [x] 12. Add CSS for new UI components in `extensions/donations/public/css/donations.css`
+  - Payment method selector buttons (card/SOL/LTC) with hover/active states and coin icon placeholders
+  - Crypto checkout modal: QR code container, address copy button, confirmation progress bar, status badges (`pending`, `detected`, `confirmed`, `completed`, `expired`)
+  - Balance widget: balance display, currency selector dropdown, ledger table rows
+  - Anytime address section: collapsible container, QR code side-by-side layout, copy button
+  - Admin tab additions: connectivity status badges (green/yellow/red), seed phrase masked input, wallet setup section, user balances table, adjust modal
+  - All new styles scoped under `.donations-` prefix to avoid collisions with core CSS
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 22.9, 20.1, 20.5_
+
+- [x] 13. Checkpoint — full stack integration
+  - Verify end-to-end: rank checkout with SOL/LTC shows QR, polling updates status, balance widget renders, admin tabs load without errors. Ask the user if questions arise.
+
+- [ ] 14. Write property-based tests in `tests/crypto-donation-support.property.test.js`
+  - [ ]* 14.1 Write property test for address derivation determinism (Property 1)
+    - **Property 1: Address derivation is deterministic**
+    - Use `fc.tuple(fc.constantFrom(...validMnemonics), fc.nat({ max: 1000 }))` to generate `(mnemonic, index)` pairs; assert `deriveSolanaAddress(m, i).address === deriveSolanaAddress(m, i).address` and same for Litecoin
+    - **Validates: Requirements 21.2**
+  - [ ]* 14.2 Write property test for seed encryption round-trip (Property 2)
+    - **Property 2: Seed encryption round-trip**
+    - Use `fc.constantFrom(...validMnemonics)` (pre-generated valid BIP39 phrases); assert `decryptSeed(encryptSeed(m)) === m` for all inputs
+    - **Validates: Requirements 19.3**
+  - [ ]* 14.3 Write property test for BIP39 validation correctness (Property 3)
+    - **Property 3: BIP39 mnemonic validation correctness**
+    - Use `fc.string()` for arbitrary strings (must return false); use known valid mnemonics (must return true); assert no false positives or negatives
+    - **Validates: Requirements 19.2**
+  - [ ]* 14.4 Write property test for exchange rate locking invariant (Property 4)
+    - **Property 4: Exchange rate locking invariant**
+    - Use `fc.float({ min: 1, max: 10000 })` for USD amount and `fc.float({ min: 0.01, max: 100000 })` for rate; assert `|locked_crypto_amount - usd/rate| < 0.000001`
+    - **Validates: Requirements 3.7, 3.8**
+  - [ ]* 14.5 Write property test for median rate selection (Property 5)
+    - **Property 5: Median rate selection**
+    - Use `fc.array(fc.float({ min: 0.01, max: 100000 }), { minLength: 1 })` for rate arrays; assert selected rate is `>= min(rates)` and `<= max(rates)`
+    - **Validates: Requirements 3.4**
+  - [ ]* 14.6 Write property test for amount tolerance acceptance/rejection (Property 6)
+    - **Property 6: Amount tolerance acceptance/rejection**
+    - Use `fc.float({ min: 0.01 })` for `L` (locked) and `fc.float({ min: 0 })` for `R` (received); assert accepted iff `|R-L|/L <= 0.05`; assert rejected otherwise
+    - **Validates: Requirements 1.8, 2.8, 10.3**
+  - [ ]* 14.7 Write property test for confirmation threshold state transition (Property 7)
+    - **Property 7: Confirmation threshold state transition**
+    - Use `fc.nat()` for confirmation count and `fc.constantFrom('sol','ltc')` for coin; assert status transitions to `confirmed` iff `confs >= threshold(coin)` (1 for SOL, 3 for LTC); assert never transitions before threshold
+    - **Validates: Requirements 1.5, 2.5, 4.4, 4.5**
+  - [ ]* 14.8 Write property test for intent expiry invariant (Property 8)
+    - **Property 8: Intent expiry invariant**
+    - Use `fc.date()` for `expires_at` and `fc.constantFrom('pending','detected')` for status; assert that when `expires_at < now` the monitor sets `status='expired'`; assert expired intents never transition to any other status
+    - **Validates: Requirements 1.7, 2.7, 4.6**
+  - [ ]* 14.9 Write property test for webhook HMAC verification (Property 9)
+    - **Property 9: Webhook HMAC verification**
+    - Use `fc.string()` for payload and `fc.string()` for secret; assert valid HMAC accepted (200), any mutation of payload or secret rejected (401); use `crypto.createHmac` to generate valid signatures in test
+    - **Validates: Requirements 5.2, 5.3, 10.5**
+  - [ ]* 14.10 Write property test for duplicate transaction idempotence (Property 10)
+    - **Property 10: Duplicate transaction idempotence**
+    - Use `fc.string()` for tx hashes; call `processAnytimeTx` twice with same hash against in-memory SQLite; assert exactly one `anytime_address_txs` row and one `balance_transactions` row; assert no error thrown on second call
+    - **Validates: Requirements 5.8, 10.7**
+  - [ ]* 14.11 Write property test for address-to-intent binding (Property 11)
+    - **Property 11: Address-to-intent binding**
+    - Use `fc.string()` for addresses; assert that a tx arriving at an address different from the intent's stored address never completes that intent
+    - **Validates: Requirements 10.4**
+  - [ ]* 14.12 Write property test for balance ledger invariant (Property 12)
+    - **Property 12: Balance ledger invariant**
+    - Use `fc.array(fc.record({ type: fc.constantFrom('credit','debit'), amount: fc.float({ min: 0.01, max: 1000 }) }))` to generate operation sequences; apply to in-memory balance; assert `getBalance() === sum(credits) - sum(debits)` after every operation
+    - **Validates: Requirements 22.1, 22.8**
+  - [ ]* 14.13 Write property test for balance credit equals donation amount (Property 13)
+    - **Property 13: Balance credit equals donation amount**
+    - Use `fc.float({ min: 0.01, max: 10000 })` for amount; assert `balance_after - balance_before === amount` to within 8 decimal places
+    - **Validates: Requirements 22.2, 22.3, 22.4**
+  - [ ]* 14.14 Write property test for balance debit grants rank atomically (Property 14)
+    - **Property 14: Balance debit grants rank atomically**
+    - Use `fc.float()` for balance and rank price; assert that when `balance >= price` both debit and rank grant occur; when `balance < price` neither occurs and balance is unchanged
+    - **Validates: Requirements 22.6, 22.7**
+  - [ ]* 14.15 Write property test for transaction serialization round-trip (Property 15)
+    - **Property 15: Transaction serialization round-trip**
+    - Use `fc.record({ blockchain_type: fc.constantFrom('sol','ltc'), tx_hash: fc.string(), amount: fc.float({ min: 0 }), confirmations: fc.nat(), timestamp: fc.date() })` ; assert `parse(serialize(tx))` deep-equals original
+    - **Validates: Requirements 18.1, 18.2, 18.4**
+  - [ ]* 14.16 Write property test for derived address format validity (Property 16)
+    - **Property 16: Derived address format validity**
+    - Use `fc.nat({ max: 10000 })` for index; assert every derived Solana address passes base58 public key validation and every Litecoin address passes base58check; assert no zero addresses
+    - **Validates: Requirements 1.1, 2.1, 10.1**
+  - [ ]* 14.17 Write property test for exponential backoff sequence (Property 17)
+    - **Property 17: Exponential backoff sequence**
+    - Use `fc.nat({ max: 5 })` for failure count; assert delay sequence is exactly `[1000, 2000, 4000, 8000, 16000].slice(0, failureCount)`; assert monitor skips cycle after 5 failures
+    - **Validates: Requirements 4.8, 11.1**
+  - [ ]* 14.18 Write property test for payment intent ID uniqueness (Property 18)
+    - **Property 18: Payment intent ID uniqueness**
+    - Use `fc.nat({ max: 1000 })` for batch size; generate N intents concurrently against in-memory DB; assert all IDs are distinct and no two intents share the same derived address for the same coin
+    - **Validates: Requirements 10.6**
+
+- [ ] 15. Write unit and integration tests in `tests/crypto-donation-support.test.js`
+  - [ ]* 15.1 Unit test: `completeCryptoIntent` creates donation record, grants rank, credits balance
+    - Use in-memory SQLite; seed a pending intent and a donation rank; call `completeCryptoIntent`; assert `donations` row with `status='completed'`, `user_ranks` row created/updated, `balance_transactions` credit row for custom-amount intents
+    - _Requirements: 1.6, 2.6, 6.2, 6.3, 6.4, 6.5_
+  - [ ]* 15.2 Unit test: `processAnytimeTx` deduplication via `tx_hash` uniqueness
+    - Call `processAnytimeTx` twice with identical `tx_hash`; assert exactly one `anytime_address_txs` row and one balance credit; assert no error on second call
+    - _Requirements: 21.7, 10.7_
+  - [ ]* 15.3 Unit test: `requireSuperadmin` middleware returns 403 for non-superadmin roles
+    - Mock `coreDb.get` returning `role='admin'` and `role='moderator'`; assert both receive 403; assert `role='superadmin'` passes through
+    - _Requirements: 19.9, 20.4_
+  - [ ]* 15.4 Integration test: Stripe custom donation → balance credit
+    - Simulate `completeDonation` for a `rank_id=NULL` donation with a logged-in user; assert `user_balances` row created and `balance_transactions` credit row with `source='stripe_custom'`
+    - _Requirements: 22.2_
+  - [ ]* 15.5 Unit test: admin balance adjustment creates audit log entry
+    - Call `balance.adminAdjust(adminId, userId, 10, 'test reason', extDb)`; assert `balance_transactions` row with `source='admin_adjustment'`, `admin_id` set, `description='test reason'`
+    - _Requirements: 22.12, 20.6_
+  - [ ]* 15.6 Unit test: exchange rate fallback — primary source down, secondary used
+    - Mock CoinGecko to throw; mock Binance to return valid rates; assert `getRates()` returns Binance rates and logs a warning
+    - _Requirements: 3.5_
+  - [ ]* 15.7 Unit test: all rate sources down → checkout returns 503
+    - Mock both CoinGecko and Binance to throw; assert `POST /crypto/intent` returns 503 with error message
+    - _Requirements: 3.6_
+  - [ ]* 15.8 Unit test: webhook for unknown intent returns 200, no DB write
+    - Send valid HMAC-signed webhook payload with unknown `intent_id`; assert HTTP 200 response; assert no new rows in `crypto_payment_intents` or `donations`
+    - _Requirements: 5.5_
+  - [ ]* 15.9 Unit test: `balance/spend` with insufficient funds returns 400, no state change
+    - Seed user balance at $5.00; attempt to spend on a $9.99 rank; assert 400 response with `shortfall: 4.99`; assert balance unchanged and no `user_ranks` row created
+    - _Requirements: 22.7_
+  - [ ]* 15.10 Integration test: full crypto checkout flow
+    - `POST /crypto/intent` → mock RPC confirms tx with 1 SOL confirmation → `GET /crypto/intent/:id` returns `status='completed'`; assert donation record and rank grant exist
+    - _Requirements: 1.4, 1.5, 1.6, 4.3, 4.4_
+  - [ ]* 15.11 Integration test: anytime address flow
+    - Derive address → mock incoming tx detected by `pollAnytimeAddresses` → assert balance credited and `anytime_address_txs` row inserted
+    - _Requirements: 21.4, 21.5, 21.6_
+  - [ ]* 15.12 Integration test: balance spend flow
+    - Credit balance $20 → `POST /crypto/balance/spend { rank_id }` for $9.99 rank → assert rank granted, balance = $10.01, ledger has debit row
+    - _Requirements: 22.6, 22.8_
+  - [ ]* 15.13 Integration test: webhook acceleration
+    - `POST /crypto/webhook/solana` with valid HMAC and matching intent → assert intent completed immediately without waiting for polling cycle
+    - _Requirements: 5.1, 5.4_
+  - [ ]* 15.14 Migration test: schema migration on existing database
+    - Create a DB with existing `donations`, `user_ranks`, `rank_conversions` tables; run the startup migration; assert all six new tables exist; assert existing tables and data are untouched; assert existing Stripe checkout flow still works
+    - _Requirements: 6.1, 13.1_
+
+- [x] 16. Add npm dependencies to `package.json`
+  - Add to `dependencies`: `"@solana/web3.js": "^1.95.8"`, `"bip39": "^3.1.0"`, `"ed25519-hd-key": "^1.3.0"`, `"bitcoinjs-lib": "^6.1.7"`, `"tiny-secp256k1": "^2.2.3"`, `"bs58": "^6.0.0"`, `"qrcode": "^1.5.4"`
+  - Add to `devDependencies`: `"fast-check": "^3.22.0"`
+  - Use `strReplace` to surgically insert into the existing `dependencies` and `devDependencies` objects — do not overwrite the file
+  - _Requirements: 16.1_
+
+- [ ] 17. Update README and config documentation
+  - In `README.md`, add a "Crypto Donations" section documenting: required `JWT_SECRET` env var (already used by core auth), new `donations.crypto.*` config keys, how to set up a seed phrase via the admin UI, RPC endpoint configuration, and a note that `@solana/web3.js` requires Node.js ≥ 18
+  - Document the seven new `config.json` keys under `donations.crypto` with their types, defaults, and descriptions
+  - _Requirements: 17.2, 17.5, 15.1_
+
+- [ ] 18. Final checkpoint — production readiness
+  - Ensure all property tests pass (`npx jest tests/crypto-donation-support.property.test.js --testTimeout=30000`), all unit/integration tests pass, no diagnostic errors in any modified file, and `README.md` reflects all new config keys. Ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for a faster MVP
+- Each task references specific requirements for traceability
+- Checkpoints (tasks 9, 13, 18) ensure incremental validation at logical boundaries
+- Property tests (task 14) validate universal correctness invariants across randomized inputs; unit tests (task 15) validate specific examples, integration points, and error conditions
+- The `monitor.js` polling loops must be started after the Express router is mounted to ensure `extDb` is fully initialized
+- All crypto module logs use the `[Donations/Crypto]` prefix for easy filtering in production logs
+- Seed phrases and private keys must never appear in any log statement, API response, or client-side code

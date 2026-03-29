@@ -451,124 +451,168 @@ window.DonationsAdminPage = {
 
             const isSuperadmin = App.currentUser?.role === 'superadmin';
             const statusBadge = s => {
-                const map = { connected: ['var(--neon-green)', '●'], degraded: ['#eab308', '●'], offline: ['var(--neon-magenta)', '●'], disabled: ['var(--text-muted)', '○'] };
-                const [color, dot] = map[s] || ['var(--text-muted)', '○'];
-                return `<span style="color:${color}">${dot} ${s}</span>`;
+                const map = { connected: ['var(--neon-green)', '●', 'rgba(74,222,128,0.1)'], degraded: ['#eab308', '●', 'rgba(234,179,8,0.1)'], offline: ['var(--neon-magenta)', '●', 'rgba(239,68,68,0.1)'], disabled: ['var(--text-muted)', '○', 'rgba(255,255,255,0.05)'] };
+                const [color, dot, bg] = map[s] || ['var(--text-muted)', '○', 'rgba(255,255,255,0.05)'];
+                return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;background:${bg};color:${color};font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;border:1px solid ${color}30">${dot} ${s}</span>`;
             };
 
             area.innerHTML = `
-                <div style="display:grid;gap:var(--space-lg)">
-
-                <!-- Chain toggles + status -->
-                <div class="donate-admin-card">
-                    <h3 class="donate-admin-section-title">Blockchain Status</h3>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
-                        <div class="donate-chain-status-card">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                                <span style="font-weight:700">◎ Solana</span>
-                                ${statusBadge(status.solana || 'disabled')}
-                            </div>
-                            <label class="donate-toggle-label">
-                                <input type="checkbox" id="cfg-sol-enabled" ${cfg.solana_enabled ? 'checked' : ''}>
-                                Enable Solana payments
-                            </label>
-                        </div>
-                        <div class="donate-chain-status-card">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                                <span style="font-weight:700">Ł Litecoin</span>
-                                ${statusBadge(status.litecoin || 'disabled')}
-                            </div>
-                            <label class="donate-toggle-label">
-                                <input type="checkbox" id="cfg-ltc-enabled" ${cfg.litecoin_enabled ? 'checked' : ''}>
-                                Enable Litecoin payments
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RPC Endpoints -->
-                <div class="donate-admin-card">
-                    <h3 class="donate-admin-section-title">RPC Endpoints</h3>
-                    <div class="donate-admin-form">
-                        <div class="full-width">
-                            <label class="donate-admin-label">Solana RPC (Primary)</label>
-                            <input id="cfg-sol-rpc-primary" class="form-input" value="${App.escapeHtml(cfg.solana_rpc_primary || '')}" placeholder="https://api.mainnet-beta.solana.com" style="width:100%">
-                        </div>
-                        <div class="full-width">
-                            <label class="donate-admin-label">Solana RPC (Secondary / Fallback)</label>
-                            <input id="cfg-sol-rpc-secondary" class="form-input" value="${App.escapeHtml(cfg.solana_rpc_secondary || '')}" placeholder="Optional fallback RPC" style="width:100%">
-                        </div>
-                        <div class="full-width">
-                            <label class="donate-admin-label">Litecoin RPC (Primary)</label>
-                            <input id="cfg-ltc-rpc-primary" class="form-input" value="${App.escapeHtml(cfg.litecoin_rpc_primary || '')}" placeholder="https://api.blockcypher.com/v1/ltc/main" style="width:100%">
-                        </div>
-                        <div class="full-width">
-                            <label class="donate-admin-label">Litecoin RPC (Secondary / Fallback)</label>
-                            <input id="cfg-ltc-rpc-secondary" class="form-input" value="${App.escapeHtml(cfg.litecoin_rpc_secondary || '')}" placeholder="Optional fallback RPC" style="width:100%">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Webhook Secrets -->
-                <div class="donate-admin-card">
-                    <h3 class="donate-admin-section-title">Webhook Secrets</h3>
-                    <div class="donate-admin-form">
+                <div style="display:grid;gap:1.5rem">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
                         <div>
-                            <label class="donate-admin-label">Solana Webhook Secret (Helius)</label>
-                            <input id="cfg-sol-webhook" type="password" class="form-input" placeholder="${cfg.solana_webhook_secret_set ? '••••••••' : 'Not set'}" style="width:100%">
-                        </div>
-                        <div>
-                            <label class="donate-admin-label">Litecoin Webhook Secret (BlockCypher)</label>
-                            <input id="cfg-ltc-webhook" type="password" class="form-input" placeholder="${cfg.litecoin_webhook_secret_set ? '••••••••' : 'Not set'}" style="width:100%">
+                            <h2 style="margin:0;font-size:1.5rem;background:linear-gradient(135deg,#29b6f6,#ab47bc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800">Crypto Integration</h2>
+                            <p style="color:var(--text-muted);margin:4px 0 0 0;font-size:0.9rem">Manage your blockchain settings, RPC nodes, and HD wallets.</p>
                         </div>
                     </div>
-                </div>
 
-                <!-- Wallet Setup (superadmin only) -->
-                <div class="donate-admin-card">
-                    <h3 class="donate-admin-section-title">HD Wallet Setup</h3>
-                    ${isSuperadmin ? `
-                    <div style="display:grid;gap:var(--space-md)">
-                        <div class="donate-wallet-status-row">
-                            <span>Solana Seed:</span>
-                            <span style="color:${cfg.solana_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
-                                ${cfg.solana_seed_configured ? '✓ Configured' : '✗ Not configured'}
-                            </span>
-                            ${cfg.solana_seed_masked ? `<code style="font-size:0.72rem;color:var(--text-muted)">${App.escapeHtml(cfg.solana_seed_masked)}</code>` : ''}
+                    <!-- Blockchain Toggles -->
+                    <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                        <h3 style="margin:0 0 1rem 0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+                            <span style="color:var(--neon-cyan)">⚡</span> Active Chains
+                        </h3>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">
+                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:1.2rem;transition:transform 0.2s, background 0.2s">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                                    <div style="display:flex;align-items:center;gap:10px">
+                                        <div style="width:32px;height:32px;background:linear-gradient(135deg, #14F195, #9945FF);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:0.8rem">SOL</div>
+                                        <span style="font-weight:700;font-size:1.1rem">Solana</span>
+                                    </div>
+                                    ${statusBadge(status.solana || 'disabled')}
+                                </div>
+                                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--text-secondary)">
+                                    <input type="checkbox" id="cfg-sol-enabled" ${cfg.solana_enabled ? 'checked' : ''} style="accent-color:#14F195;width:18px;height:18px;cursor:pointer">
+                                    Enable Solana Network
+                                </label>
+                            </div>
+                            
+                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:1.2rem;transition:transform 0.2s, background 0.2s">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                                    <div style="display:flex;align-items:center;gap:10px">
+                                        <div style="width:32px;height:32px;background:linear-gradient(135deg, #345D9D, #B8B8B8);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:0.8rem">LTC</div>
+                                        <span style="font-weight:700;font-size:1.1rem">Litecoin</span>
+                                    </div>
+                                    ${statusBadge(status.litecoin || 'disabled')}
+                                </div>
+                                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--text-secondary)">
+                                    <input type="checkbox" id="cfg-ltc-enabled" ${cfg.litecoin_enabled ? 'checked' : ''} style="accent-color:#345D9D;width:18px;height:18px;cursor:pointer">
+                                    Enable Litecoin Network
+                                </label>
+                            </div>
                         </div>
-                        <div class="donate-wallet-status-row">
-                            <span>Litecoin Seed:</span>
-                            <span style="color:${cfg.litecoin_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
-                                ${cfg.litecoin_seed_configured ? '✓ Configured' : '✗ Not configured'}
-                            </span>
-                            ${cfg.litecoin_seed_masked ? `<code style="font-size:0.72rem;color:var(--text-muted)">${App.escapeHtml(cfg.litecoin_seed_masked)}</code>` : ''}
-                        </div>
-                        <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;margin-top:8px">
-                            <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)" onclick="DonationsAdminPage.showWalletSetupModal()">
-                                🔑 Set Seed Phrase
-                            </button>
-                            <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.generateNewSeed()">
-                                ✨ Generate New Seed
-                            </button>
-                            <button class="mc-btn" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)" onclick="DonationsAdminPage.revealSeed()">
-                                👁 Reveal Seed
-                            </button>
-                        </div>
-                        <p style="font-size:0.75rem;color:var(--text-muted);margin:0">
-                            ⚠️ The seed phrase is encrypted with AES-256 and stored in config.json. Never share it. Changing the seed will re-derive all user addresses.
-                        </p>
-                    </div>` : `
-                    <div style="padding:1rem;background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:var(--radius-md);color:var(--text-muted);font-size:0.85rem">
-                        🔒 Wallet seed configuration is restricted to superadmins only.
-                    </div>`}
-                </div>
+                    </div>
 
-                <!-- Save button -->
-                <div style="text-align:right">
-                    <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.saveCryptoConfig()">
-                        Save Crypto Settings
-                    </button>
-                </div>
+                    <!-- RPC & Webhooks split -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:1.5rem">
+                        <!-- Left Col: RPCs -->
+                        <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:1.2rem">
+                            <h3 style="margin:0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+                                <span style="color:#f5a623">🔗</span> Infrastructure Nodes
+                            </h3>
+                            
+                            <div style="background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.02);border-radius:8px;padding:1rem">
+                                <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;font-size:0.85rem;text-transform:uppercase;letter-spacing:1px">Solana RPCs</div>
+                                <div style="margin-bottom:10px">
+                                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Primary Node URL</label>
+                                    <input id="cfg-sol-rpc-primary" class="form-input" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.solana_rpc_primary || '')}" placeholder="https://api.mainnet-beta.solana.com">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Fallback Node URL (Optional)</label>
+                                    <input id="cfg-sol-rpc-secondary" class="form-input" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.solana_rpc_secondary || '')}" placeholder="Optional fallback RPC">
+                                </div>
+                            </div>
+
+                            <div style="background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.02);border-radius:8px;padding:1rem">
+                                <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;font-size:0.85rem;text-transform:uppercase;letter-spacing:1px">Litecoin RPCs</div>
+                                <div style="margin-bottom:10px">
+                                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Primary Node URL</label>
+                                    <input id="cfg-ltc-rpc-primary" class="form-input" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.litecoin_rpc_primary || '')}" placeholder="https://api.blockcypher.com/v1/ltc/main">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Fallback Node URL (Optional)</label>
+                                    <input id="cfg-ltc-rpc-secondary" class="form-input" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.litecoin_rpc_secondary || '')}" placeholder="Optional fallback RPC">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Col: Webhooks & Wallets -->
+                        <div style="display:flex;flex-direction:column;gap:1.5rem">
+                            <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                                <h3 style="margin:0 0 1rem 0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+                                    <span style="color:var(--neon-green)">🔔</span> Webhook Secrets
+                                </h3>
+                                <div style="display:flex;flex-direction:column;gap:1rem">
+                                    <div>
+                                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Solana Webhook Secret (Helius)</label>
+                                        <div style="position:relative">
+                                            <input id="cfg-sol-webhook" type="password" class="form-input" placeholder="${cfg.solana_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
+                                            ${cfg.solana_webhook_secret_set ? '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--neon-green);font-size:0.8rem;background:rgba(74,222,128,0.1);padding:2px 6px;border-radius:4px">✓ Set</span>' : ''}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Litecoin Webhook Secret (BlockCypher)</label>
+                                        <div style="position:relative">
+                                            <input id="cfg-ltc-webhook" type="password" class="form-input" placeholder="${cfg.litecoin_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
+                                            ${cfg.litecoin_webhook_secret_set ? '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--neon-green);font-size:0.8rem;background:rgba(74,222,128,0.1);padding:2px 6px;border-radius:4px">✓ Set</span>' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2);flex-grow:1">
+                                <h3 style="margin:0 0 1rem 0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+                                    <span style="color:var(--neon-magenta)">🔐</span> HD Wallet Setup
+                                </h3>
+                                ${isSuperadmin ? `
+                                <div style="display:grid;gap:12px">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);padding:10px 14px;border-radius:6px;border-left:3px solid ${cfg.solana_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
+                                        <div>
+                                            <div style="font-size:0.85rem;color:var(--text-secondary)">Solana Seed</div>
+                                            ${cfg.solana_seed_masked ? `<code style="font-size:0.72rem;color:var(--text-muted)">${App.escapeHtml(cfg.solana_seed_masked)}</code>` : ''}
+                                        </div>
+                                        <span style="color:${cfg.solana_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'};font-size:0.8rem;font-weight:600;padding:2px 8px;background:${cfg.solana_seed_configured ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.1)'};border-radius:4px">
+                                            ${cfg.solana_seed_configured ? '✓ Secured' : '⚠️ Missing'}
+                                        </span>
+                                    </div>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);padding:10px 14px;border-radius:6px;border-left:3px solid ${cfg.litecoin_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
+                                        <div>
+                                            <div style="font-size:0.85rem;color:var(--text-secondary)">Litecoin Seed</div>
+                                            ${cfg.litecoin_seed_masked ? `<code style="font-size:0.72rem;color:var(--text-muted)">${App.escapeHtml(cfg.litecoin_seed_masked)}</code>` : ''}
+                                        </div>
+                                        <span style="color:${cfg.litecoin_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'};font-size:0.8rem;font-weight:600;padding:2px 8px;background:${cfg.litecoin_seed_configured ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.1)'};border-radius:4px">
+                                            ${cfg.litecoin_seed_configured ? '✓ Secured' : '⚠️ Missing'}
+                                        </span>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+                                        <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3);padding:8px" onclick="DonationsAdminPage.showWalletSetupModal()">
+                                            🔑 Set Seeds
+                                        </button>
+                                        <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3);padding:8px" onclick="DonationsAdminPage.generateNewSeed()">
+                                            ✨ Autogenerate
+                                        </button>
+                                        <button class="mc-btn" style="grid-column:1 / span 2;background:rgba(239,68,68,0.05);color:#ef4444;border-color:rgba(239,68,68,0.2);padding:8px" onclick="DonationsAdminPage.revealSeed()">
+                                            👁 Reveal Encrypted Seeds
+                                        </button>
+                                    </div>
+                                </div>
+                                ` : `
+                                <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:1.5rem;background:rgba(239,68,68,0.05);border:1px dashed rgba(239,68,68,0.3);border-radius:8px">
+                                    <div style="text-align:center;color:var(--text-muted)">
+                                        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+                                        <div style="font-size:0.85rem">Wallet seed configuration is restricted to superadmins.</div>
+                                    </div>
+                                </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Save Box -->
+                    <div style="background:linear-gradient(90deg, rgba(41,182,246,0.1), rgba(171,71,188,0.1));border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                        <span style="color:var(--text-secondary);font-size:0.85rem">Remember to test your webhooks after updating settings.</span>
+                        <button class="mc-btn" style="background:var(--neon-cyan);color:#000;border:none;padding:10px 24px;font-weight:700;font-size:0.95rem;box-shadow:0 0 15px rgba(41,182,246,0.4)" onclick="DonationsAdminPage.saveCryptoConfig()">
+                            💾 Save All Changes
+                        </button>
+                    </div>
 
                 </div>`;
         } catch (err) {
