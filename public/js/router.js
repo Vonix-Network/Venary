@@ -49,7 +49,7 @@ var Router = {
         var alwaysPublicRoutes = ['/donate'];
         // Additional guest routes when guest mode is enabled
         var guestAllowed = App.siteSettings && App.siteSettings.guestMode;
-        var guestModeRoutes = ['/forum', '/servers', '/mc-leaderboard'];
+        var guestModeRoutes = ['/feed', '/forum', '/servers', '/mc-leaderboard'];
         var isGuestRoute = alwaysPublicRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); }) ||
             (guestAllowed && guestModeRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); }));
 
@@ -63,18 +63,12 @@ var Router = {
             return;
         }
 
-        // Hide nav on auth pages, show on all others
+        // Hide nav on auth pages only. Guest routes and logged-in routes manage nav via onLogin/logout.
         var mainNav = document.getElementById('main-nav');
         var mobileHeader = document.getElementById('mobile-header');
         var mobileBottomNav = document.getElementById('mobile-bottom-nav');
         var pageContainer = document.getElementById('page-container');
         if (isAuthPage) {
-            if (mainNav) mainNav.classList.add('hidden');
-            if (mobileHeader) mobileHeader.classList.add('hidden');
-            if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
-            if (pageContainer) pageContainer.classList.add('full-width');
-        } else if (!isAuthPage && !API.token) {
-            // Guest on a public page — hide nav since they're not logged in
             if (mainNav) mainNav.classList.add('hidden');
             if (mobileHeader) mobileHeader.classList.add('hidden');
             if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
@@ -153,9 +147,15 @@ var Router = {
             self.navigate(window.location.hash);
         });
 
-        // Initial route — preserve public routes for guests instead of forcing /login
+        // Initial route — guests land on feed if guestMode is on, otherwise login
         if (!window.location.hash) {
-            window.location.hash = API.token ? '#/feed' : '#/login';
+            if (API.token) {
+                window.location.hash = '#/feed';
+            } else if (App.siteSettings && App.siteSettings.guestMode) {
+                window.location.hash = '#/feed';
+            } else {
+                window.location.hash = '#/login';
+            }
         } else {
             this.navigate(window.location.hash);
         }
