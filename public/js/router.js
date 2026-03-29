@@ -18,15 +18,13 @@ var Router = {
         var queryIndex = fullPath.indexOf('?');
         var path = queryIndex !== -1 ? fullPath.substring(0, queryIndex) : fullPath;
 
-        // Restore nav if leaving admin
+        // Restore nav if leaving admin (only for authenticated users — auth/guest pages handle their own nav state below)
         var segments = path.split('/').filter(Boolean);
-        if (segments[0] !== 'admin') {
+        if (segments[0] !== 'admin' && API.token) {
             var mainNav = document.getElementById('main-nav');
             var mobileBottomNav = document.getElementById('mobile-bottom-nav');
             var pageContainer = document.getElementById('page-container');
             if (mainNav) mainNav.classList.remove('hidden');
-            // Only restore mobileBottomNav if we are on a mobile device (where it should be visible normally)
-            // But we can just remove hidden, as its visibility is controlled via CSS media queries anyway
             if (mobileBottomNav) mobileBottomNav.classList.remove('hidden');
             if (pageContainer) {
                 pageContainer.classList.remove('admin-fullscreen');
@@ -47,10 +45,13 @@ var Router = {
 
         // Check auth
         var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password';
-        // Guest-accessible routes when guest mode is enabled
+        // Guest-accessible routes — always public regardless of guestMode flag
+        var alwaysPublicRoutes = ['/donate'];
+        // Additional guest routes when guest mode is enabled
         var guestAllowed = App.siteSettings && App.siteSettings.guestMode;
-        var guestRoutes = ['/donate', '/forum', '/servers', '/mc-leaderboard'];
-        var isGuestRoute = guestAllowed && guestRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); });
+        var guestModeRoutes = ['/forum', '/servers', '/mc-leaderboard'];
+        var isGuestRoute = alwaysPublicRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); }) ||
+            (guestAllowed && guestModeRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); }));
 
         if (!API.token && !isAuthPage && !isGuestRoute) {
             window.location.hash = '#/login';
@@ -60,6 +61,24 @@ var Router = {
         if (API.token && isLoginRegister) {
             window.location.hash = '#/feed';
             return;
+        }
+
+        // Hide nav on auth pages, show on all others
+        var mainNav = document.getElementById('main-nav');
+        var mobileHeader = document.getElementById('mobile-header');
+        var mobileBottomNav = document.getElementById('mobile-bottom-nav');
+        var pageContainer = document.getElementById('page-container');
+        if (isAuthPage) {
+            if (mainNav) mainNav.classList.add('hidden');
+            if (mobileHeader) mobileHeader.classList.add('hidden');
+            if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
+            if (pageContainer) pageContainer.classList.add('full-width');
+        } else if (!isAuthPage && !API.token) {
+            // Guest on a public page — hide nav since they're not logged in
+            if (mainNav) mainNav.classList.add('hidden');
+            if (mobileHeader) mobileHeader.classList.add('hidden');
+            if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
+            if (pageContainer) { pageContainer.classList.remove('admin-fullscreen'); pageContainer.classList.add('full-width'); }
         }
 
         if (!handler) {
@@ -134,7 +153,7 @@ var Router = {
             self.navigate(window.location.hash);
         });
 
-        // Initial route
+        // Initial route — preserve public routes for guests instead of forcing /login
         if (!window.location.hash) {
             window.location.hash = API.token ? '#/feed' : '#/login';
         } else {
