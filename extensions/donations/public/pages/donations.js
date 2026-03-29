@@ -7,6 +7,18 @@ window.DonationsPage = {
     _selectedAmount: null,
 
     async render(container) {
+        const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+
+        // Receipt screen — returned from Stripe after successful payment
+        if (params.get('status') === 'success' && params.get('session_id')) {
+            return this.renderReceipt(container, params.get('session_id'));
+        }
+
+        // Transaction history tab — linked from profile menu
+        if (params.get('tab') === 'history') {
+            return this.renderHistory(container);
+        }
+
         container.innerHTML = `
             <div class="minecraft-page donate-page-wrap">
                 <h1 class="donate-page-title">Donation Ranks</h1>
@@ -30,7 +42,7 @@ window.DonationsPage = {
                     </div>
                     <div id="donate-onetime-guest-mc" style="display:none;margin-top:14px">
                         <label style="font-size:0.82rem;color:var(--text-secondary);display:block;margin-bottom:6px">Minecraft Username <span style="color:var(--neon-magenta)">*</span></label>
-                        <input type="text" id="donate-onetime-mc-username" class="input-field" placeholder="Your Minecraft username" style="max-width:280px">
+                        <input type="text" id="donate-onetime-mc-username" class="input-field" placeholder="Your Minecraft username" maxlength="16" style="max-width:280px">
                         <small style="display:block;margin-top:4px;font-size:0.72rem;color:var(--text-muted)">Used for your avatar in the donations list</small>
                     </div>
                     <button class="donate-onetime-btn" id="donate-onetime-submit" onclick="DonationsPage.submitOneTime()">Donate Now</button>
@@ -51,10 +63,151 @@ window.DonationsPage = {
             const gw = document.getElementById('donate-onetime-guest-mc');
             if (gw) gw.style.display = 'block';
         }
+    },
 
-        const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
-        if (params.get('status') === 'success' && params.get('session_id')) {
-            this.verifySession(params.get('session_id'));
+    // ── Receipt screen — shown after Stripe redirects back with ?status=success ──
+    async renderReceipt(container, sessionId) {
+        container.innerHTML = `
+            <div class="minecraft-page donate-page-wrap" style="max-width:560px;margin:0 auto">
+                <div id="donate-receipt-area" style="text-align:center;padding:3rem 1rem">
+                    <div class="loading-spinner" style="margin:0 auto 1rem"></div>
+                    <p style="color:var(--text-muted)">Confirming your payment...</p>
+                </div>
+            </div>`;
+
+        const area = document.getElementById('donate-receipt-area');
+        try {
+            const result = await API.post('/api/ext/donations/verify-session', { session_id: sessionId });
+            if (!result.success) {
+                area.innerHTML = `
+                    <div style="color:var(--neon-magenta);font-size:2rem;margin-bottom:1rem">&#9888;</div>
+                    <h2 style="margin-bottom:.5rem">Payment Pending</h2>
+                    <p style="color:var(--text-muted);margin-bottom:1.5rem">Your payment is being processed. Check back shortly or contact support.</p>
+                    <a href="#/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>`;
+                return;
+            }
+
+            const r = result.receipt || {};
+            const expiryStr = r.expires_at
+                ? new Date(r.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                : null;
+            const rankColor = r.rank_color || 'var(--neon-cyan)';
+            const rankBlock = r.rank_name ? `
+                <div style="background:${App.escapeHtml(rankColor)}18;border:1px solid ${App.escapeHtml(rankColor)}55;border-radius:10px;padding:16px 20px;margin:16px 0;display:flex;align-items:center;gap:14px">
+                    <span style="font-size:2rem">${r.rank_icon || '&#11088;'}</span>
+                    <div style="text-align:left">
+                        <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Rank Granted</div>
+                        <div style="font-size:1.2rem;font-weight:700;color:${App.escapeHtml(rankColor)}">${App.escapeHtml(r.rank_name)}</div>
+                        ${expiryStr ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">Active for 30 days &mdash; expires ${expiryStr}</div>` : ''}
+                    </div>
+                </div>` : '';
+            const amountStr = r.amount != null ? `$${parseFloat(r.amount).toFixed(2)}` : '';
+
+            area.innerHTML = `
+                <div style="font-size:3.5rem;margin-bottom:.5rem;line-height:1">&#10003;</div>
+                <h1 style="margin-bottom:.3rem;color:var(--neon-cyan)">Thank You!</h1>
+                <p style="color:var(--text-muted);margin-bottom:1.5rem">Your donation of <strong style="color:var(--text-primary)">${amountStr}</strong> has been received.</p>
+                ${rankBlock}
+                <div style="background:var(--bg-tertiary);border-radius:8px;padding:12px 16px;margin:16px 0;text-align:left;font-size:0.82rem;color:var(--text-muted)">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                        <span>Reference</span><strong style="color:var(--text-primary);font-family:monospace">${App.escapeHtml(r.ref || '—')}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between">
+                        <span>Date</span><strong style="color:var(--text-primary)">${new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}</strong>
+                    </div>
+                    ${r.minecraft_username ? `<div style="display:flex;justify-content:space-between;margin-top:4px"><span>Minecraft</span><strong style="color:var(--text-primary)">${App.escapeHtml(r.minecraft_username)}</strong></div>` : ''}
+                </div>
+                <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:1.5rem">A receipt has been sent to your email if one is on file.</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                    <a href="#/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>
+                    ${App.currentUser ? '<a href="#/donate?tab=history" class="donate-rank-btn" style="display:inline-block;text-decoration:none;background:var(--bg-tertiary);color:var(--text-primary)">View Transactions</a>' : ''}
+                </div>`;
+        } catch {
+            area.innerHTML = `
+                <div style="color:var(--text-muted);font-size:2rem;margin-bottom:1rem">&#128338;</div>
+                <h2 style="margin-bottom:.5rem">Verifying Payment</h2>
+                <p style="color:var(--text-muted);margin-bottom:1.5rem">Your payment is being verified. If you paid successfully, your rank will be granted shortly.</p>
+                <a href="#/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>`;
+        }
+    },
+
+    // ── Transaction history — linked from profile dropdown ──
+    async renderHistory(container) {
+        if (!App.currentUser) {
+            container.innerHTML = `<div class="minecraft-page donate-page-wrap" style="max-width:700px;margin:0 auto;text-align:center;padding:3rem 1rem">
+                <p style="color:var(--text-muted)">Please log in to view your transaction history.</p>
+                <a href="#/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none;margin-top:1rem">Back to Donations</a>
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="minecraft-page donate-page-wrap" style="max-width:760px;margin:0 auto">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
+                    <a href="#/donate" style="color:var(--text-muted);text-decoration:none;font-size:0.85rem;display:flex;align-items:center;gap:5px">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Donations
+                    </a>
+                    <span style="color:var(--text-muted)">/</span>
+                    <h2 style="margin:0;font-size:1.2rem">My Transactions</h2>
+                </div>
+                <div id="donate-history-area"><div class="loading-spinner" style="text-align:center;padding:2rem"></div></div>
+            </div>`;
+
+        const area = document.getElementById('donate-history-area');
+        try {
+            const { donations, conversions } = await API.get('/api/ext/donations/my-history');
+
+            if (!donations.length && !conversions.length) {
+                area.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem">No transactions yet.</p>';
+                return;
+            }
+
+            let html = '';
+            if (donations.length) {
+                html += '<h3 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.75rem">Donations</h3>';
+                html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem">';
+                for (const d of donations) {
+                    const statusColor = d.status === 'completed' ? 'var(--neon-cyan)' : d.status === 'pending' ? '#f5a623' : 'var(--neon-magenta)';
+                    const rankPart = d.rank_name
+                        ? `<span style="color:${App.escapeHtml(d.rank_color || '#aaa')};font-weight:600">${App.escapeHtml(d.rank_icon || '')} ${App.escapeHtml(d.rank_name)}</span>`
+                        : '<span style="color:var(--text-muted)">Custom Donation</span>';
+                    html += `<div style="background:var(--bg-secondary);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                        <div>
+                            <div style="font-size:0.95rem">${rankPart}</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${new Date(d.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})} &bull; <code style="font-size:0.7rem">${App.escapeHtml(d.id.slice(0,8).toUpperCase())}</code></div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:14px">
+                            <strong style="font-size:1rem">$${parseFloat(d.amount).toFixed(2)}</strong>
+                            <span style="font-size:0.72rem;font-weight:600;text-transform:uppercase;color:${statusColor};background:${statusColor}22;padding:2px 8px;border-radius:20px">${App.escapeHtml(d.status)}</span>
+                        </div>
+                    </div>`;
+                }
+                html += '</div>';
+            }
+
+            if (conversions.length) {
+                html += '<h3 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.75rem">Rank Conversions</h3>';
+                html += '<div style="display:flex;flex-direction:column;gap:8px">';
+                for (const c of conversions) {
+                    html += `<div style="background:var(--bg-secondary);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                        <div>
+                            <div style="font-size:0.9rem">
+                                <span style="color:${App.escapeHtml(c.from_rank_color || '#aaa')}">${App.escapeHtml(c.from_rank_name || '?')}</span>
+                                <span style="color:var(--text-muted);margin:0 6px">&rarr;</span>
+                                <span style="color:${App.escapeHtml(c.to_rank_color || '#aaa')}">${App.escapeHtml(c.to_rank_name || '?')}</span>
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${new Date(c.converted_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</div>
+                        </div>
+                        <span style="font-size:0.8rem;color:var(--text-muted)">${c.days_converted || 0} days converted</span>
+                    </div>`;
+                }
+                html += '</div>';
+            }
+
+            area.innerHTML = html;
+        } catch {
+            area.innerHTML = '<p style="text-align:center;color:var(--neon-magenta);padding:2rem">Failed to load transaction history.</p>';
         }
     },
 
@@ -238,18 +391,6 @@ window.DonationsPage = {
         if (btn) { btn.disabled = false; btn.textContent = 'Donate Now'; }
     },
 
-    async verifySession(sessionId) {
-        try {
-            const result = await API.post('/api/ext/donations/verify-session', { session_id: sessionId });
-            if (result.success) {
-                App.showToast('Thank you for your donation!', 'success');
-                await this.loadCurrentRank();
-                this.loadRanks();
-                this.loadRecent();
-            }
-        } catch { App.showToast('Payment verification in progress...', 'info'); }
-        window.location.hash = '#/donate';
-    },
 
     async loadRecent() {
         const area = document.getElementById('donate-recent-area');

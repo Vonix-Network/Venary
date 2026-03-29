@@ -341,7 +341,7 @@ module.exports = function (extDb) {
 
             // Support both authenticated users and guests (guest provides mc_username)
             const isGuest = !req.user;
-            const guestMcUsername = (req.body.mc_username || '').trim().slice(0, 64);
+            const guestMcUsername = (req.body.mc_username || '').trim().slice(0, 16); // Minecraft usernames are max 16 characters
             if (isGuest && !guestMcUsername) {
                 return res.status(400).json({ error: 'Minecraft username is required for guest donations' });
             }
@@ -419,7 +419,7 @@ module.exports = function (extDb) {
             }
 
             const isGuest = !req.user;
-            const guestMcUsername = (req.body.mc_username || '').trim().slice(0, 64);
+            const guestMcUsername = (req.body.mc_username || '').trim().slice(0, 16); // Minecraft usernames are max 16 characters
             if (isGuest && !guestMcUsername) {
                 return res.status(400).json({ error: 'Minecraft username is required for guest donations' });
             }
@@ -476,8 +476,9 @@ module.exports = function (extDb) {
         }
     });
 
-    // POST /verify-session
-    router.post('/verify-session', authenticateToken, async (req, res) => {
+    // POST /verify-session — verify Stripe payment and return receipt details
+    // Uses optionalAuth so guests (no JWT) can also confirm their payment.
+    router.post('/verify-session', optionalAuth, async (req, res) => {
         try {
             const stripe = getStripe();
             if (!stripe) return res.status(503).json({ error: 'Payment system not configured' });
@@ -491,7 +492,30 @@ module.exports = function (extDb) {
             }
 
             await completeDonation(session.id);
-            res.json({ success: true });
+
+            // Return receipt details so the frontend can render a confirmation screen
+            const donation = await extDb.get(
+                `SELECT d.id, d.amount, d.currency, d.payment_type, d.expires_at, d.minecraft_username,
+                        r.name as rank_name, r.color as rank_color, r.icon as rank_icon
+                 FROM donations d
+                 LEFT JOIN donation_ranks r ON d.rank_id = r.id
+                 WHERE d.stripe_session_id = ?`,
+                [session.id]
+            );
+
+            res.json({
+                success: true,
+                receipt: donation ? {
+                    ref: donation.id.slice(0, 8).toUpperCase(),
+                    amount: donation.amount,
+                    currency: donation.currency || 'usd',
+                    rank_name: donation.rank_name || null,
+                    rank_color: donation.rank_color || null,
+                    rank_icon: donation.rank_icon || null,
+                    expires_at: donation.expires_at || null,
+                    minecraft_username: donation.minecraft_username || null,
+                } : null,
+            });
         } catch (err) {
             console.error('[Donations] Verify session error:', err);
             res.status(500).json({ error: 'Verification failed' });
@@ -513,6 +537,10 @@ module.exports = function (extDb) {
                 const sig = req.headers['stripe-signature'];
                 event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
             } else {
+                // ⚠️  WARNING: No stripe_webhook_secret configured.
+                // Without signature verification ANY POST to this endpoint will trigger donation
+                // completion. Set stripe_webhook_secret in the admin panel for production.
+                console.warn('[Donations] ⚠️  Stripe webhook received without signature verification — configure stripe_webhook_secret for production!');
                 event = req.body;
                 if (typeof event === 'string') event = JSON.parse(event);
             }
@@ -823,7 +851,12 @@ module.exports = function (extDb) {
         );
         if (!result.changes) return; // another process already completed it
 
-        // Only grant rank if this donation is tied to a rank AND a user
+        // Grant rank if tied to a rank AND an authenticated user.
+        // Guest rank purchases (user_id = null) are logged here; rank assignment for guests
+        // happens via the Minecraft plugin polling /rank-check by minecraft_username.
+        if (donation.rank_id && !donation.user_id && donation.minecraft_username) {
+            console.log(`[Donations] Guest rank purchase completed: ${donation.minecraft_username} → rank ${donation.rank_id} (fulfilled via /rank-check)`);
+        }
         if (donation.rank_id && donation.user_id) {
             const rank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [donation.rank_id]);
             const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
