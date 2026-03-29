@@ -47,7 +47,12 @@ var Router = {
 
         // Check auth
         var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password';
-        if (!API.token && !isAuthPage) {
+        // Guest-accessible routes when guest mode is enabled
+        var guestAllowed = App.siteSettings && App.siteSettings.guestMode;
+        var guestRoutes = ['/donate', '/forum'];
+        var isGuestRoute = guestAllowed && guestRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); });
+
+        if (!API.token && !isAuthPage && !isGuestRoute) {
             window.location.hash = '#/login';
             return;
         }

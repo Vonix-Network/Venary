@@ -28,6 +28,7 @@ const DEFAULTS = {
     levelThresholds: [0, 100, 300, 700, 1500, 3000, 6000, 12000, 25000, 50000],
     maintenanceMode: false,
     maintenanceMessage: 'We are performing scheduled maintenance. Be right back!',
+    guestMode: false,
     footerText: '',
     smtp: {
         enabled: false,
@@ -160,6 +161,7 @@ const Config = {
             registrationOpen: cfg.registrationOpen !== false,
             maintenanceMode: !!cfg.maintenanceMode,
             maintenanceMessage: cfg.maintenanceMessage || DEFAULTS.maintenanceMessage,
+            guestMode: !!cfg.guestMode,
             footerText: cfg.footerText || '',
             xpPerPost: cfg.xpPerPost ?? DEFAULTS.xpPerPost,
             xpPerComment: cfg.xpPerComment ?? DEFAULTS.xpPerComment,

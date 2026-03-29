@@ -89,7 +89,21 @@ window.DonationsPage = {
             return `<button class="donate-rank-btn current" disabled>Current Rank</button>`;
         }
         if (!App.currentUser) {
-            return `<button class="donate-rank-btn" onclick="App.showAuthModal('login')">Login to Purchase</button>`;
+            // Guest view: login prompt + optional Minecraft username for MC-Heads.net avatar
+            return '<div class="donate-guest-purchase">' +
+                '<p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;text-align:center">' +
+                '🔒 You must be logged in to purchase</p>' +
+                '<div style="margin-bottom:8px">' +
+                '<input type="text" class="input-field donate-mc-username" placeholder="Minecraft username (optional)"' +
+                ' style="font-size:0.8rem;padding:6px 10px;text-align:center"' +
+                ' title="Enter your Minecraft username to display your skin">' +
+                '<small style="display:block;margin-top:4px;font-size:0.7rem;color:var(--text-muted);text-align:center">' +
+                'Used for MC-Heads.net avatar display</small>' +
+                '</div>' +
+                '<button class="donate-rank-btn"' +
+                ' onclick="App.showAuthModal ? App.showAuthModal(\'login\') : (window.location.hash=\'#/login\')">' +
+                'Login to Purchase</button>' +
+                '</div>';
         }
         // If user has a rank already, show convert option
         if (this.currentRank && this.currentRank.active) {
@@ -206,7 +220,7 @@ window.DonationsPage = {
                 const timeAgo = this._timeAgo(d.created_at);
                 html += `
                     <div class="donate-recent-item">
-                        <img class="donate-recent-avatar" src="${d.avatar || '/img/default-avatar.png'}" alt="" onerror="this.src='/img/default-avatar.png'">
+                        <img class="donate-recent-avatar" src="${d.minecraft_uuid ? 'https://mc-heads.net/avatar/' + d.minecraft_uuid + '/32' : (d.mc_username ? 'https://mc-heads.net/avatar/' + encodeURIComponent(d.mc_username) + '/32' : (d.avatar || '/img/default-avatar.png'))}" alt="" onerror="this.src='/img/default-avatar.png'">
                         <div class="donate-recent-info">
                             <div class="donate-recent-name">${App.escapeHtml(d.username)}</div>
                             <div class="donate-recent-rank" style="color:${App.escapeHtml(d.rank_color || '#fff')}">${App.escapeHtml(d.rank_name || '')}</div>

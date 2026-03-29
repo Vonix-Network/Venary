@@ -294,7 +294,8 @@ router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
                 registrationOpen: cfg.registrationOpen !== false,
                 requireEmailVerification: !!cfg.requireEmailVerification,
                 maxUsernameLength: cfg.maxUsernameLength || 32,
-                maxBioLength: cfg.maxBioLength || 300
+                maxBioLength: cfg.maxBioLength || 300,
+                guestMode: !!cfg.guestMode
             },
             gamification: {
                 xpPerPost: cfg.xpPerPost ?? 10,
@@ -304,7 +305,8 @@ router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
             },
             maintenance: {
                 maintenanceMode: !!cfg.maintenanceMode,
-                maintenanceMessage: cfg.maintenanceMessage || 'We\'ll be right back!'
+                maintenanceMessage: cfg.maintenanceMessage || 'We\'ll be right back!',
+                guestMode: !!cfg.guestMode
             },
             smtp: {
                 enabled: !!(cfg.smtp && cfg.smtp.enabled),
@@ -354,7 +356,7 @@ router.post('/settings', authenticateToken, requireAdmin, async (req, res) => {
             'primaryColor', 'accentColor', 'darkMode',
             'registrationOpen', 'requireEmailVerification', 'maxUsernameLength', 'maxBioLength',
             'xpPerPost', 'xpPerComment', 'xpPerLike', 'levelThresholds',
-            'maintenanceMode', 'maintenanceMessage'
+            'maintenanceMode', 'maintenanceMessage', 'guestMode'
         ];
 
         const updates = {};
