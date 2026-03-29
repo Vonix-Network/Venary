@@ -352,40 +352,99 @@ var AdminPage = {
       var extensions = await API.get('/api/extensions');
       App.extensions = extensions; // Sync global state
       if (extensions.length === 0) {
-        content.innerHTML = '<div class="empty-state"><h3>No extensions installed</h3><p>Place extension folders in the <code>extensions/</code> directory to get started.</p></div>';
+        content.innerHTML = '<div class="empty-state" style="padding:4rem 2rem;text-align:center;background:var(--bg-card);border:1px dashed var(--border-subtle);border-radius:16px"><div style="font-size:3rem;margin-bottom:1rem;opacity:0.5">🧩</div><h3 style="margin-bottom:0.5rem">No extensions installed</h3><p style="color:var(--text-muted)">Place extension folders in the <code>extensions/</code> directory to get started.</p></div>';
         return;
       }
-      content.innerHTML = '<div class="admin-settings-section">' + extensions.map(function (ext, i) {
-        var statusBadge = ext.enabled ?
-          '<span class="badge badge-online">Enabled</span>' :
-          '<span class="badge badge-offline">Disabled</span>';
-        var toggleBtn = ext.enabled ?
-          '<button class="btn btn-sm btn-danger" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Disable</button>' :
-          '<button class="btn btn-sm btn-primary" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Enable</button>';
+      
+      const activeCount = extensions.filter(e => e.enabled).length;
+      
+      let html = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="font-size: 1.5rem; margin: 0 0 0.5rem 0; color: var(--text-primary); font-weight: 800; display:flex; align-items:center; gap: 10px;">
+              <span style="font-size: 1.8rem; opacity: 0.9;">🧩</span> Platform Extensions
+            </h2>
+            <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">Manage, enable, or disable additional platform functionality.</p>
+          </div>
+          <div>
+            <div style="background: linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9)); border: 1px solid rgba(255,255,255,0.05); padding: 10px 16px; border-radius: 12px; display:flex; align-items:center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+              <div style="text-align:right">
+                <div style="font-size: 0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700">Active Extensions</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: var(--neon-cyan)">${activeCount} <span style="color:var(--text-muted); font-size: 0.9rem">/ ${extensions.length}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem;">
+      `;
 
-        var manageBtn = (ext.enabled && ext.admin_route) ?
-          '<button class="btn btn-sm btn-secondary" onclick="window.location.hash=\'#' + ext.admin_route + '\'">Manage</button>' : '';
+      html += extensions.map(function (ext, i) {
+        const isEnabled = ext.enabled;
+        const statusColor = isEnabled ? 'var(--neon-green)' : 'var(--text-muted)';
+        const statusBg = isEnabled ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.05)';
+        const borderColor = isEnabled ? 'rgba(74,222,128,0.3)' : 'var(--border-subtle)';
 
-        return '<div class="admin-settings-card animate-fade-up" style="animation-delay:' + (i * 0.05) + 's">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center">' +
-          '  <div style="display:flex; gap: 16px; align-items: center;">' +
-          '    <div style="font-size: 2rem; background: var(--bg-tertiary); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle)">🧩</div>' +
-          '    <div>' +
-          '      <h3 style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:4px">' +
-          '      ' + App.escapeHtml(ext.name) + ' <span style="color:var(--text-muted);font-size:0.75rem">v' + ext.version + '</span></h3>' +
-          '      <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">' + App.escapeHtml(ext.description) + '</p>' +
-          '      <div style="font-size:0.75rem;color:var(--text-muted)">by ' + App.escapeHtml(ext.author || 'Unknown') + ' · ID: <code>' + ext.id + '</code></div>' +
-          '    </div>' +
-          '  </div>' +
-          '  <div style="display:flex;align-items:center;gap:var(--space-sm)">' +
-          '    ' + statusBadge + ' ' + manageBtn + ' ' + toggleBtn +
-          '  </div>' +
-          '</div>' +
-          (ext.nav && ext.nav.length > 0 ? '<div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--border-subtle);font-size:0.8rem;color:var(--text-muted)">' +
-            '<span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-right: 8px">Nav items:</span> ' +
-            ext.nav.map(function (n) { return '<span class="badge badge-level" style="margin-left:4px">' + n.label + '</span>'; }).join('') + '</div>' : '') +
-          '</div>';
-      }).join('') + '</div>';
+        const toggleBtn = isEnabled 
+            ? '<button class="mc-btn" style="background: rgba(239,68,68,0.05); color: var(--neon-magenta); border: 1px solid rgba(239,68,68,0.2); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Disable Extension</button>'
+            : '<button class="mc-btn" style="background: rgba(102,187,106,0.1); color: var(--neon-green); border: 1px solid rgba(102,187,106,0.3); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Enable Extension</button>';
+
+        const manageBtn = (isEnabled && ext.admin_route)
+            ? '<button class="mc-btn" style="background: rgba(41,182,246,0.1); color: var(--neon-cyan); border: 1px solid rgba(41,182,246,0.3); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1; text-align: center; justify-content: center; display:flex; align-items:center; gap:6px;" onclick="window.location.hash=\'#' + ext.admin_route + '\'"><span>⚙️</span> Manage</button>'
+            : '';
+
+        let navBadges = '';
+        if (ext.nav && ext.nav.length > 0) {
+            navBadges = '<div style="margin-top: 1.2rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">' +
+                '<span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Nav Items:</span>' +
+                ext.nav.map(function(n) { return '<span style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">📌 ' + App.escapeHtml(n.label) + '</span>'; }).join('') +
+            '</div>';
+        }
+
+        return '<div class="animate-fade-up" style="animation-delay: ' + (i * 0.05) + 's; background: var(--bg-card); backdrop-filter: blur(10px); border: 1px solid ' + borderColor + '; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; position: relative;" onmouseover="this.style.transform=\'translateY(-4px)\';this.style.boxShadow=\'0 12px 30px rgba(0,0,0,0.2)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'none\'">' +
+            
+            '<div style="height: 4px; background: ' + (isEnabled ? 'linear-gradient(90deg, #14F195, #9945FF)' : 'var(--border-subtle)') + '; width: 100%;"></div>' +
+            
+            '<div style="padding: 1.5rem; display: flex; flex-direction: column; flex-grow: 1;">' +
+                '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">' +
+                    '<div style="display: flex; align-items: center; gap: 14px;">' +
+                        '<div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: inset 0 2px 10px rgba(255,255,255,0.02);">' +
+                            '🧩' +
+                        '</div>' +
+                        '<div>' +
+                            '<h3 style="margin: 0 0 4px 0; font-size: 1.2rem; color: var(--text-primary); font-weight: 800; display: flex; align-items: center; gap: 8px;">' +
+                                App.escapeHtml(ext.name) +
+                                '<span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; font-family: monospace;">v' + ext.version + '</span>' +
+                            '</h3>' +
+                            '<div style="font-size: 0.8rem; color: var(--text-muted);">' +
+                                'by <strong style="color: var(--text-secondary);">' + App.escapeHtml(ext.author || 'Unknown') + '</strong>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="background: ' + statusBg + '; color: ' + statusColor + '; border: 1px solid ' + statusColor + '30; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">' +
+                        '<span style="font-size: 0.5rem;">' + (isEnabled ? '🟢' : '⚫') + '</span> ' + (isEnabled ? 'Active' : 'Inactive') +
+                    '</div>' +
+                '</div>' +
+
+                '<p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0 0 1.5rem 0; flex-grow: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">' +
+                    App.escapeHtml(ext.description) +
+                '</p>' +
+
+                '<div style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted); background: rgba(0,0,0,0.15); padding: 8px 12px; border-radius: 8px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.03);">' +
+                    '<span>ID: <span style="color: var(--text-secondary); font-weight: 600;">' + ext.id + '</span></span>' +
+                '</div>' +
+
+                '<div style="display: flex; gap: 10px; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.2rem;">' +
+                    toggleBtn +
+                    manageBtn +
+                '</div>' +
+
+                navBadges +
+            '</div>' +
+        '</div>';
+      }).join('');
+      
+      html += '</div>';
+      content.innerHTML = html;
     } catch (err) {
       content.innerHTML = '<div class="empty-state"><p>Failed to load extensions</p></div>';
     }
