@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Donations Extension** â€” Added a "Ranked Users" tab in the admin panel to view users with active ranks.
+
+### Changed
+- **Donations Extension** â€” Redesigned the "Overview" and "Ranks" tabs in the admin panel with modern glassmorphic cards and improved visual hierarchy.
+
 ### Improved
-- **Admin Dashboard** — Added a "Back to Site" button in the sidebar footer for easier navigation back to the feed.
+- **Admin Dashboard** â€” Added a "Back to Site" button in the sidebar footer for easier navigation back to the feed.
 
 ## [1.7.0] - 2026-03-26
 
