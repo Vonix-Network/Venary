@@ -12,37 +12,43 @@ module.exports = function (extDb) {
     const Mailer = require('../../../server/mail');
 
     // ── Startup migration: ensure user_id and rank_id are nullable ──
-    // SQLite doesn't support ALTER COLUMN, so we rebuild the table if needed.
+    // Handles both SQLite (table rebuild) and PostgreSQL (ALTER COLUMN).
     (async () => {
         try {
-            const tableInfo = await extDb.all("PRAGMA table_info(donations)");
-            const userIdCol = tableInfo.find(c => c.name === 'user_id');
-            const rankIdCol = tableInfo.find(c => c.name === 'rank_id');
-            // notnull=1 means NOT NULL constraint is set
-            if ((userIdCol && userIdCol.notnull) || (rankIdCol && rankIdCol.notnull)) {
-                await extDb.run('PRAGMA foreign_keys = OFF');
-                await extDb.run(`CREATE TABLE IF NOT EXISTS donations_new (
-                    id TEXT PRIMARY KEY,
-                    user_id TEXT,
-                    rank_id TEXT,
-                    amount REAL NOT NULL,
-                    currency TEXT DEFAULT 'usd',
-                    payment_type TEXT DEFAULT 'one-time',
-                    stripe_session_id TEXT UNIQUE,
-                    stripe_payment_intent TEXT,
-                    stripe_subscription_id TEXT,
-                    status TEXT DEFAULT 'pending',
-                    minecraft_uuid TEXT,
-                    minecraft_username TEXT,
-                    discord_notified INTEGER DEFAULT 0,
-                    expires_at TEXT,
-                    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
-                )`);
-                await extDb.run(`INSERT OR IGNORE INTO donations_new SELECT * FROM donations`);
-                await extDb.run(`DROP TABLE donations`);
-                await extDb.run(`ALTER TABLE donations_new RENAME TO donations`);
-                await extDb.run('PRAGMA foreign_keys = ON');
-                console.log('[Donations] ✅ Migrated donations table: user_id and rank_id are now nullable');
+            if (extDb.type === 'postgres') {
+                // PostgreSQL: ALTER COLUMN to drop NOT NULL — safe to run repeatedly
+                await extDb.run('ALTER TABLE donations ALTER COLUMN user_id DROP NOT NULL').catch(() => {});
+                await extDb.run('ALTER TABLE donations ALTER COLUMN rank_id DROP NOT NULL').catch(() => {});
+            } else {
+                // SQLite: check via PRAGMA and rebuild table if needed
+                const tableInfo = await extDb.all("PRAGMA table_info(donations)");
+                const userIdCol = tableInfo.find(c => c.name === 'user_id');
+                const rankIdCol = tableInfo.find(c => c.name === 'rank_id');
+                if ((userIdCol && userIdCol.notnull) || (rankIdCol && rankIdCol.notnull)) {
+                    await extDb.run('PRAGMA foreign_keys = OFF');
+                    await extDb.run(`CREATE TABLE IF NOT EXISTS donations_new (
+                        id TEXT PRIMARY KEY,
+                        user_id TEXT,
+                        rank_id TEXT,
+                        amount REAL NOT NULL,
+                        currency TEXT DEFAULT 'usd',
+                        payment_type TEXT DEFAULT 'one-time',
+                        stripe_session_id TEXT UNIQUE,
+                        stripe_payment_intent TEXT,
+                        stripe_subscription_id TEXT,
+                        status TEXT DEFAULT 'pending',
+                        minecraft_uuid TEXT,
+                        minecraft_username TEXT,
+                        discord_notified INTEGER DEFAULT 0,
+                        expires_at TEXT,
+                        created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                    )`);
+                    await extDb.run(`INSERT OR IGNORE INTO donations_new SELECT * FROM donations`);
+                    await extDb.run(`DROP TABLE donations`);
+                    await extDb.run(`ALTER TABLE donations_new RENAME TO donations`);
+                    await extDb.run('PRAGMA foreign_keys = ON');
+                    console.log('[Donations] ✅ Migrated donations table: user_id and rank_id are now nullable');
+                }
             }
         } catch (err) {
             console.error('[Donations] Migration error:', err.message);
