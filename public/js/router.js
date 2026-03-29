@@ -45,11 +45,11 @@ var Router = {
 
         // Check auth
         var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password';
-        // Guest-accessible routes — always public regardless of guestMode flag
-        var alwaysPublicRoutes = ['/donate'];
-        // Additional guest routes when guest mode is enabled
+        // Always-public routes — accessible without login regardless of guestMode setting
+        var alwaysPublicRoutes = ['/donate', '/feed'];
+        // Additional routes unlocked when guestMode is explicitly enabled
         var guestAllowed = App.siteSettings && App.siteSettings.guestMode;
-        var guestModeRoutes = ['/feed', '/forum', '/servers', '/mc-leaderboard'];
+        var guestModeRoutes = ['/forum', '/servers', '/mc-leaderboard'];
         var isGuestRoute = alwaysPublicRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); }) ||
             (guestAllowed && guestModeRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); }));
 
@@ -147,15 +147,9 @@ var Router = {
             self.navigate(window.location.hash);
         });
 
-        // Initial route — guests land on feed if guestMode is on, otherwise login
+        // Initial route — no hash means root visit. Guests land on feed (always public), logged-in users too.
         if (!window.location.hash) {
-            if (API.token) {
-                window.location.hash = '#/feed';
-            } else if (App.siteSettings && App.siteSettings.guestMode) {
-                window.location.hash = '#/feed';
-            } else {
-                window.location.hash = '#/login';
-            }
+            window.location.hash = '#/feed';
         } else {
             this.navigate(window.location.hash);
         }
