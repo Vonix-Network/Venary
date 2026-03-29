@@ -73,6 +73,12 @@ var Router = {
             if (mobileHeader) mobileHeader.classList.add('hidden');
             if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
             if (pageContainer) { pageContainer.classList.remove('admin-fullscreen'); pageContainer.classList.add('full-width'); }
+        } else if (!API.token && isGuestRoute) {
+            // Guest on a public page — show the sidebar nav, hide auth-only mobile elements
+            if (mainNav) mainNav.classList.remove('hidden');
+            if (mobileHeader) mobileHeader.classList.add('hidden');
+            if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
+            if (pageContainer) { pageContainer.classList.remove('admin-fullscreen'); pageContainer.classList.remove('full-width'); }
         }
 
         if (!handler) {
