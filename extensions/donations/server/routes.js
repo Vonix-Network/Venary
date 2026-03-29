@@ -11,6 +11,19 @@ module.exports = function (extDb) {
     const Config = require('../../../server/config');
     const Mailer = require('../../../server/mail');
 
+    // ── Mount crypto routes (all /crypto/* endpoints) ──
+    const cryptoRoutes = require('./crypto-routes');
+    router.use('/', cryptoRoutes(extDb));
+
+    // ── Start blockchain monitor after mount ──
+    const balanceMgr = require('./crypto/balance');
+    const monitor    = require('./crypto/monitor');
+    const solEnabled = Config.get('donations.crypto.solana_enabled', false);
+    const ltcEnabled = Config.get('donations.crypto.litecoin_enabled', false);
+    if (solEnabled || ltcEnabled) {
+        monitor.startMonitoring(extDb, balanceMgr, Config, coreDb);
+    }
+
     // ── Startup migration: ensure user_id and rank_id are nullable ──
     // Handles both SQLite (table rebuild) and PostgreSQL (ALTER COLUMN).
     (async () => {
@@ -50,6 +63,84 @@ module.exports = function (extDb) {
                     console.log('[Donations] ✅ Migrated donations table: user_id and rank_id are now nullable');
                 }
             }
+
+            // ── Crypto tables migration (idempotent CREATE IF NOT EXISTS) ──
+            const cryptoTables = [
+                `CREATE TABLE IF NOT EXISTS user_crypto_addresses (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL UNIQUE,
+                    derivation_index INTEGER NOT NULL,
+                    sol_address TEXT,
+                    ltc_address TEXT,
+                    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )`,
+                `CREATE TABLE IF NOT EXISTS crypto_payment_intents (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    rank_id TEXT,
+                    coin TEXT NOT NULL,
+                    sol_address TEXT,
+                    ltc_address TEXT,
+                    amount_usd REAL NOT NULL,
+                    locked_crypto_amount REAL NOT NULL,
+                    locked_exchange_rate REAL NOT NULL,
+                    tolerance_pct REAL DEFAULT 5.0,
+                    status TEXT DEFAULT 'pending',
+                    tx_hash TEXT,
+                    confirmed_amount_crypto REAL,
+                    confirmations INTEGER DEFAULT 0,
+                    minecraft_username TEXT,
+                    expires_at TEXT NOT NULL,
+                    detected_at TEXT,
+                    confirmed_at TEXT,
+                    completed_at TEXT,
+                    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )`,
+                `CREATE TABLE IF NOT EXISTS anytime_address_txs (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    tx_hash TEXT NOT NULL UNIQUE,
+                    coin TEXT NOT NULL,
+                    crypto_amount REAL NOT NULL,
+                    usd_amount REAL NOT NULL,
+                    exchange_rate REAL NOT NULL,
+                    status TEXT DEFAULT 'credited',
+                    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )`,
+                `CREATE TABLE IF NOT EXISTS user_balances (
+                    user_id TEXT PRIMARY KEY,
+                    usd_balance REAL NOT NULL DEFAULT 0.0,
+                    updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )`,
+                `CREATE TABLE IF NOT EXISTS balance_transactions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    amount_usd REAL NOT NULL,
+                    source TEXT NOT NULL,
+                    description TEXT,
+                    reference_id TEXT,
+                    admin_id TEXT,
+                    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )`,
+                `CREATE TABLE IF NOT EXISTS user_preferences (
+                    user_id TEXT PRIMARY KEY,
+                    balance_display_currency TEXT DEFAULT 'usd',
+                    updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )`,
+                `CREATE INDEX IF NOT EXISTS idx_crypto_intents_status ON crypto_payment_intents(status)`,
+                `CREATE INDEX IF NOT EXISTS idx_crypto_intents_coin ON crypto_payment_intents(coin)`,
+                `CREATE INDEX IF NOT EXISTS idx_crypto_intents_user ON crypto_payment_intents(user_id)`,
+                `CREATE INDEX IF NOT EXISTS idx_crypto_intents_expires ON crypto_payment_intents(expires_at)`,
+                `CREATE INDEX IF NOT EXISTS idx_anytime_txs_user ON anytime_address_txs(user_id)`,
+                `CREATE INDEX IF NOT EXISTS idx_anytime_txs_hash ON anytime_address_txs(tx_hash)`,
+                `CREATE INDEX IF NOT EXISTS idx_balance_txs_user ON balance_transactions(user_id)`,
+                `CREATE INDEX IF NOT EXISTS idx_user_crypto_addr_user ON user_crypto_addresses(user_id)`,
+            ];
+            for (const sql of cryptoTables) {
+                await extDb.run(sql).catch(() => {}); // each is idempotent
+            }
+            console.log('[Donations] ✅ Crypto tables migration complete');
         } catch (err) {
             console.error('[Donations] Migration error:', err.message);
         }
@@ -766,7 +857,22 @@ module.exports = function (extDb) {
 
             await sendDiscordWebhook(donation, rank);
         } else {
-            // Custom no-rank donation — just fire Discord webhook
+            // Custom no-rank donation — credit balance if user is logged in, then fire Discord webhook
+            if (donation.user_id) {
+                try {
+                    const balanceMgr = require('./crypto/balance');
+                    await balanceMgr.credit(
+                        donation.user_id,
+                        donation.amount,
+                        'stripe_custom',
+                        'Custom donation via Stripe',
+                        extDb,
+                        donation.id
+                    );
+                } catch (err) {
+                    console.error('[Donations] Balance credit error:', err.message);
+                }
+            }
             await sendDiscordWebhook(donation, null);
         }
 

@@ -18,7 +18,7 @@ A complete guide for deploying **Venary** on a fresh Ubuntu 22.04 LTS VPS with N
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Create a non-root deploy user (recommended)
+z# Create a non-root deploy user (recommended)
 sudo adduser deploy
 sudo usermod -aG sudo deploy
 
@@ -306,7 +306,7 @@ pm2 restart venary
 | `invalid ELF header` | Run `npm run rebuild` to recompile native modules for Linux |
 | Database locked | Ensure only one PM2 instance is running: `pm2 list` |
 | Port 3000 busy | Change port in `data/config.json`, then `pm2 restart venary` |
-| 502 Bad Gateway | Venary isn't running — check `pm2 logs venary` |
+| 502 Bad Gateway | Venary isn't running — check `pm2 logs venary` or `screen -r venary` |
 | SSL cert not renewing | Check `sudo systemctl status certbot.timer` |
 | Nginx config error | Run `sudo nginx -t` to diagnose |
 

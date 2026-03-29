@@ -29,6 +29,9 @@ window.DonationsAdminPage = {
                     <button class="mc-chart-btn ${this.activeTab === 'ranks' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('ranks', this)">Ranks</button>
                     <button class="mc-chart-btn ${this.activeTab === 'history' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('history', this)">Donations</button>
                     <button class="mc-chart-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('settings', this)">Settings</button>
+                    <button class="mc-chart-btn ${this.activeTab === 'crypto' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('crypto', this)">Crypto Settings</button>
+                    <button class="mc-chart-btn ${this.activeTab === 'balance-settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('balance-settings', this)">Balance Settings</button>
+                    <button class="mc-chart-btn ${this.activeTab === 'balances' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('balances', this)">User Balances</button>
                 </div>
 
                 <div id="donate-admin-content"></div>
@@ -57,6 +60,9 @@ window.DonationsAdminPage = {
             case 'ranks': return this.renderRanks(area);
             case 'history': return this.renderHistory(area);
             case 'settings': return this.renderSettings(area);
+            case 'crypto': return this.renderCryptoSettings(area);
+            case 'balance-settings': return this.renderBalanceSettings(area);
+            case 'balances': return this.renderUserBalances(area);
         }
     },
 
@@ -429,6 +435,402 @@ window.DonationsAdminPage = {
             this.loadTab();
         } catch (err) {
             App.showToast(err.message || 'Failed to add donation', 'error');
+        }
+    },
+
+    // ══════════════════════════════════════════════════════
+    // CRYPTO SETTINGS TAB
+    // ══════════════════════════════════════════════════════
+
+    async renderCryptoSettings(area) {
+        try {
+            const [cfg, status] = await Promise.all([
+                API.get('/api/ext/donations/admin/crypto/config'),
+                API.get('/api/ext/donations/admin/crypto/status').catch(() => ({})),
+            ]);
+
+            const isSuperadmin = App.currentUser?.role === 'superadmin';
+            const statusBadge = s => {
+                const map = { connected: ['var(--neon-green)', '●'], degraded: ['#eab308', '●'], offline: ['var(--neon-magenta)', '●'], disabled: ['var(--text-muted)', '○'] };
+                const [color, dot] = map[s] || ['var(--text-muted)', '○'];
+                return `<span style="color:${color}">${dot} ${s}</span>`;
+            };
+
+            area.innerHTML = `
+                <div style="display:grid;gap:var(--space-lg)">
+
+                <!-- Chain toggles + status -->
+                <div class="donate-admin-card">
+                    <h3 class="donate-admin-section-title">Blockchain Status</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                        <div class="donate-chain-status-card">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                                <span style="font-weight:700">◎ Solana</span>
+                                ${statusBadge(status.solana || 'disabled')}
+                            </div>
+                            <label class="donate-toggle-label">
+                                <input type="checkbox" id="cfg-sol-enabled" ${cfg.solana_enabled ? 'checked' : ''}>
+                                Enable Solana payments
+                            </label>
+                        </div>
+                        <div class="donate-chain-status-card">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                                <span style="font-weight:700">Ł Litecoin</span>
+                                ${statusBadge(status.litecoin || 'disabled')}
+                            </div>
+                            <label class="donate-toggle-label">
+                                <input type="checkbox" id="cfg-ltc-enabled" ${cfg.litecoin_enabled ? 'checked' : ''}>
+                                Enable Litecoin payments
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RPC Endpoints -->
+                <div class="donate-admin-card">
+                    <h3 class="donate-admin-section-title">RPC Endpoints</h3>
+                    <div class="donate-admin-form">
+                        <div class="full-width">
+                            <label class="donate-admin-label">Solana RPC (Primary)</label>
+                            <input id="cfg-sol-rpc-primary" class="form-input" value="${App.escapeHtml(cfg.solana_rpc_primary || '')}" placeholder="https://api.mainnet-beta.solana.com" style="width:100%">
+                        </div>
+                        <div class="full-width">
+                            <label class="donate-admin-label">Solana RPC (Secondary / Fallback)</label>
+                            <input id="cfg-sol-rpc-secondary" class="form-input" value="${App.escapeHtml(cfg.solana_rpc_secondary || '')}" placeholder="Optional fallback RPC" style="width:100%">
+                        </div>
+                        <div class="full-width">
+                            <label class="donate-admin-label">Litecoin RPC (Primary)</label>
+                            <input id="cfg-ltc-rpc-primary" class="form-input" value="${App.escapeHtml(cfg.litecoin_rpc_primary || '')}" placeholder="https://api.blockcypher.com/v1/ltc/main" style="width:100%">
+                        </div>
+                        <div class="full-width">
+                            <label class="donate-admin-label">Litecoin RPC (Secondary / Fallback)</label>
+                            <input id="cfg-ltc-rpc-secondary" class="form-input" value="${App.escapeHtml(cfg.litecoin_rpc_secondary || '')}" placeholder="Optional fallback RPC" style="width:100%">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Webhook Secrets -->
+                <div class="donate-admin-card">
+                    <h3 class="donate-admin-section-title">Webhook Secrets</h3>
+                    <div class="donate-admin-form">
+                        <div>
+                            <label class="donate-admin-label">Solana Webhook Secret (Helius)</label>
+                            <input id="cfg-sol-webhook" type="password" class="form-input" placeholder="${cfg.solana_webhook_secret_set ? '••••••••' : 'Not set'}" style="width:100%">
+                        </div>
+                        <div>
+                            <label class="donate-admin-label">Litecoin Webhook Secret (BlockCypher)</label>
+                            <input id="cfg-ltc-webhook" type="password" class="form-input" placeholder="${cfg.litecoin_webhook_secret_set ? '••••••••' : 'Not set'}" style="width:100%">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wallet Setup (superadmin only) -->
+                <div class="donate-admin-card">
+                    <h3 class="donate-admin-section-title">HD Wallet Setup</h3>
+                    ${isSuperadmin ? `
+                    <div style="display:grid;gap:var(--space-md)">
+                        <div class="donate-wallet-status-row">
+                            <span>Solana Seed:</span>
+                            <span style="color:${cfg.solana_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
+                                ${cfg.solana_seed_configured ? '✓ Configured' : '✗ Not configured'}
+                            </span>
+                            ${cfg.solana_seed_masked ? `<code style="font-size:0.72rem;color:var(--text-muted)">${App.escapeHtml(cfg.solana_seed_masked)}</code>` : ''}
+                        </div>
+                        <div class="donate-wallet-status-row">
+                            <span>Litecoin Seed:</span>
+                            <span style="color:${cfg.litecoin_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
+                                ${cfg.litecoin_seed_configured ? '✓ Configured' : '✗ Not configured'}
+                            </span>
+                            ${cfg.litecoin_seed_masked ? `<code style="font-size:0.72rem;color:var(--text-muted)">${App.escapeHtml(cfg.litecoin_seed_masked)}</code>` : ''}
+                        </div>
+                        <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;margin-top:8px">
+                            <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)" onclick="DonationsAdminPage.showWalletSetupModal()">
+                                🔑 Set Seed Phrase
+                            </button>
+                            <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.generateNewSeed()">
+                                ✨ Generate New Seed
+                            </button>
+                        </div>
+                        <p style="font-size:0.75rem;color:var(--text-muted);margin:0">
+                            ⚠️ The seed phrase is encrypted with AES-256 and stored in config.json. Never share it. Changing the seed will re-derive all user addresses.
+                        </p>
+                    </div>` : `
+                    <div style="padding:1rem;background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:var(--radius-md);color:var(--text-muted);font-size:0.85rem">
+                        🔒 Wallet seed configuration is restricted to superadmins only.
+                    </div>`}
+                </div>
+
+                <!-- Save button -->
+                <div style="text-align:right">
+                    <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.saveCryptoConfig()">
+                        Save Crypto Settings
+                    </button>
+                </div>
+
+                </div>`;
+        } catch (err) {
+            area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load crypto settings.</p>';
+        }
+    },
+
+    async saveCryptoConfig() {
+        try {
+            const body = {
+                solana_enabled:  document.getElementById('cfg-sol-enabled')?.checked,
+                litecoin_enabled: document.getElementById('cfg-ltc-enabled')?.checked,
+                solana_rpc_primary:    document.getElementById('cfg-sol-rpc-primary')?.value,
+                solana_rpc_secondary:  document.getElementById('cfg-sol-rpc-secondary')?.value,
+                litecoin_rpc_primary:  document.getElementById('cfg-ltc-rpc-primary')?.value,
+                litecoin_rpc_secondary: document.getElementById('cfg-ltc-rpc-secondary')?.value,
+            };
+            const solWebhook = document.getElementById('cfg-sol-webhook')?.value;
+            const ltcWebhook = document.getElementById('cfg-ltc-webhook')?.value;
+            if (solWebhook) body.solana_webhook_secret = solWebhook;
+            if (ltcWebhook) body.litecoin_webhook_secret = ltcWebhook;
+
+            await API.put('/api/ext/donations/admin/crypto/config', body);
+            App.showToast('Crypto settings saved!', 'success');
+        } catch (err) {
+            App.showToast('Failed to save crypto settings', 'error');
+        }
+    },
+
+    async showWalletSetupModal() {
+        App.showModal('Set Seed Phrase', `
+            <div style="display:grid;gap:var(--space-md)">
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">
+                    Enter a 12 or 24-word BIP39 mnemonic. This will be encrypted and stored in config.json.
+                    <strong style="color:var(--neon-magenta)">Never share this phrase.</strong>
+                </p>
+                <div>
+                    <label class="donate-admin-label">Solana Seed Phrase (leave blank to keep existing)</label>
+                    <textarea id="ws-sol-seed" class="form-input" rows="3" placeholder="word1 word2 word3 ..." style="width:100%;resize:vertical;font-family:monospace"></textarea>
+                </div>
+                <div>
+                    <label class="donate-admin-label">Litecoin Seed Phrase (leave blank to keep existing, or use same seed)</label>
+                    <textarea id="ws-ltc-seed" class="form-input" rows="3" placeholder="word1 word2 word3 ..." style="width:100%;resize:vertical;font-family:monospace"></textarea>
+                </div>
+                <div style="text-align:right">
+                    <button class="mc-btn" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)" onclick="DonationsAdminPage.saveWalletSeeds()">
+                        🔒 Save Encrypted Seeds
+                    </button>
+                </div>
+            </div>
+        `);
+    },
+
+    async saveWalletSeeds() {
+        const solSeed = document.getElementById('ws-sol-seed')?.value.trim();
+        const ltcSeed = document.getElementById('ws-ltc-seed')?.value.trim();
+        if (!solSeed && !ltcSeed) { App.showToast('Enter at least one seed phrase', 'warning'); return; }
+
+        const body = {};
+        if (solSeed) body.solana_mnemonic = solSeed;
+        if (ltcSeed) body.litecoin_mnemonic = ltcSeed;
+
+        try {
+            await API.put('/api/ext/donations/admin/crypto/wallet', body);
+            App.showToast('Seed phrases saved and encrypted!', 'success');
+            App.closeModal();
+            this.loadTab();
+        } catch (err) {
+            App.showToast(err.message || 'Failed to save seeds', 'error');
+        }
+    },
+
+    async generateNewSeed() {
+        if (!confirm('Generate a new random seed phrase? This will replace the existing seed and re-derive all addresses. Make sure to back it up!')) return;
+        try {
+            const data = await API.post('/api/ext/donations/admin/crypto/generate-seed', {});
+            App.showModal('New Seed Generated', `
+                <div style="display:grid;gap:var(--space-md)">
+                    <p style="color:var(--neon-magenta);font-size:0.85rem;font-weight:700">⚠️ Write this down and store it safely. It will not be shown again.</p>
+                    <div style="background:#0d1117;border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:16px;font-family:monospace;font-size:0.85rem;color:var(--neon-cyan);word-break:break-all;line-height:1.8">
+                        ${App.escapeHtml(data.mnemonic)}
+                    </div>
+                    <p style="color:var(--text-muted);font-size:0.75rem">${data.word_count} words · BIP39</p>
+                    <div style="display:flex;gap:var(--space-md)">
+                        <button class="mc-btn" style="flex:1;background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)"
+                            onclick="navigator.clipboard.writeText('${App.escapeHtml(data.mnemonic)}');App.showToast('Copied!','success')">
+                            Copy to Clipboard
+                        </button>
+                        <button class="mc-btn" style="flex:1;background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
+                            onclick="DonationsAdminPage._applySeed('${App.escapeHtml(data.mnemonic)}')">
+                            Apply as Both Seeds
+                        </button>
+                    </div>
+                </div>
+            `);
+        } catch (err) {
+            App.showToast('Failed to generate seed', 'error');
+        }
+    },
+
+    async _applySeed(mnemonic) {
+        try {
+            await API.put('/api/ext/donations/admin/crypto/wallet', {
+                solana_mnemonic: mnemonic,
+                litecoin_mnemonic: mnemonic,
+            });
+            App.showToast('Seed applied and encrypted!', 'success');
+            App.closeModal();
+            this.loadTab();
+        } catch (err) {
+            App.showToast(err.message || 'Failed to apply seed', 'error');
+        }
+    },
+
+    // ══════════════════════════════════════════════════════
+    // BALANCE SETTINGS TAB
+    // ══════════════════════════════════════════════════════
+
+    async renderBalanceSettings(area) {
+        try {
+            const cfg = await API.get('/api/ext/donations/admin/crypto/config');
+            const currencies = cfg.balance_display_currencies || ['usd','sol','ltc','eur','gbp'];
+            const allCurrencies = ['usd','sol','ltc','eur','gbp'];
+
+            area.innerHTML = `
+                <div class="donate-admin-card">
+                    <h3 class="donate-admin-section-title">Balance Display Currencies</h3>
+                    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem">Select which currencies users can choose to display their balance in.</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:1.5rem">
+                        ${allCurrencies.map(c => `
+                            <label class="donate-toggle-label" style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md)">
+                                <input type="checkbox" name="bal-currency" value="${c}" ${currencies.includes(c) ? 'checked' : ''}>
+                                ${c.toUpperCase()}
+                            </label>`).join('')}
+                    </div>
+                    <div style="text-align:right">
+                        <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.saveBalanceSettings()">
+                            Save Balance Settings
+                        </button>
+                    </div>
+                </div>`;
+        } catch (err) {
+            area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load balance settings.</p>';
+        }
+    },
+
+    async saveBalanceSettings() {
+        const checked = [...document.querySelectorAll('input[name="bal-currency"]:checked')].map(el => el.value);
+        if (!checked.length) { App.showToast('Select at least one currency', 'warning'); return; }
+        try {
+            await API.put('/api/ext/donations/admin/crypto/config', { balance_display_currencies: checked });
+            App.showToast('Balance settings saved!', 'success');
+        } catch (err) {
+            App.showToast('Failed to save balance settings', 'error');
+        }
+    },
+
+    // ══════════════════════════════════════════════════════
+    // USER BALANCES TAB
+    // ══════════════════════════════════════════════════════
+
+    async renderUserBalances(area) {
+        try {
+            const search = this._balanceSearch || '';
+            const data = await API.get(`/api/ext/donations/admin/balances?search=${encodeURIComponent(search)}&limit=50`);
+
+            let html = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;gap:1rem;flex-wrap:wrap">
+                    <h3 style="margin:0;font-size:1rem;color:var(--text-secondary)">User Balances</h3>
+                    <input class="form-input" placeholder="Search username..." value="${App.escapeHtml(search)}"
+                        oninput="DonationsAdminPage._balanceSearch=this.value;clearTimeout(DonationsAdminPage._bsTimer);DonationsAdminPage._bsTimer=setTimeout(()=>DonationsAdminPage.loadTab(),400)"
+                        style="max-width:220px">
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
+                <table class="donate-table">
+                    <thead><tr>
+                        <th>User</th><th>Balance (USD)</th><th>Display Currency</th><th>Last Updated</th><th>Actions</th>
+                    </tr></thead>
+                    <tbody>`;
+
+            for (const b of data.balances) {
+                const name = App.escapeHtml(b.display_name || b.username || b.user_id);
+                html += `
+                    <tr>
+                        <td>${name}</td>
+                        <td style="color:var(--neon-green);font-weight:700">$${parseFloat(b.usd_balance).toFixed(2)}</td>
+                        <td><span style="font-size:0.75rem;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:999px">${(b.balance_display_currency||'usd').toUpperCase()}</span></td>
+                        <td style="font-size:0.8rem;color:var(--text-muted)">${b.updated_at ? new Date(b.updated_at).toLocaleDateString() : '—'}</td>
+                        <td style="display:flex;gap:6px">
+                            <button class="mc-btn" style="padding:4px 10px;font-size:0.75rem" onclick="DonationsAdminPage.showAdjustModal('${b.user_id}','${name}')">Adjust</button>
+                            <button class="mc-btn" style="padding:4px 10px;font-size:0.75rem;color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)" onclick="DonationsAdminPage.showLedgerModal('${b.user_id}','${name}')">Ledger</button>
+                        </td>
+                    </tr>`;
+            }
+
+            if (!data.balances.length) {
+                html += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">No balances found.</td></tr>';
+            }
+
+            html += '</tbody></table></div>';
+            area.innerHTML = html;
+        } catch (err) {
+            area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load user balances.</p>';
+        }
+    },
+
+    showAdjustModal(userId, username) {
+        App.showModal(`Adjust Balance — ${username}`, `
+            <div style="display:grid;gap:var(--space-md)">
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">
+                    Positive amount = credit, negative = debit. A reason is required for audit purposes.
+                </p>
+                <div>
+                    <label class="donate-admin-label">Amount (USD)</label>
+                    <input id="adj-amount" type="number" step="0.01" class="form-input" placeholder="e.g. 10.00 or -5.00" style="width:100%">
+                </div>
+                <div>
+                    <label class="donate-admin-label">Reason (required)</label>
+                    <input id="adj-reason" class="form-input" placeholder="e.g. Refund for failed payment" style="width:100%">
+                </div>
+                <div style="text-align:right">
+                    <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)"
+                        onclick="DonationsAdminPage.submitAdjust('${userId}')">Apply Adjustment</button>
+                </div>
+            </div>
+        `);
+    },
+
+    async submitAdjust(userId) {
+        const amount = parseFloat(document.getElementById('adj-amount')?.value);
+        const reason = document.getElementById('adj-reason')?.value.trim();
+        if (isNaN(amount) || amount === 0) { App.showToast('Enter a non-zero amount', 'warning'); return; }
+        if (!reason) { App.showToast('Reason is required', 'warning'); return; }
+        try {
+            const result = await API.post(`/api/ext/donations/admin/balances/${userId}/adjust`, { amount, reason });
+            App.showToast(`Balance updated. New balance: $${result.new_balance.toFixed(2)}`, 'success');
+            App.closeModal();
+            this.loadTab();
+        } catch (err) {
+            App.showToast(err.message || 'Adjustment failed', 'error');
+        }
+    },
+
+    async showLedgerModal(userId, username) {
+        try {
+            const ledger = await API.get(`/api/ext/donations/admin/balances/${userId}/ledger`);
+            let rows = ledger.map(t => `
+                <tr>
+                    <td style="color:${t.type==='credit'?'var(--neon-green)':'var(--neon-magenta)'}">${t.type === 'credit' ? '+' : '-'}$${Math.abs(t.amount_usd).toFixed(2)}</td>
+                    <td style="font-size:0.75rem">${App.escapeHtml(t.source)}</td>
+                    <td style="font-size:0.75rem;color:var(--text-muted)">${App.escapeHtml(t.description||'')}</td>
+                    <td style="font-size:0.75rem;color:var(--text-muted)">${new Date(t.created_at).toLocaleDateString()}</td>
+                </tr>`).join('');
+            if (!rows) rows = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1rem">No transactions.</td></tr>';
+
+            App.showModal(`Balance Ledger — ${username}`, `
+                <div style="max-height:400px;overflow-y:auto">
+                <table class="donate-table">
+                    <thead><tr><th>Amount</th><th>Source</th><th>Description</th><th>Date</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                </div>
+            `);
+        } catch (err) {
+            App.showToast('Failed to load ledger', 'error');
         }
     }
 };

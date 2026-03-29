@@ -121,7 +121,63 @@ extensions/my-extension/
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | Server port |
-| `JWT_SECRET` | auto-generated | JWT signing secret |
+| `JWT_SECRET` | auto-generated | JWT signing secret — also used to derive the wallet encryption key |
+
+---
+
+## 💰 Crypto Donations (Donations Extension)
+
+The donations extension supports Solana (SOL) and Litecoin (LTC) payments alongside Stripe, with a USD balance system and per-user permanent addresses.
+
+### Requirements
+
+- Node.js **≥ 18** (native `fetch` and `AbortSignal.timeout` required)
+- `@solana/web3.js`, `bip39`, `ed25519-hd-key`, `bitcoinjs-lib`, `tiny-secp256k1`, `bs58`, `qrcode` — all installed via `npm install`
+
+### Setup
+
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Enable chains in the admin panel**
+   Navigate to `Donations Admin → Crypto Settings` and toggle Solana and/or Litecoin on.
+
+3. **Configure wallet seed (superadmin only)**
+   In `Crypto Settings → HD Wallet Setup`, either paste an existing 12/24-word BIP39 mnemonic or click **Generate New Seed**. The seed is encrypted with AES-256 using your `JWT_SECRET` and stored in `data/config.json`. **Never share or commit your seed phrase.**
+
+4. **Set RPC endpoints** (optional — defaults to public endpoints)
+   - Solana: defaults to `https://api.mainnet-beta.solana.com`
+   - Litecoin: defaults to BlockCypher public API
+
+5. **Configure webhook secrets** (optional — for faster confirmation via Helius/BlockCypher webhooks)
+   Set `solana_webhook_secret` and `litecoin_webhook_secret` in Crypto Settings.
+
+### config.json keys (`donations.crypto.*`)
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `solana_enabled` | boolean | `false` | Enable Solana payments |
+| `litecoin_enabled` | boolean | `false` | Enable Litecoin payments |
+| `solana_seed_encrypted` | string | — | AES-256 encrypted BIP39 seed for Solana |
+| `litecoin_seed_encrypted` | string | — | AES-256 encrypted BIP39 seed for Litecoin |
+| `solana_rpc_primary` | string | mainnet-beta | Primary Solana RPC endpoint |
+| `solana_rpc_secondary` | string | — | Fallback Solana RPC endpoint |
+| `litecoin_rpc_primary` | string | BlockCypher | Primary Litecoin RPC endpoint |
+| `litecoin_rpc_secondary` | string | — | Fallback Litecoin RPC endpoint |
+| `solana_webhook_secret` | string | — | HMAC secret for Helius webhooks |
+| `litecoin_webhook_secret` | string | — | HMAC secret for BlockCypher webhooks |
+| `balance_display_currencies` | array | `["usd","sol","ltc","eur","gbp"]` | Currencies users can display balance in |
+| `intent_address_counter_sol` | number | `10000` | Auto-incrementing index for SOL intent addresses |
+| `intent_address_counter_ltc` | number | `10000` | Auto-incrementing index for LTC intent addresses |
+
+### How it works
+
+- **Payment intents**: User selects a rank → chooses SOL or LTC → receives a unique derived address + QR code with a locked price (valid 240 hours). The blockchain monitor polls every 5s (SOL) / 10s (LTC) for confirmation.
+- **Anytime addresses**: Each user has a permanent unique SOL + LTC address derived from the HD wallet. Any incoming transaction is automatically detected every 3 minutes and credited to their USD balance.
+- **Balance system**: Custom donations (Stripe or crypto) credit the user's USD balance. Balance can be spent on ranks directly without a new payment.
+- **HD wallet**: A single BIP39 seed derives all addresses deterministically. Solana uses path `m/44'/501'/0'/0'/{index}'`, Litecoin uses `m/44'/2'/0'/0/{index}`. User anytime addresses start at index 1; payment intent addresses start at index 10000.
 
 ---
 
