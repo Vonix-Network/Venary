@@ -1073,27 +1073,33 @@ window.DonationsAdminPage = {
             const { user_addresses, admin_addresses } = await API.get('/api/ext/donations/admin/crypto/wallet/addresses');
             const totalAddresses = user_addresses.length + admin_addresses.length;
 
+            // Detect a malformed address (object accidentally stringified by earlier bug)
+            const isMalformedAddr = v => !v || v.startsWith('{') || v === '[object Object]';
+
             const addrRow = (row, type) => {
                 const idx = row.derivation_index;
                 const userInfo = type === 'user'
                     ? `<a href="#/profile/${row.user_id}" style="color:var(--neon-cyan);text-decoration:none;font-size:0.8rem">@${App.escapeHtml(row.username || row.user_id?.slice(0,8) || '—')}</a>`
                     : `<span style="color:var(--text-muted);font-size:0.8rem;font-style:italic">${App.escapeHtml(row.label || '—')}</span>`;
 
-                const solCell = row.sol_address
-                    ? `<div style="display:flex;align-items:center;gap:6px">
-                           <code style="font-size:0.72rem;color:var(--neon-cyan);cursor:pointer" title="${App.escapeHtml(row.sol_address)}"
-                               onclick="navigator.clipboard.writeText('${App.escapeHtml(row.sol_address)}').then(()=>App.showToast('Copied!','success'))"
-                           >${row.sol_address.slice(0,6)}…${row.sol_address.slice(-4)}</code>
-                       </div>`
-                    : '<span style="color:var(--text-muted);font-size:0.75rem">—</span>';
+                const solAddr = row.sol_address && !isMalformedAddr(row.sol_address) ? row.sol_address : null;
+                const ltcAddr = row.ltc_address && !isMalformedAddr(row.ltc_address) ? row.ltc_address : null;
 
-                const ltcCell = row.ltc_address
+                const solCell = solAddr
                     ? `<div style="display:flex;align-items:center;gap:6px">
-                           <code style="font-size:0.72rem;color:var(--neon-magenta);cursor:pointer" title="${App.escapeHtml(row.ltc_address)}"
-                               onclick="navigator.clipboard.writeText('${App.escapeHtml(row.ltc_address)}').then(()=>App.showToast('Copied!','success'))"
-                           >${row.ltc_address.slice(0,6)}…${row.ltc_address.slice(-4)}</code>
+                           <code style="font-size:0.72rem;color:var(--neon-cyan);cursor:pointer" title="${App.escapeHtml(solAddr)}"
+                               onclick="navigator.clipboard.writeText('${App.escapeHtml(solAddr)}').then(()=>App.showToast('Copied!','success'))"
+                           >${solAddr.slice(0,6)}…${solAddr.slice(-4)}</code>
                        </div>`
-                    : '<span style="color:var(--text-muted);font-size:0.75rem">—</span>';
+                    : (row.sol_address ? '<span style="color:#ef4444;font-size:0.7rem" title="Malformed — regenerate this address">⚠ invalid</span>' : '<span style="color:var(--text-muted);font-size:0.75rem">—</span>');
+
+                const ltcCell = ltcAddr
+                    ? `<div style="display:flex;align-items:center;gap:6px">
+                           <code style="font-size:0.72rem;color:var(--neon-magenta);cursor:pointer" title="${App.escapeHtml(ltcAddr)}"
+                               onclick="navigator.clipboard.writeText('${App.escapeHtml(ltcAddr)}').then(()=>App.showToast('Copied!','success'))"
+                           >${ltcAddr.slice(0,6)}…${ltcAddr.slice(-4)}</code>
+                       </div>`
+                    : (row.ltc_address ? '<span style="color:#ef4444;font-size:0.7rem" title="Malformed — regenerate this address">⚠ invalid</span>' : '<span style="color:var(--text-muted);font-size:0.75rem">—</span>');
 
                 const txBtns = [
                     row.sol_address ? `<button class="mc-btn" style="padding:3px 8px;font-size:0.72rem;background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
@@ -1139,9 +1145,13 @@ window.DonationsAdminPage = {
                             <h2 style="margin:0;font-size:1.4rem;background:linear-gradient(135deg,#29b6f6,#ab47bc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800">HD Wallet Explorer</h2>
                             <p style="color:var(--text-muted);margin:4px 0 0;font-size:0.85rem">${totalAddresses} address${totalAddresses !== 1 ? 'es' : ''} derived · Balances load on demand</p>
                         </div>
-                        <div style="display:flex;gap:10px;align-items:center">
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                             <button class="mc-btn" id="wb-load-balances" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
                                 onclick="DonationsAdminPage._loadAllWalletBalances()">⚡ Load Balances</button>
+                            <button class="mc-btn" style="background:rgba(74,222,128,0.08);color:var(--neon-green);border-color:rgba(74,222,128,0.3)"
+                                onclick="DonationsAdminPage.showVerifyReport()">🔍 Verify Derivations</button>
+                            <button class="mc-btn" style="background:rgba(234,179,8,0.08);color:#eab308;border-color:rgba(234,179,8,0.3)"
+                                onclick="DonationsAdminPage.cleanMalformedAddresses()">🧹 Clean Malformed</button>
                             <button class="mc-btn" style="background:rgba(171,71,188,0.1);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)"
                                 onclick="DonationsAdminPage.deriveWalletAddress()">+ Generate Address</button>
                         </div>
@@ -1334,6 +1344,94 @@ window.DonationsAdminPage = {
         } catch (err) {
             const el = document.getElementById('wallet-tx-list');
             if (el) el.innerHTML = `<span style="color:#ef4444">${App.escapeHtml(err.message || 'Failed to load transactions')}</span>`;
+        }
+    },
+
+    /** Verify that all stored addresses match their HD derivation index. */
+    async showVerifyReport() {
+        App.showModal('Derivation Verification', `
+            <div style="display:grid;gap:var(--space-md)">
+                <p style="color:var(--text-muted);font-size:0.85rem;margin:0">
+                    Re-derives every stored address from the seed at its recorded derivation index and compares the result. A ✓ match means you hold the keys to that address.
+                </p>
+                <div id="verify-report-body" style="text-align:center;padding:1.5rem;color:var(--text-muted)">Running verification…</div>
+            </div>
+        `);
+
+        try {
+            const data = await API.get('/api/ext/donations/admin/crypto/wallet/verify');
+            const el = document.getElementById('verify-report-body');
+            if (!el) return;
+
+            const all = [
+                ...(data.user_addresses || []).map(r => ({ ...r, _type: 'User' })),
+                ...(data.admin_addresses || []).map(r => ({ ...r, _type: 'Admin' })),
+            ];
+
+            if (!all.length) {
+                el.innerHTML = '<span style="color:var(--text-muted)">No addresses to verify.</span>';
+                return;
+            }
+
+            const matchCell = (obj) => {
+                if (!obj) return '<td style="padding:6px 10px;color:var(--text-muted)">—</td>';
+                const ok = obj.match;
+                const icon = ok ? '✓' : '✗';
+                const color = ok ? 'var(--neon-green)' : '#ef4444';
+                const title = ok ? `Stored: ${obj.stored}` : `Stored: ${obj.stored} | Expected: ${obj.expected}`;
+                return `<td style="padding:6px 10px;color:${color};font-family:monospace;font-size:0.75rem" title="${App.escapeHtml(title)}">${icon} ${ok ? 'match' : 'MISMATCH'}</td>`;
+            };
+
+            const allOk = all.every(r => (!r.sol || r.sol.match) && (!r.ltc || r.ltc.match));
+            const summaryColor = allOk ? 'var(--neon-green)' : '#ef4444';
+            const summaryText = allOk ? `All ${all.length} address${all.length !== 1 ? 'es' : ''} verified ✓` : 'One or more mismatches detected!';
+
+            el.style.textAlign = '';
+            el.style.padding = '0';
+            el.innerHTML = `
+                <div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:${allOk ? 'rgba(74,222,128,0.08)' : 'rgba(239,68,68,0.08)'};border:1px solid ${summaryColor};color:${summaryColor};font-weight:600;font-size:0.85rem">${summaryText}</div>
+                <div style="overflow-x:auto;max-height:440px;overflow-y:auto">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+                        <thead>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg-card)">
+                                <th style="padding:6px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Type</th>
+                                <th style="padding:6px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Index</th>
+                                <th style="padding:6px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">SOL</th>
+                                <th style="padding:6px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">LTC</th>
+                                <th style="padding:6px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Stored SOL</th>
+                                <th style="padding:6px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Stored LTC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${all.map(r => `
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.03)">
+                                    <td style="padding:6px 10px;color:var(--text-muted);font-size:0.72rem">${r._type}</td>
+                                    <td style="padding:6px 10px;font-family:monospace;color:var(--neon-cyan)">#${r.derivation_index}</td>
+                                    ${matchCell(r.sol)}
+                                    ${matchCell(r.ltc)}
+                                    <td style="padding:6px 10px;font-family:monospace;font-size:0.68rem;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${App.escapeHtml(r.sol?.stored || '—')}">${App.escapeHtml(r.sol?.stored?.slice(0, 20) + (r.sol?.stored?.length > 20 ? '…' : '') || '—')}</td>
+                                    <td style="padding:6px 10px;font-family:monospace;font-size:0.68rem;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${App.escapeHtml(r.ltc?.stored || '—')}">${App.escapeHtml(r.ltc?.stored?.slice(0, 20) + (r.ltc?.stored?.length > 20 ? '…' : '') || '—')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+        } catch (err) {
+            const el = document.getElementById('verify-report-body');
+            if (el) el.innerHTML = `<span style="color:#ef4444">${App.escapeHtml(err.message || 'Verification failed')}</span>`;
+        }
+    },
+
+    /** Delete admin_wallet_addresses rows where the LTC address is a stringified object. */
+    async cleanMalformedAddresses() {
+        const confirmed = confirm('This will permanently delete admin wallet address rows where the LTC address was stored as a raw object (e.g. {"address":"..."}). These rows are unusable. Continue?');
+        if (!confirmed) return;
+        try {
+            const data = await API.delete('/api/ext/donations/admin/crypto/wallet/admin-addresses/malformed');
+            App.showToast(data.message || `Deleted ${data.deleted} malformed row(s)`, data.deleted > 0 ? 'success' : 'info');
+            if (data.deleted > 0) this.loadTab();
+        } catch (err) {
+            App.showToast(err.message || 'Cleanup failed', 'error');
         }
     },
 };
