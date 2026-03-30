@@ -959,11 +959,10 @@ module.exports = function cryptoRoutes(extDb) {
 
             let sol_address = null, ltc_address = null;
             if (solSeedEnc) {
-                const { address } = wallet.deriveSolanaAddress(wallet.decryptSeed(solSeedEnc), nextIndex);
-                sol_address = address;
+                sol_address = wallet.deriveSolanaAddress(wallet.decryptSeed(solSeedEnc), nextIndex).address;
             }
             if (ltcSeedEnc) {
-                ltc_address = wallet.deriveLitecoinAddress(wallet.decryptSeed(ltcSeedEnc), nextIndex);
+                ltc_address = wallet.deriveLitecoinAddress(wallet.decryptSeed(ltcSeedEnc), nextIndex).address;
             }
 
             const label = req.body?.label?.trim() || null;
@@ -976,6 +975,97 @@ module.exports = function cryptoRoutes(extDb) {
         } catch (err) {
             console.error('[Donations/Crypto] wallet/derive error:', err);
             res.status(500).json({ error: err.message || 'Failed to derive address' });
+        }
+    });
+
+    /**
+     * GET /admin/crypto/wallet/verify
+     * Re-derives every stored address from the seed at its recorded derivation_index
+     * and returns a match/mismatch report. Confirms the DB addresses are genuine
+     * derivations the admin can spend from.
+     */
+    router.get('/admin/crypto/wallet/verify', authenticateToken, requireSuperadmin, async (req, res) => {
+        try {
+            const solSeedEnc = Config.get('donations.crypto.solana_seed_encrypted');
+            const ltcSeedEnc = Config.get('donations.crypto.litecoin_seed_encrypted');
+            if (!solSeedEnc && !ltcSeedEnc)
+                return res.status(400).json({ error: 'No seed configured — nothing to verify against.' });
+
+            const solMnemonic = solSeedEnc ? wallet.decryptSeed(solSeedEnc) : null;
+            const ltcMnemonic = ltcSeedEnc ? wallet.decryptSeed(ltcSeedEnc) : null;
+
+            // Yield to event loop between derivations — each LTC derivation is ~300ms synchronous work.
+            const yieldTick = () => new Promise(r => setImmediate(r));
+
+            const verifyRow = async (row) => {
+                const result = { derivation_index: row.derivation_index, sol: null, ltc: null };
+
+                if (row.sol_address && solMnemonic) {
+                    try {
+                        const expected = wallet.deriveSolanaAddress(solMnemonic, row.derivation_index).address;
+                        result.sol = { stored: row.sol_address, expected, match: row.sol_address === expected };
+                    } catch (e) { result.sol = { stored: row.sol_address, expected: null, match: false, error: e.message }; }
+                }
+
+                if (row.ltc_address && ltcMnemonic) {
+                    await yieldTick();
+                    try {
+                        const expected = wallet.deriveLitecoinAddress(ltcMnemonic, row.derivation_index).address;
+                        result.ltc = { stored: row.ltc_address, expected, match: row.ltc_address === expected };
+                    } catch (e) { result.ltc = { stored: row.ltc_address, expected: null, match: false, error: e.message }; }
+                }
+
+                return result;
+            };
+
+            // By default only verify admin addresses — user addresses can be in the thousands and
+            // each LTC derivation costs ~300ms of synchronous CPU. Pass ?include_users=true to opt in.
+            const includeUsers = req.query.include_users === 'true';
+            let userRows = [];
+            if (includeUsers) {
+                userRows = await extDb.all('SELECT * FROM user_crypto_addresses');
+            }
+            let adminRows = [];
+            try { adminRows = await extDb.all('SELECT * FROM admin_wallet_addresses'); } catch { /* table pending */ }
+
+            const adminResults = [];
+            for (const row of adminRows) adminResults.push(await verifyRow(row));
+            const userResults  = [];
+            for (const row of userRows)  userResults.push(await verifyRow(row));
+
+            res.json({
+                user_addresses:  userResults,
+                admin_addresses: adminResults,
+            });
+        } catch (err) {
+            console.error('[Donations/Crypto] wallet/verify error:', err);
+            res.status(500).json({ error: err.message || 'Verification failed' });
+        }
+    });
+
+    /**
+     * DELETE /admin/crypto/wallet/admin-addresses/malformed
+     * Removes any admin_wallet_addresses rows whose ltc_address is not a valid
+     * Litecoin address (stored as an object stringification due to the earlier bug).
+     * Returns the count of rows deleted.
+     */
+    router.delete('/admin/crypto/wallet/admin-addresses/malformed', authenticateToken, requireSuperadmin, async (req, res) => {
+        try {
+            let rows = [];
+            try { rows = await extDb.all('SELECT id, ltc_address FROM admin_wallet_addresses'); } catch { /* table pending */ }
+
+            const malformed = rows.filter(r =>
+                r.ltc_address && (r.ltc_address.startsWith('{') || r.ltc_address === '[object Object]')
+            );
+
+            for (const row of malformed) {
+                await extDb.run('DELETE FROM admin_wallet_addresses WHERE id = ?', [row.id]);
+            }
+
+            res.json({ deleted: malformed.length, message: malformed.length ? `Removed ${malformed.length} malformed row(s).` : 'No malformed rows found.' });
+        } catch (err) {
+            console.error('[Donations/Crypto] wallet/admin-addresses/malformed error:', err);
+            res.status(500).json({ error: err.message || 'Cleanup failed' });
         }
     });
 

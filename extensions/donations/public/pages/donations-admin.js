@@ -1102,10 +1102,10 @@ window.DonationsAdminPage = {
                     : (row.ltc_address ? '<span style="color:#ef4444;font-size:0.7rem" title="Malformed — regenerate this address">⚠ invalid</span>' : '<span style="color:var(--text-muted);font-size:0.75rem">—</span>');
 
                 const txBtns = [
-                    row.sol_address ? `<button class="mc-btn" style="padding:3px 8px;font-size:0.72rem;background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
-                        onclick="DonationsAdminPage.showWalletTxModal('sol','${App.escapeHtml(row.sol_address)}')">SOL Txs</button>` : '',
-                    row.ltc_address ? `<button class="mc-btn" style="padding:3px 8px;font-size:0.72rem;background:rgba(171,71,188,0.1);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)"
-                        onclick="DonationsAdminPage.showWalletTxModal('ltc','${App.escapeHtml(row.ltc_address)}')">LTC Txs</button>` : '',
+                    solAddr ? `<button class="mc-btn" style="padding:3px 8px;font-size:0.72rem;background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
+                        onclick="DonationsAdminPage.showWalletTxModal('sol','${App.escapeHtml(solAddr)}')">SOL Txs</button>` : '',
+                    ltcAddr ? `<button class="mc-btn" style="padding:3px 8px;font-size:0.72rem;background:rgba(171,71,188,0.1);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)"
+                        onclick="DonationsAdminPage.showWalletTxModal('ltc','${App.escapeHtml(ltcAddr)}')">LTC Txs</button>` : '',
                 ].filter(Boolean).join('');
 
                 return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background=''">
