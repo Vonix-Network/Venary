@@ -157,6 +157,16 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
+-- Admin-generated HD wallet addresses (not tied to a specific user; indices start at 20000)
+CREATE TABLE IF NOT EXISTS admin_wallet_addresses (
+    id TEXT PRIMARY KEY,
+    derivation_index INTEGER NOT NULL UNIQUE,
+    sol_address TEXT,
+    ltc_address TEXT,
+    label TEXT,
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+);
+
 -- Crypto table indices
 CREATE INDEX IF NOT EXISTS idx_crypto_intents_status ON crypto_payment_intents(status);
 CREATE INDEX IF NOT EXISTS idx_crypto_intents_coin ON crypto_payment_intents(coin);
@@ -166,3 +176,4 @@ CREATE INDEX IF NOT EXISTS idx_anytime_txs_user ON anytime_address_txs(user_id);
 CREATE INDEX IF NOT EXISTS idx_anytime_txs_hash ON anytime_address_txs(tx_hash);
 CREATE INDEX IF NOT EXISTS idx_balance_txs_user ON balance_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_crypto_addr_user ON user_crypto_addresses(user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_wallet_addr_idx ON admin_wallet_addresses(derivation_index);

@@ -31,6 +31,7 @@ window.DonationsAdminPage = {
                     <button class="mc-chart-btn ${this.activeTab === 'history' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('history', this)">Donations</button>
                     <button class="mc-chart-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('settings', this)">Settings</button>
                     <button class="mc-chart-btn ${this.activeTab === 'crypto' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('crypto', this)">Crypto Settings</button>
+                    ${App.currentUser?.role === 'superadmin' ? `<button class="mc-chart-btn ${this.activeTab === 'wallet' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('wallet', this)">Wallet</button>` : ''}
                     <button class="mc-chart-btn ${this.activeTab === 'balance-settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('balance-settings', this)">Balance Settings</button>
                     <button class="mc-chart-btn ${this.activeTab === 'balances' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('balances', this)">User Balances</button>
                 </div>
@@ -63,6 +64,7 @@ window.DonationsAdminPage = {
             case 'history': return this.renderHistory(area);
             case 'settings': return this.renderSettings(area);
             case 'crypto': return this.renderCryptoSettings(area);
+            case 'wallet': return this.renderWallet(area);
             case 'balance-settings': return this.renderBalanceSettings(area);
             case 'balances': return this.renderUserBalances(area);
         }
@@ -1052,5 +1054,286 @@ window.DonationsAdminPage = {
         } catch (err) {
             App.showToast('Failed to load ledger', 'error');
         }
-    }
+    },
+
+    // ── WALLET VIEWER (superadmin only) ──
+
+    async renderWallet(area) {
+        if (App.currentUser?.role !== 'superadmin') {
+            area.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:center;min-height:200px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px">
+                    <div style="text-align:center;color:var(--text-muted)">
+                        <div style="font-size:2.5rem;margin-bottom:8px">🔒</div>
+                        <div style="font-weight:600">Wallet viewer is restricted to superadmins.</div>
+                    </div>
+                </div>`;
+            return;
+        }
+        try {
+            const { user_addresses, admin_addresses } = await API.get('/api/ext/donations/admin/crypto/wallet/addresses');
+            const totalAddresses = user_addresses.length + admin_addresses.length;
+
+            const addrRow = (row, type) => {
+                const idx = row.derivation_index;
+                const userInfo = type === 'user'
+                    ? `<a href="#/profile/${row.user_id}" style="color:var(--neon-cyan);text-decoration:none;font-size:0.8rem">@${App.escapeHtml(row.username || row.user_id?.slice(0,8) || '—')}</a>`
+                    : `<span style="color:var(--text-muted);font-size:0.8rem;font-style:italic">${App.escapeHtml(row.label || '—')}</span>`;
+
+                const solCell = row.sol_address
+                    ? `<div style="display:flex;align-items:center;gap:6px">
+                           <code style="font-size:0.72rem;color:var(--neon-cyan);cursor:pointer" title="${App.escapeHtml(row.sol_address)}"
+                               onclick="navigator.clipboard.writeText('${App.escapeHtml(row.sol_address)}').then(()=>App.showToast('Copied!','success'))"
+                           >${row.sol_address.slice(0,6)}…${row.sol_address.slice(-4)}</code>
+                       </div>`
+                    : '<span style="color:var(--text-muted);font-size:0.75rem">—</span>';
+
+                const ltcCell = row.ltc_address
+                    ? `<div style="display:flex;align-items:center;gap:6px">
+                           <code style="font-size:0.72rem;color:var(--neon-magenta);cursor:pointer" title="${App.escapeHtml(row.ltc_address)}"
+                               onclick="navigator.clipboard.writeText('${App.escapeHtml(row.ltc_address)}').then(()=>App.showToast('Copied!','success'))"
+                           >${row.ltc_address.slice(0,6)}…${row.ltc_address.slice(-4)}</code>
+                       </div>`
+                    : '<span style="color:var(--text-muted);font-size:0.75rem">—</span>';
+
+                const txBtns = [
+                    row.sol_address ? `<button class="mc-btn" style="padding:3px 8px;font-size:0.72rem;background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
+                        onclick="DonationsAdminPage.showWalletTxModal('sol','${App.escapeHtml(row.sol_address)}')">SOL Txs</button>` : '',
+                    row.ltc_address ? `<button class="mc-btn" style="padding:3px 8px;font-size:0.72rem;background:rgba(171,71,188,0.1);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)"
+                        onclick="DonationsAdminPage.showWalletTxModal('ltc','${App.escapeHtml(row.ltc_address)}')">LTC Txs</button>` : '',
+                ].filter(Boolean).join('');
+
+                return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background=''">
+                    <td style="padding:10px 12px;font-size:0.8rem;color:var(--text-muted);font-family:monospace">#${idx}</td>
+                    <td style="padding:10px 12px">${userInfo}</td>
+                    <td style="padding:10px 12px">${solCell}</td>
+                    <td style="padding:10px 12px;font-size:0.78rem;color:var(--neon-green)" id="wb-sol-${idx}">
+                        ${row.sol_address ? '<span style="color:var(--text-muted)">—</span>' : '<span style="color:var(--text-muted)">n/a</span>'}
+                    </td>
+                    <td style="padding:10px 12px">${ltcCell}</td>
+                    <td style="padding:10px 12px;font-size:0.78rem;color:var(--neon-green)" id="wb-ltc-${idx}">
+                        ${row.ltc_address ? '<span style="color:var(--text-muted)">—</span>' : '<span style="color:var(--text-muted)">n/a</span>'}
+                    </td>
+                    <td style="padding:10px 12px"><div style="display:flex;gap:6px;flex-wrap:wrap">${txBtns}</div></td>
+                </tr>`;
+            };
+
+            const tableHeader = `
+                <thead>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+                        <th style="padding:10px 12px;text-align:left;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted)">Index</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted)">User / Label</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--neon-cyan)">SOL Address</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--neon-cyan)">SOL Balance</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--neon-magenta)">LTC Address</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--neon-magenta)">LTC Balance</th>
+                        <th style="padding:10px 12px;text-align:left;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted)">Transactions</th>
+                    </tr>
+                </thead>`;
+
+            area.innerHTML = `
+                <div style="display:grid;gap:1.5rem">
+
+                    <!-- Header bar -->
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div>
+                            <h2 style="margin:0;font-size:1.4rem;background:linear-gradient(135deg,#29b6f6,#ab47bc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800">HD Wallet Explorer</h2>
+                            <p style="color:var(--text-muted);margin:4px 0 0;font-size:0.85rem">${totalAddresses} address${totalAddresses !== 1 ? 'es' : ''} derived · Balances load on demand</p>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center">
+                            <button class="mc-btn" id="wb-load-balances" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
+                                onclick="DonationsAdminPage._loadAllWalletBalances()">⚡ Load Balances</button>
+                            <button class="mc-btn" style="background:rgba(171,71,188,0.1);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)"
+                                onclick="DonationsAdminPage.deriveWalletAddress()">+ Generate Address</button>
+                        </div>
+                    </div>
+
+                    <!-- User addresses -->
+                    <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                        <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px">
+                            <span style="color:var(--neon-cyan);font-size:1.1rem">👤</span>
+                            <span style="font-weight:700;font-size:0.95rem">User Wallet Addresses</span>
+                            <span style="background:rgba(41,182,246,0.15);color:var(--neon-cyan);border-radius:20px;padding:2px 10px;font-size:0.72rem;font-weight:600;margin-left:4px">${user_addresses.length}</span>
+                        </div>
+                        ${user_addresses.length ? `
+                        <div style="overflow-x:auto">
+                            <table style="width:100%;border-collapse:collapse">
+                                ${tableHeader}
+                                <tbody>${user_addresses.map(r => addrRow(r, 'user')).join('')}</tbody>
+                            </table>
+                        </div>` : `
+                        <div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:0.85rem">
+                            No user addresses derived yet. Users get addresses when they first visit the Donate page with crypto enabled.
+                        </div>`}
+                    </div>
+
+                    <!-- Admin addresses -->
+                    <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                        <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px">
+                            <span style="color:var(--neon-magenta);font-size:1.1rem">🔑</span>
+                            <span style="font-weight:700;font-size:0.95rem">Admin Wallet Addresses</span>
+                            <span style="background:rgba(171,71,188,0.15);color:var(--neon-magenta);border-radius:20px;padding:2px 10px;font-size:0.72rem;font-weight:600;margin-left:4px">${admin_addresses.length}</span>
+                            <span style="color:var(--text-muted);font-size:0.72rem;margin-left:auto">Indices ≥ 20000 · standalone HD derivations</span>
+                        </div>
+                        ${admin_addresses.length ? `
+                        <div style="overflow-x:auto">
+                            <table style="width:100%;border-collapse:collapse">
+                                ${tableHeader}
+                                <tbody>${admin_addresses.map(r => addrRow(r, 'admin')).join('')}</tbody>
+                            </table>
+                        </div>` : `
+                        <div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:0.85rem">
+                            No admin addresses generated yet. Use <strong>+ Generate Address</strong> to derive one from the HD wallet seed.
+                        </div>`}
+                    </div>
+
+                </div>`;
+
+            // Store addresses for balance loading
+            this._walletAddresses = { user_addresses, admin_addresses };
+        } catch (err) {
+            area.innerHTML = `<div style="padding:2rem;color:var(--neon-magenta);text-align:center">${App.escapeHtml(err.message || 'Failed to load wallet')}</div>`;
+        }
+    },
+
+    /** Fetch and render live balances for all addresses in the wallet tab. */
+    async _loadAllWalletBalances() {
+        const btn = document.getElementById('wb-load-balances');
+        if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+
+        const { user_addresses = [], admin_addresses = [] } = this._walletAddresses || {};
+        const all = [...user_addresses, ...admin_addresses];
+        if (!all.length) {
+            if (btn) { btn.disabled = false; btn.textContent = '⚡ Load Balances'; }
+            return;
+        }
+
+        // Set all balance cells to "fetching…"
+        all.forEach(r => {
+            if (r.sol_address) {
+                const el = document.getElementById(`wb-sol-${r.derivation_index}`);
+                if (el) el.innerHTML = '<span style="color:var(--text-muted);font-size:0.72rem">fetching…</span>';
+            }
+            if (r.ltc_address) {
+                const el = document.getElementById(`wb-ltc-${r.derivation_index}`);
+                if (el) el.innerHTML = '<span style="color:var(--text-muted);font-size:0.72rem">fetching…</span>';
+            }
+        });
+
+        // Fetch all balances in parallel, update cells as each resolves
+        const fetchBalance = async (coin, address, idx) => {
+            const elId = `wb-${coin}-${idx}`;
+            try {
+                const data = await API.get(`/api/ext/donations/admin/crypto/wallet/address/${coin}/${address}/balance`);
+                const el = document.getElementById(elId);
+                if (el) {
+                    const val = data.balance.toFixed(6).replace(/\.?0+$/, '') || '0';
+                    el.innerHTML = `<span style="font-family:monospace;color:var(--neon-green)">${val} ${coin.toUpperCase()}</span>`;
+                }
+            } catch (err) {
+                const el = document.getElementById(elId);
+                if (el) el.innerHTML = `<span style="color:#ef4444;font-size:0.72rem" title="${App.escapeHtml(err.message || '')}">error</span>`;
+            }
+        };
+
+        await Promise.allSettled(
+            all.flatMap(r => [
+                r.sol_address ? fetchBalance('sol', r.sol_address, r.derivation_index) : null,
+                r.ltc_address ? fetchBalance('ltc', r.ltc_address, r.derivation_index) : null,
+            ].filter(Boolean))
+        );
+
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ Refresh Balances'; }
+    },
+
+    /** Derive a new admin wallet address and refresh the tab. */
+    async deriveWalletAddress() {
+        const label = prompt('Optional label for this address (leave blank to skip):') ?? null;
+        if (label === null) return; // user cancelled
+        try {
+            const data = await API.post('/api/ext/donations/admin/crypto/wallet/derive', { label: label.trim() });
+            App.showToast(`Address #${data.derivation_index} generated`, 'success');
+            this.loadTab();
+        } catch (err) {
+            App.showToast(err.message || 'Failed to generate address', 'error');
+        }
+    },
+
+    /** Show a modal with recent on-chain transactions for the given address. */
+    async showWalletTxModal(coin, address) {
+        const coinLabel = coin === 'sol' ? 'Solana' : 'Litecoin';
+        const coinColor = coin === 'sol' ? 'var(--neon-cyan)' : 'var(--neon-magenta)';
+
+        App.showModal(`${coinLabel} Transactions`, `
+            <div style="display:grid;gap:var(--space-md)">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <code style="font-size:0.78rem;color:${coinColor};background:rgba(0,0,0,0.3);padding:4px 10px;border-radius:6px;word-break:break-all">${App.escapeHtml(address)}</code>
+                    <button class="mc-btn" style="padding:4px 10px;font-size:0.75rem" onclick="navigator.clipboard.writeText('${App.escapeHtml(address)}').then(()=>App.showToast('Copied','success'))">Copy</button>
+                </div>
+                <div id="wallet-tx-list" style="text-align:center;padding:1.5rem;color:var(--text-muted)">Loading transactions…</div>
+            </div>
+        `);
+
+        try {
+            const data = await API.get(`/api/ext/donations/admin/crypto/wallet/address/${coin}/${address}/transactions`);
+            const txs = data.transactions || [];
+            const el = document.getElementById('wallet-tx-list');
+            if (!el) return;
+
+            if (!txs.length) {
+                el.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem">No transactions found for this address.</span>';
+                return;
+            }
+
+            const statusBadge = s => {
+                const cfg = {
+                    confirmed: ['var(--neon-green)', 'rgba(74,222,128,0.1)'],
+                    finalized: ['var(--neon-green)', 'rgba(74,222,128,0.1)'],
+                    pending:   ['#eab308', 'rgba(234,179,8,0.1)'],
+                    failed:    ['#ef4444', 'rgba(239,68,68,0.1)'],
+                };
+                const [color, bg] = cfg[s] || ['var(--text-muted)', 'rgba(255,255,255,0.05)'];
+                return `<span style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:${bg};color:${color};font-weight:600">${s}</span>`;
+            };
+
+            el.style.textAlign = '';
+            el.style.padding = '0';
+            el.innerHTML = `
+                <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+                        <thead>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.08);position:sticky;top:0;background:var(--bg-card)">
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Tx Hash</th>
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Status</th>
+                                ${coin === 'ltc' ? '<th style="padding:8px 10px;text-align:right;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Amount (LTC)</th>' : ''}
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Confirmations</th>
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${txs.map(tx => {
+                                const shortHash = tx.hash ? tx.hash.slice(0, 8) + '…' + tx.hash.slice(-6) : '—';
+                                const time = tx.timestamp ? new Date(tx.timestamp).toLocaleString() : 'Unknown';
+                                const amountCell = coin === 'ltc'
+                                    ? `<td style="padding:8px 10px;text-align:right;font-family:monospace;color:${tx.amount > 0 ? 'var(--neon-green)' : tx.amount < 0 ? '#ef4444' : 'var(--text-muted)'}">${tx.amount > 0 ? '+' : ''}${tx.amount}</td>`
+                                    : '';
+                                return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03)">
+                                    <td style="padding:8px 10px">
+                                        ${tx.explorer_url
+                                            ? `<a href="${App.escapeHtml(tx.explorer_url)}" target="_blank" rel="noopener" style="color:${coinColor};font-family:monospace;font-size:0.75rem;text-decoration:none" title="${App.escapeHtml(tx.hash)}">${shortHash} ↗</a>`
+                                            : `<code style="font-size:0.75rem;color:${coinColor}">${shortHash}</code>`}
+                                    </td>
+                                    <td style="padding:8px 10px">${statusBadge(tx.status)}</td>
+                                    ${amountCell}
+                                    <td style="padding:8px 10px;color:var(--text-secondary)">${tx.confirmations}</td>
+                                    <td style="padding:8px 10px;color:var(--text-muted);font-size:0.75rem">${time}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+        } catch (err) {
+            const el = document.getElementById('wallet-tx-list');
+            if (el) el.innerHTML = `<span style="color:#ef4444">${App.escapeHtml(err.message || 'Failed to load transactions')}</span>`;
+        }
+    },
 };

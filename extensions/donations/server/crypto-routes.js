@@ -789,5 +789,195 @@ module.exports = function cryptoRoutes(extDb) {
         }
     });
 
+    // ══════════════════════════════════════════════════════
+    // ADMIN — WALLET VIEWER (superadmin only)
+    // ══════════════════════════════════════════════════════
+
+    /**
+     * GET /admin/crypto/wallet/addresses
+     * Returns all user HD wallet addresses (from user_crypto_addresses) and all
+     * admin-generated standalone addresses (from admin_wallet_addresses).
+     */
+    router.get('/admin/crypto/wallet/addresses', authenticateToken, requireSuperadmin, async (req, res) => {
+        try {
+            const userRows = await extDb.all(
+                'SELECT * FROM user_crypto_addresses ORDER BY derivation_index ASC'
+            );
+            for (const row of userRows) {
+                const u = await coreDb.get(
+                    'SELECT username, display_name FROM users WHERE id = ?', [row.user_id]
+                );
+                row.username     = u?.username     || null;
+                row.display_name = u?.display_name || null;
+            }
+
+            let adminRows = [];
+            try {
+                adminRows = await extDb.all(
+                    'SELECT * FROM admin_wallet_addresses ORDER BY derivation_index ASC'
+                );
+            } catch { /* table not yet created — will exist after next restart */ }
+
+            res.json({ user_addresses: userRows, admin_addresses: adminRows });
+        } catch (err) {
+            console.error('[Donations/Crypto] wallet/addresses error:', err);
+            res.status(500).json({ error: err.message || 'Failed to load wallet addresses' });
+        }
+    });
+
+    /**
+     * GET /admin/crypto/wallet/address/:coin/:address/balance
+     * Fetches the live on-chain balance for a single address from Solana RPC or BlockCypher.
+     */
+    router.get('/admin/crypto/wallet/address/:coin/:address/balance', authenticateToken, requireSuperadmin, async (req, res) => {
+        try {
+            const { coin, address } = req.params;
+
+            if (coin === 'sol') {
+                const rpcUrl = Config.get('donations.crypto.solana_rpc_primary', 'https://api.mainnet-beta.solana.com');
+                const r = await fetch(rpcUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [address] }),
+                    signal: AbortSignal.timeout(8000),
+                });
+                if (!r.ok) throw new Error(`Solana RPC HTTP ${r.status}`);
+                const data = await r.json();
+                if (data.error) throw new Error(data.error.message || 'RPC error');
+                res.json({ coin, address, balance: (data?.result?.value ?? 0) / 1e9 });
+
+            } else if (coin === 'ltc') {
+                const r = await fetch(
+                    `https://api.blockcypher.com/v1/ltc/main/addrs/${address}/balance`,
+                    { signal: AbortSignal.timeout(8000) }
+                );
+                if (!r.ok) throw new Error(`BlockCypher HTTP ${r.status}`);
+                const data = await r.json();
+                const satoshis = (data.balance ?? 0) + (data.unconfirmed_balance ?? 0);
+                res.json({ coin, address, balance: satoshis / 1e8 });
+
+            } else {
+                res.status(400).json({ error: 'coin must be "sol" or "ltc"' });
+            }
+        } catch (err) {
+            console.error('[Donations/Crypto] wallet/address/balance error:', err);
+            res.status(500).json({ error: err.message || 'Failed to fetch balance' });
+        }
+    });
+
+    /**
+     * GET /admin/crypto/wallet/address/:coin/:address/transactions
+     * Returns recent transactions for an address via Solana RPC (getSignaturesForAddress)
+     * or BlockCypher full address endpoint.
+     */
+    router.get('/admin/crypto/wallet/address/:coin/:address/transactions', authenticateToken, requireSuperadmin, async (req, res) => {
+        try {
+            const { coin, address } = req.params;
+            const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+
+            if (coin === 'sol') {
+                const rpcUrl = Config.get('donations.crypto.solana_rpc_primary', 'https://api.mainnet-beta.solana.com');
+                const r = await fetch(rpcUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0', id: 1,
+                        method: 'getSignaturesForAddress',
+                        params: [address, { limit }],
+                    }),
+                    signal: AbortSignal.timeout(10000),
+                });
+                if (!r.ok) throw new Error(`Solana RPC HTTP ${r.status}`);
+                const data = await r.json();
+                if (data.error) throw new Error(data.error.message || 'RPC error');
+                const sigs = data?.result ?? [];
+                res.json({
+                    coin, address,
+                    transactions: sigs.map(s => ({
+                        hash:          s.signature,
+                        status:        s.err ? 'failed' : (s.confirmationStatus || 'confirmed'),
+                        confirmations: s.confirmationStatus === 'finalized' ? 32
+                            : s.confirmationStatus === 'confirmed' ? 1 : 0,
+                        timestamp:    s.blockTime ? new Date(s.blockTime * 1000).toISOString() : null,
+                        explorer_url: `https://solscan.io/tx/${s.signature}`,
+                    })),
+                });
+
+            } else if (coin === 'ltc') {
+                const r = await fetch(
+                    `https://api.blockcypher.com/v1/ltc/main/addrs/${address}/full?limit=${limit}`,
+                    { signal: AbortSignal.timeout(12000) }
+                );
+                if (!r.ok) throw new Error(`BlockCypher HTTP ${r.status}`);
+                const data = await r.json();
+                res.json({
+                    coin, address,
+                    transactions: (data.txs || []).map(tx => {
+                        const received = (tx.outputs || [])
+                            .filter(o => (o.addresses || []).includes(address))
+                            .reduce((sum, o) => sum + (o.value || 0), 0) / 1e8;
+                        const sent = (tx.inputs || [])
+                            .filter(i => (i.addresses || []).includes(address))
+                            .reduce((sum, i) => sum + (i.output_value || 0), 0) / 1e8;
+                        return {
+                            hash:          tx.hash,
+                            status:        tx.confirmed ? 'confirmed' : 'pending',
+                            confirmations: tx.confirmations || 0,
+                            amount:        Math.round((received - sent) * 1e8) / 1e8,
+                            timestamp:     tx.confirmed || tx.received || null,
+                            explorer_url:  `https://live.blockcypher.com/ltc/tx/${tx.hash}/`,
+                        };
+                    }),
+                });
+
+            } else {
+                res.status(400).json({ error: 'coin must be "sol" or "ltc"' });
+            }
+        } catch (err) {
+            console.error('[Donations/Crypto] wallet/address/transactions error:', err);
+            res.status(500).json({ error: err.message || 'Failed to fetch transactions' });
+        }
+    });
+
+    /**
+     * POST /admin/crypto/wallet/derive
+     * Derives the next admin wallet address (index ≥ 20000) from the stored seed,
+     * persists it in admin_wallet_addresses, and returns the result.
+     */
+    router.post('/admin/crypto/wallet/derive', authenticateToken, requireSuperadmin, async (req, res) => {
+        try {
+            const solSeedEnc = Config.get('donations.crypto.solana_seed_encrypted');
+            const ltcSeedEnc = Config.get('donations.crypto.litecoin_seed_encrypted');
+            if (!solSeedEnc && !ltcSeedEnc)
+                return res.status(400).json({ error: 'No wallet seed configured. Set up a seed phrase in Crypto Settings first.' });
+
+            // Admin address indices start at 20000 — clear separation from user (1+) and intent (10000+) spaces
+            const BASE = 20000;
+            let lastRow = null;
+            try { lastRow = await extDb.get('SELECT MAX(derivation_index) as m FROM admin_wallet_addresses'); } catch { /* table not yet created */ }
+            const nextIndex = Math.max(BASE, (lastRow?.m ?? BASE - 1) + 1);
+
+            let sol_address = null, ltc_address = null;
+            if (solSeedEnc) {
+                const { address } = wallet.deriveSolanaAddress(wallet.decryptSeed(solSeedEnc), nextIndex);
+                sol_address = address;
+            }
+            if (ltcSeedEnc) {
+                ltc_address = wallet.deriveLitecoinAddress(wallet.decryptSeed(ltcSeedEnc), nextIndex);
+            }
+
+            const label = req.body?.label?.trim() || null;
+            await extDb.run(
+                'INSERT INTO admin_wallet_addresses (id, derivation_index, sol_address, ltc_address, label) VALUES (?, ?, ?, ?, ?)',
+                [uuidv4(), nextIndex, sol_address, ltc_address, label]
+            );
+
+            res.json({ derivation_index: nextIndex, sol_address, ltc_address, label });
+        } catch (err) {
+            console.error('[Donations/Crypto] wallet/derive error:', err);
+            res.status(500).json({ error: err.message || 'Failed to derive address' });
+        }
+    });
+
     return router;
 };
