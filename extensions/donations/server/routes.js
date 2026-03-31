@@ -679,8 +679,11 @@ module.exports = function (extDb) {
             );
 
             for (const d of donations) {
-                const user = await coreDb.get('SELECT username, display_name FROM users WHERE id = ?', [d.user_id]);
-                d.username = user?.display_name || user?.username || 'Unknown';
+                const user = d.user_id
+                    ? await coreDb.get('SELECT username, display_name, avatar FROM users WHERE id = ?', [d.user_id])
+                    : null;
+                d.username = user?.display_name || user?.username || d.minecraft_username || 'Guest';
+                d.avatar   = user?.avatar || null; // site profile picture; null = guest, use MC-Heads on client
             }
 
             const total = await extDb.get('SELECT COUNT(*) as count FROM donations');

@@ -433,9 +433,13 @@ window.DonationsPage = {
             if (!donations.length) { area.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted);text-align:center;padding:1rem">No donations yet. Be the first!</p>'; return; }
             let html = '<div class="donate-recent-list">';
             for (const d of donations) {
-                const avatar = d.minecraft_uuid
-                    ? 'https://mc-heads.net/avatar/' + d.minecraft_uuid + '/40'
-                    : (d.mc_username ? 'https://mc-heads.net/avatar/' + encodeURIComponent(d.mc_username) + '/40' : (d.avatar || '/img/default-avatar.png'));
+                // Registered users: always use their site profile picture.
+                // MC-Heads is only for guests who provided a Minecraft username.
+                const avatar = d.avatar
+                    ? d.avatar
+                    : (d.minecraft_uuid
+                        ? 'https://mc-heads.net/avatar/' + d.minecraft_uuid + '/40'
+                        : (d.mc_username ? 'https://mc-heads.net/avatar/' + encodeURIComponent(d.mc_username) + '/40' : '/img/default-avatar.png'));
                 html += '<div class="donate-recent-item">' +
                     '<img class="donate-recent-avatar" src="' + avatar + '" alt="" onerror="this.src=\'/img/default-avatar.png\'">' +
                     '<div class="donate-recent-meta">' +
