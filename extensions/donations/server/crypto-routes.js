@@ -24,6 +24,10 @@ module.exports = function cryptoRoutes(extDb) {
         InvalidMnemonicError,
         WebhookSignatureError,
     } = require('./crypto/errors');
+    const { getProvider, getProviderById, PROVIDERS } = require('./crypto/providers');
+
+    // ── Raw body capture for provider webhook routes (must precede JSON body parser) ──
+    router.use('/crypto/webhook', express.raw({ type: '*/*' }));
 
     // ── Lazy QR code generator ──
     let _qr;
@@ -84,7 +88,7 @@ module.exports = function cryptoRoutes(extDb) {
     // PAYMENT INTENTS
     // ══════════════════════════════════════════════════════
 
-    /** POST /crypto/intent — create a payment intent */
+    /** POST /crypto/intent — create a payment intent (manual or provider) */
     router.post('/crypto/intent', optionalAuth, async (req, res) => {
         try {
             const { rank_id, amount, coin, mc_username } = req.body;
@@ -127,6 +131,51 @@ module.exports = function cryptoRoutes(extDb) {
             // Lock rate
             const { crypto_amount, rate_used } = await exchange.lockRate(usdAmount, coin);
 
+            // ── Payment provider fork ──
+            const activeProvider = Config.get('donations.crypto.provider', 'manual');
+            if (activeProvider !== 'manual') {
+                const intentId   = uuidv4();
+                const expiresAt  = new Date(Date.now() + 240 * 60 * 60 * 1000).toISOString();
+                const origin     = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+                const provider   = getProvider(Config);
+
+                const result = await provider.createPayment({
+                    amount_usd:  usdAmount,
+                    coin,
+                    order_id:    intentId,
+                    notify_url:  `${origin}/api/ext/donations/crypto/webhook/${activeProvider}`,
+                    success_url: `${origin}/#/donate?status=crypto_success&intent=${intentId}`,
+                    cancel_url:  `${origin}/#/donate`,
+                    description: rank_id ? `Rank: ${rankRow?.name || rank_id}` : `Donation $${usdAmount}`,
+                }, Config);
+
+                await extDb.run(
+                    `INSERT INTO crypto_payment_intents
+                     (id, user_id, rank_id, coin, amount_usd, locked_crypto_amount, locked_exchange_rate,
+                      status, minecraft_username, expires_at, created_at, provider, provider_payment_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+                    [
+                        intentId, req.user?.id || null, rank_id || null, coin,
+                        usdAmount, crypto_amount, rate_used,
+                        isGuest ? mc_username.trim() : null,
+                        expiresAt, new Date().toISOString(),
+                        activeProvider, result.provider_payment_id,
+                    ]
+                );
+
+                return res.json({
+                    intent_id:           intentId,
+                    provider:            activeProvider,
+                    checkout_url:        result.checkout_url,
+                    coin,
+                    amount_usd:          usdAmount,
+                    locked_crypto_amount: crypto_amount,
+                    exchange_rate:       rate_used,
+                    expires_at:          expiresAt,
+                    rank: rankRow ? { id: rankRow.id, name: rankRow.name, color: rankRow.color } : null,
+                });
+            }
+
             // Derive a unique intent address
             const { address, index } = wallet.deriveIntentAddress(coin, Config);
 
@@ -137,8 +186,8 @@ module.exports = function cryptoRoutes(extDb) {
             await extDb.run(
                 `INSERT INTO crypto_payment_intents
                  (id, user_id, rank_id, coin, sol_address, ltc_address, amount_usd, locked_crypto_amount,
-                  locked_exchange_rate, status, minecraft_username, expires_at, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+                  locked_exchange_rate, status, minecraft_username, expires_at, created_at, provider)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'manual')`,
                 [
                     intentId,
                     req.user?.id || null,
@@ -1066,6 +1115,207 @@ module.exports = function cryptoRoutes(extDb) {
         } catch (err) {
             console.error('[Donations/Crypto] wallet/admin-addresses/malformed error:', err);
             res.status(500).json({ error: err.message || 'Cleanup failed' });
+        }
+    });
+
+    // ══════════════════════════════════════════════════════
+    // PUBLIC — PROVIDER STATUS (unauthenticated)
+    // ══════════════════════════════════════════════════════
+
+    /**
+     * GET /crypto/provider-public-status
+     * Returns whether crypto payments are enabled and which provider is active.
+     * Used by the public donate page to decide whether to show the crypto payment option.
+     */
+    router.get('/crypto/provider-public-status', (req, res) => {
+        const provider   = Config.get('donations.crypto.provider', 'manual');
+        const solEnabled = Config.get('donations.crypto.solana_enabled', false);
+        const ltcEnabled = Config.get('donations.crypto.litecoin_enabled', false);
+        const coins = [];
+        if (solEnabled) coins.push('sol');
+        if (ltcEnabled) coins.push('ltc');
+        const meta = PROVIDERS.find(p => p.id === provider) || PROVIDERS[0];
+        res.json({
+            crypto_enabled: coins.length > 0,
+            provider,
+            provider_name: meta.name,
+            coins,
+        });
+    });
+
+    // ══════════════════════════════════════════════════════
+    // PROVIDER WEBHOOKS (IPN callbacks)
+    // ══════════════════════════════════════════════════════
+
+    /**
+     * Generic IPN handler — shared by all provider webhook routes.
+     * Verifies signature, looks up the intent, calls completeCryptoIntent on confirmation.
+     */
+    async function handleProviderWebhook(req, res, providerId) {
+        // Always respond 200 first to prevent provider retries on our end
+        res.sendStatus(200);
+        try {
+            const provider = getProviderById(providerId);
+            let parsed;
+            try {
+                parsed = provider.verifyWebhook(req.body, req.headers, Config);
+            } catch (err) {
+                console.warn(`[Donations/Crypto] ${providerId} webhook signature invalid:`, err.message);
+                return;
+            }
+
+            if (!parsed.is_confirmed) {
+                console.log(`[Donations/Crypto] ${providerId} webhook: payment ${parsed.provider_payment_id} not yet confirmed (status: ${parsed.status})`);
+                return;
+            }
+
+            // Look up intent by order_id first, then provider_payment_id
+            const intent = await extDb.get(
+                `SELECT * FROM crypto_payment_intents WHERE id = ? OR provider_payment_id = ? LIMIT 1`,
+                [parsed.order_id, parsed.provider_payment_id]
+            );
+            if (!intent) {
+                console.warn(`[Donations/Crypto] ${providerId} webhook: no intent found for order ${parsed.order_id} / pid ${parsed.provider_payment_id}`);
+                return;
+            }
+            if (!['pending', 'detected'].includes(intent.status)) {
+                return; // already processed
+            }
+
+            await monitor.completeCryptoIntent(intent.id, parsed.amount_received ? String(parsed.provider_payment_id) : null, parsed.amount_received || 0, extDb, balanceMgr, Config, coreDb);
+            console.log(`[Donations/Crypto] ${providerId} webhook: intent ${intent.id} completed via IPN`);
+        } catch (err) {
+            console.error(`[Donations/Crypto] ${providerId} webhook handler error:`, err);
+        }
+    }
+
+    router.post('/crypto/webhook/nowpayments',  (req, res) => handleProviderWebhook(req, res, 'nowpayments'));
+    router.post('/crypto/webhook/coinpayments', (req, res) => handleProviderWebhook(req, res, 'coinpayments'));
+    router.post('/crypto/webhook/plisio',       (req, res) => handleProviderWebhook(req, res, 'plisio'));
+    router.post('/crypto/webhook/oxapay',       (req, res) => handleProviderWebhook(req, res, 'oxapay'));
+
+    // ══════════════════════════════════════════════════════
+    // ADMIN — PAYMENT PROVIDER CONFIG & DASHBOARD
+    // ══════════════════════════════════════════════════════
+
+    /**
+     * GET /admin/crypto/provider/config
+     * Returns the active provider, all provider metadata, and current config (secrets masked).
+     */
+    router.get('/admin/crypto/provider/config', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const active = Config.get('donations.crypto.provider', 'manual');
+
+            // Mask a secret: return boolean flag + last 4 chars if set
+            const mask = key => {
+                const v = Config.get(key);
+                return v ? { set: true, preview: '••••' + v.slice(-4) } : { set: false };
+            };
+
+            res.json({
+                active_provider:  active,
+                providers: PROVIDERS,
+                config: {
+                    nowpayments: {
+                        api_key:    mask('donations.crypto.nowpayments_api_key'),
+                        ipn_secret: mask('donations.crypto.nowpayments_ipn_secret'),
+                        sandbox:    Config.get('donations.crypto.nowpayments_sandbox', false),
+                    },
+                    coinpayments: {
+                        public_key:  mask('donations.crypto.coinpayments_public_key'),
+                        private_key: mask('donations.crypto.coinpayments_private_key'),
+                        ipn_secret:  mask('donations.crypto.coinpayments_ipn_secret'),
+                        merchant_id: mask('donations.crypto.coinpayments_merchant_id'),
+                    },
+                    plisio: {
+                        api_key: mask('donations.crypto.plisio_api_key'),
+                        ipn_key: mask('donations.crypto.plisio_ipn_key'),
+                    },
+                    oxapay: {
+                        merchant_key: mask('donations.crypto.oxapay_merchant_key'),
+                        api_key:      mask('donations.crypto.oxapay_api_key'),
+                    },
+                },
+            });
+        } catch (err) {
+            console.error('[Donations/Crypto] provider/config GET error:', err);
+            res.status(500).json({ error: err.message || 'Server error' });
+        }
+    });
+
+    /**
+     * PUT /admin/crypto/provider/config
+     * Update active provider and/or API keys. Only saves non-empty values.
+     */
+    router.put('/admin/crypto/provider/config', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const allowed = ['manual','nowpayments','coinpayments','plisio','oxapay'];
+            const { provider, ...keys } = req.body;
+
+            if (provider !== undefined) {
+                if (!allowed.includes(provider))
+                    return res.status(400).json({ error: `Invalid provider. Must be one of: ${allowed.join(', ')}` });
+                Config.set('donations.crypto.provider', provider);
+            }
+
+            const keyMap = {
+                nowpayments_api_key:    'donations.crypto.nowpayments_api_key',
+                nowpayments_ipn_secret: 'donations.crypto.nowpayments_ipn_secret',
+                nowpayments_sandbox:    'donations.crypto.nowpayments_sandbox',
+                coinpayments_public_key:'donations.crypto.coinpayments_public_key',
+                coinpayments_private_key:'donations.crypto.coinpayments_private_key',
+                coinpayments_ipn_secret:'donations.crypto.coinpayments_ipn_secret',
+                coinpayments_merchant_id:'donations.crypto.coinpayments_merchant_id',
+                plisio_api_key:         'donations.crypto.plisio_api_key',
+                plisio_ipn_key:         'donations.crypto.plisio_ipn_key',
+                oxapay_merchant_key:    'donations.crypto.oxapay_merchant_key',
+                oxapay_api_key:         'donations.crypto.oxapay_api_key',
+            };
+
+            for (const [field, cfgKey] of Object.entries(keyMap)) {
+                if (keys[field] !== undefined && keys[field] !== '') {
+                    Config.set(cfgKey, keys[field]);
+                }
+            }
+
+            res.json({ message: 'Provider settings saved.' });
+        } catch (err) {
+            console.error('[Donations/Crypto] provider/config PUT error:', err);
+            res.status(500).json({ error: err.message || 'Server error' });
+        }
+    });
+
+    /**
+     * GET /admin/crypto/provider/dashboard
+     * Calls getDashboardData on the active provider and returns recent payments + balance info.
+     */
+    router.get('/admin/crypto/provider/dashboard', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const provider = getProvider(Config);
+            const data = await provider.getDashboardData(Config, extDb);
+            res.json(data);
+        } catch (err) {
+            console.error('[Donations/Crypto] provider/dashboard error:', err);
+            res.status(500).json({ error: err.message || 'Failed to load dashboard' });
+        }
+    });
+
+    /**
+     * GET /admin/crypto/provider/test/:provider
+     * Lightweight connectivity test for a specific provider. Returns { ok, latency_ms, message }.
+     */
+    router.get('/admin/crypto/provider/test/:provider', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const id = req.params.provider;
+            const allowed = ['manual','nowpayments','coinpayments','plisio','oxapay'];
+            if (!allowed.includes(id))
+                return res.status(400).json({ error: 'Unknown provider' });
+            const provider = getProviderById(id);
+            const result = await provider.pingTest(Config, extDb);
+            res.json(result);
+        } catch (err) {
+            console.error('[Donations/Crypto] provider/test error:', err);
+            res.status(500).json({ error: err.message || 'Test failed' });
         }
     });
 

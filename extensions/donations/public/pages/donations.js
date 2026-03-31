@@ -14,6 +14,11 @@ window.DonationsPage = {
             return this.renderReceipt(container, params.get('session_id'));
         }
 
+        // Receipt screen — returned from a crypto payment provider
+        if (params.get('status') === 'crypto_success' && params.get('intent')) {
+            return this.renderCryptoReceipt(container, params.get('intent'));
+        }
+
         // Transaction history tab — linked from profile menu
         if (params.get('tab') === 'history') {
             return this.renderHistory(container);
@@ -58,6 +63,7 @@ window.DonationsPage = {
         await this.loadCurrentRank();
         this.loadRanks();
         this.loadRecent();
+        this.loadCryptoStatus(); // async, non-blocking — populates this._cryptoStatus
 
         if (!App.currentUser) {
             const gw = document.getElementById('donate-onetime-guest-mc');
@@ -310,6 +316,11 @@ window.DonationsPage = {
     },
 
     async purchase(rankId, btn) {
+        // If crypto is enabled, show a payment method picker first
+        if (this._cryptoStatus?.crypto_enabled && this._cryptoStatus?.coins?.length) {
+            return this._showPaymentPicker(rankId, null, btn);
+        }
+        // Stripe-only fallback
         if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
         try {
             const result = await API.post('/api/ext/donations/checkout', { rank_id: rankId });
@@ -393,6 +404,10 @@ window.DonationsPage = {
             mcUsername = mcInput ? mcInput.value.trim() : '';
             if (!mcUsername) { App.showToast('Please enter your Minecraft username', 'warning'); return; }
         }
+        // If crypto is enabled, show payment picker for one-time too
+        if (this._cryptoStatus?.crypto_enabled && this._cryptoStatus?.coins?.length) {
+            return this._showPaymentPicker(null, amount, null, mcUsername);
+        }
         const btn = document.getElementById('donate-onetime-submit');
         if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
         try {
@@ -439,5 +454,213 @@ window.DonationsPage = {
         const hours = Math.floor(mins / 60);
         if (hours < 24) return hours + 'h ago';
         return Math.floor(hours / 24) + 'd ago';
-    }
+    },
+
+    // ── Crypto payment support ──
+
+    _cryptoStatus: null,
+
+    async loadCryptoStatus() {
+        try {
+            this._cryptoStatus = await API.get('/api/ext/donations/crypto/provider-public-status');
+        } catch {
+            this._cryptoStatus = { crypto_enabled: false };
+        }
+    },
+
+    /**
+     * Show a payment method picker modal: Card (Stripe) or Crypto.
+     * @param {string|null} rankId
+     * @param {number|null} amount — for one-time donations
+     * @param {HTMLElement|null} btn — the button that triggered this, to re-enable on cancel
+     * @param {string} [mcUsername]
+     */
+    _showPaymentPicker(rankId, amount, btn, mcUsername) {
+        const cs = this._cryptoStatus;
+        const coinLabels = (cs?.coins || []).map(c => c.toUpperCase()).join(' / ');
+        const providerName = App.escapeHtml(cs?.provider_name || 'Crypto');
+
+        App.showModal('Choose Payment Method', `
+            <div style="display:grid;gap:14px">
+                <p style="color:var(--text-muted);font-size:0.85rem;margin:0">How would you like to complete your payment?</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <button class="mc-btn" id="ppm-stripe"
+                        style="padding:18px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;height:auto;
+                               background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.3);color:#818cf8"
+                        onclick="DonationsPage._pickStripe(${rankId ? `'${rankId}'` : 'null'},${amount||'null'})">
+                        <span style="font-size:1.6rem">💳</span>
+                        <span style="font-weight:700">Card (Stripe)</span>
+                        <span style="font-size:0.72rem;color:var(--text-muted)">Credit / Debit card</span>
+                    </button>
+                    <button class="mc-btn" id="ppm-crypto"
+                        style="padding:18px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;height:auto;
+                               background:rgba(41,182,246,0.08);border-color:rgba(41,182,246,0.3);color:var(--neon-cyan)"
+                        onclick="DonationsPage._pickCrypto(${rankId ? `'${rankId}'` : 'null'},${amount||'null'},'${App.escapeHtml(mcUsername||'')}')">
+                        <span style="font-size:1.6rem">₿</span>
+                        <span style="font-weight:700">Crypto</span>
+                        <span style="font-size:0.72rem;color:var(--text-muted)">${coinLabels} via ${providerName}</span>
+                    </button>
+                </div>
+            </div>
+        `);
+        if (btn) { btn.disabled = false; btn.textContent = 'Purchase'; }
+    },
+
+    async _pickStripe(rankId, amount) {
+        App.closeModal?.();
+        if (rankId) {
+            const result = await API.post('/api/ext/donations/checkout', { rank_id: rankId }).catch(e => { App.showToast(e.message || 'Payment error', 'error'); return null; });
+            if (result?.url) window.location.href = result.url;
+        } else {
+            const result = await API.post('/api/ext/donations/custom-checkout', { amount }).catch(e => { App.showToast(e.message || 'Payment error', 'error'); return null; });
+            if (result?.url) window.location.href = result.url;
+        }
+    },
+
+    _pickCrypto(rankId, amount, mcUsername) {
+        App.closeModal?.();
+        const coins = this._cryptoStatus?.coins || [];
+        if (coins.length === 1) {
+            return this.startCryptoCheckout(rankId, amount, coins[0], mcUsername);
+        }
+        // Let user pick coin
+        App.showModal('Choose Coin', `
+            <div style="display:grid;gap:12px">
+                ${coins.map(c => `
+                    <button class="mc-btn" style="padding:12px;font-size:0.9rem;${c==='sol'?'background:rgba(41,182,246,0.08);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)':'background:rgba(171,71,188,0.08);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)'}"
+                        onclick="App.closeModal?.();DonationsPage.startCryptoCheckout(${rankId?`'${rankId}'`:'null'},${amount||'null'},'${c}','${App.escapeHtml(mcUsername||'')}')">
+                        ${c.toUpperCase() === 'SOL' ? '◎ Solana (SOL)' : 'Ł Litecoin (LTC)'}
+                    </button>`).join('')}
+            </div>
+        `);
+    },
+
+    async startCryptoCheckout(rankId, amount, coin, mcUsername) {
+        App.showToast('Creating payment…', 'info');
+        try {
+            const payload = { coin };
+            if (rankId)    payload.rank_id = rankId;
+            if (amount)    payload.amount  = amount;
+            if (mcUsername) payload.mc_username = mcUsername;
+
+            const result = await API.post('/api/ext/donations/crypto/intent', payload);
+
+            if (result.checkout_url) {
+                // Hosted provider — redirect to their checkout page
+                window.location.href = result.checkout_url;
+                return;
+            }
+
+            // Manual provider — show inline QR + address waiting screen
+            this._showManualCryptoWaiting(result);
+        } catch (err) {
+            App.showToast(err.message || 'Failed to create crypto payment', 'error');
+        }
+    },
+
+    _showManualCryptoWaiting(intent) {
+        const coinLabel = intent.coin === 'sol' ? 'Solana' : 'Litecoin';
+        const coinColor = intent.coin === 'sol' ? 'var(--neon-cyan)' : 'var(--neon-magenta)';
+        const expires = intent.expires_at ? new Date(intent.expires_at).toLocaleString() : '—';
+
+        App.showModal(`Pay with ${coinLabel}`, `
+            <div style="display:grid;gap:16px;text-align:center">
+                <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:16px">
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Send exactly</div>
+                    <div style="font-size:1.6rem;font-weight:800;color:${coinColor};font-family:monospace">
+                        ${intent.locked_crypto_amount} ${intent.coin?.toUpperCase()}
+                    </div>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">≈ $${parseFloat(intent.amount_usd||0).toFixed(2)} USD</div>
+                </div>
+                ${intent.qr_data_uri ? `<img src="${intent.qr_data_uri}" alt="QR code" style="width:180px;height:180px;margin:0 auto;border-radius:10px;background:#fff;padding:8px">` : ''}
+                <div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px">Send to address</div>
+                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap">
+                        <code style="font-size:0.72rem;color:${coinColor};background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;word-break:break-all">${App.escapeHtml(intent.address||'')}</code>
+                        <button class="mc-btn" style="padding:3px 8px;font-size:0.72rem"
+                            onclick="navigator.clipboard.writeText('${App.escapeHtml(intent.address||'')}').then(()=>App.showToast('Copied!','success'))">Copy</button>
+                    </div>
+                </div>
+                <div id="crypto-wait-status" style="font-size:0.82rem;color:var(--text-muted)">⏳ Waiting for payment… (expires ${App.escapeHtml(expires)})</div>
+                <div style="font-size:0.72rem;color:var(--text-muted)">This page will update automatically when payment is detected.</div>
+            </div>
+        `);
+
+        // Poll intent status every 5 seconds
+        const intentId = intent.intent_id;
+        const pollInterval = setInterval(async () => {
+            try {
+                const status = await API.get(`/api/ext/donations/crypto/intent/${intentId}`);
+                const el = document.getElementById('crypto-wait-status');
+                if (status.status === 'completed') {
+                    clearInterval(pollInterval);
+                    if (el) el.innerHTML = '<span style="color:var(--neon-green);font-weight:700">✓ Payment confirmed!</span>';
+                    setTimeout(() => {
+                        App.closeModal?.();
+                        window.location.hash = `#/donate?status=crypto_success&intent=${intentId}`;
+                    }, 1500);
+                } else if (status.status === 'detected') {
+                    if (el) el.innerHTML = '<span style="color:#eab308">⏳ Payment detected — waiting for confirmations…</span>';
+                } else if (['expired','cancelled'].includes(status.status)) {
+                    clearInterval(pollInterval);
+                    if (el) el.innerHTML = '<span style="color:#ef4444">Payment expired or cancelled.</span>';
+                }
+            } catch { /* ignore poll errors */ }
+        }, 5000);
+    },
+
+    async renderCryptoReceipt(container, intentId) {
+        container.innerHTML = `
+            <div class="minecraft-page donate-page-wrap" style="max-width:560px;margin:0 auto">
+                <div id="donate-receipt-area" style="text-align:center;padding:3rem 1rem">
+                    <div class="loading-spinner" style="margin:0 auto 1rem"></div>
+                    <p style="color:var(--text-muted)">Confirming crypto payment…</p>
+                </div>
+            </div>`;
+
+        const area = document.getElementById('donate-receipt-area');
+        let attempts = 0;
+        const maxAttempts = 20; // ~60s at 3s intervals
+
+        const check = async () => {
+            attempts++;
+            try {
+                const intent = await API.get(`/api/ext/donations/crypto/intent/${intentId}`);
+                if (intent.status === 'completed') {
+                    area.innerHTML = `
+                        <div style="text-align:center">
+                            <div style="font-size:3rem;margin-bottom:1rem">✅</div>
+                            <h2 style="color:var(--neon-green);margin-bottom:8px">Payment Confirmed!</h2>
+                            <p style="color:var(--text-muted);font-size:0.9rem">
+                                ${parseFloat(intent.confirmed_amount_crypto||0).toFixed(6)} ${(intent.coin||'').toUpperCase()} received
+                            </p>
+                            ${intent.rank ? `<p style="color:${App.escapeHtml(intent.rank?.color||'#fff')};font-weight:700;font-size:1.1rem;margin-top:12px">${App.escapeHtml(intent.rank?.name||'')} rank granted!</p>` : ''}
+                            <button class="mc-btn" style="margin-top:20px" onclick="window.location.hash='#/donate'">← Back to Donate</button>
+                        </div>`;
+                } else if (['expired','cancelled'].includes(intent.status)) {
+                    area.innerHTML = `
+                        <div style="text-align:center">
+                            <div style="font-size:3rem;margin-bottom:1rem">❌</div>
+                            <h2 style="color:#ef4444;margin-bottom:8px">Payment ${App.escapeHtml(intent.status)}</h2>
+                            <p style="color:var(--text-muted);font-size:0.9rem">The payment was not received in time.</p>
+                            <button class="mc-btn" style="margin-top:20px" onclick="window.location.hash='#/donate'">← Try Again</button>
+                        </div>`;
+                } else if (attempts < maxAttempts) {
+                    setTimeout(check, 3000);
+                } else {
+                    area.innerHTML = `
+                        <div style="text-align:center">
+                            <div style="font-size:3rem;margin-bottom:1rem">⏳</div>
+                            <h2 style="color:#eab308;margin-bottom:8px">Payment Pending</h2>
+                            <p style="color:var(--text-muted);font-size:0.9rem">Your payment was received but is still awaiting confirmations. Check back shortly.</p>
+                            <button class="mc-btn" style="margin-top:20px" onclick="window.location.hash='#/donate'">← Back to Donate</button>
+                        </div>`;
+                }
+            } catch (err) {
+                if (attempts < maxAttempts) setTimeout(check, 3000);
+                else area.innerHTML = `<div style="color:#ef4444;padding:2rem">${App.escapeHtml(err.message||'Failed to load payment status')}</div>`;
+            }
+        };
+        check();
+    },
 };

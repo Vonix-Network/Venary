@@ -16,11 +16,13 @@ module.exports = function (extDb) {
     router.use('/', cryptoRoutes(extDb));
 
     // ── Start blockchain monitor after mount ──
-    const balanceMgr = require('./crypto/balance');
-    const monitor    = require('./crypto/monitor');
-    const solEnabled = Config.get('donations.crypto.solana_enabled', false);
-    const ltcEnabled = Config.get('donations.crypto.litecoin_enabled', false);
-    if (solEnabled || ltcEnabled) {
+    // Only runs in manual HD-wallet mode — payment providers use webhooks instead.
+    const balanceMgr    = require('./crypto/balance');
+    const monitor       = require('./crypto/monitor');
+    const activeProvider = Config.get('donations.crypto.provider', 'manual');
+    const solEnabled    = Config.get('donations.crypto.solana_enabled', false);
+    const ltcEnabled    = Config.get('donations.crypto.litecoin_enabled', false);
+    if (activeProvider === 'manual' && (solEnabled || ltcEnabled)) {
         monitor.startMonitoring(extDb, balanceMgr, Config, coreDb);
     }
 
@@ -136,10 +138,16 @@ module.exports = function (extDb) {
                 `CREATE INDEX IF NOT EXISTS idx_anytime_txs_hash ON anytime_address_txs(tx_hash)`,
                 `CREATE INDEX IF NOT EXISTS idx_balance_txs_user ON balance_transactions(user_id)`,
                 `CREATE INDEX IF NOT EXISTS idx_user_crypto_addr_user ON user_crypto_addresses(user_id)`,
+                `CREATE INDEX IF NOT EXISTS idx_crypto_intents_provider_pid ON crypto_payment_intents(provider_payment_id)`,
             ];
             for (const sql of cryptoTables) {
                 await extDb.run(sql).catch(() => {}); // each is idempotent
             }
+
+            // ── Payment provider columns — added after initial schema, safe to run repeatedly ──
+            await extDb.run(`ALTER TABLE crypto_payment_intents ADD COLUMN provider TEXT DEFAULT 'manual'`).catch(() => {});
+            await extDb.run(`ALTER TABLE crypto_payment_intents ADD COLUMN provider_payment_id TEXT`).catch(() => {});
+
             console.log('[Donations] ✅ Crypto tables migration complete');
         } catch (err) {
             console.error('[Donations] Migration error:', err.message);

@@ -31,6 +31,7 @@ window.DonationsAdminPage = {
                     <button class="mc-chart-btn ${this.activeTab === 'history' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('history', this)">Donations</button>
                     <button class="mc-chart-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('settings', this)">Settings</button>
                     <button class="mc-chart-btn ${this.activeTab === 'crypto' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('crypto', this)">Crypto Settings</button>
+                    <button class="mc-chart-btn ${this.activeTab === 'payment-providers' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('payment-providers', this)">Payment Providers</button>
                     ${App.currentUser?.role === 'superadmin' ? `<button class="mc-chart-btn ${this.activeTab === 'wallet' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('wallet', this)">Wallet</button>` : ''}
                     <button class="mc-chart-btn ${this.activeTab === 'balance-settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('balance-settings', this)">Balance Settings</button>
                     <button class="mc-chart-btn ${this.activeTab === 'balances' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('balances', this)">User Balances</button>
@@ -64,6 +65,7 @@ window.DonationsAdminPage = {
             case 'history': return this.renderHistory(area);
             case 'settings': return this.renderSettings(area);
             case 'crypto': return this.renderCryptoSettings(area);
+            case 'payment-providers': return this.renderPaymentProviders(area);
             case 'wallet': return this.renderWallet(area);
             case 'balance-settings': return this.renderBalanceSettings(area);
             case 'balances': return this.renderUserBalances(area);
@@ -1419,6 +1421,334 @@ window.DonationsAdminPage = {
         } catch (err) {
             const el = document.getElementById('verify-report-body');
             if (el) el.innerHTML = `<span style="color:#ef4444">${App.escapeHtml(err.message || 'Verification failed')}</span>`;
+        }
+    },
+
+    /** Delete admin_wallet_addresses rows where the LTC address is a stringified object. */
+    async cleanMalformedAddresses() {
+        const confirmed = confirm('This will permanently delete admin wallet address rows where the LTC address was stored as a raw object (e.g. {"address":"..."}). These rows are unusable. Continue?');
+        if (!confirmed) return;
+        try {
+            const data = await API.delete('/api/ext/donations/admin/crypto/wallet/admin-addresses/malformed');
+            App.showToast(data.message || `Deleted ${data.deleted} malformed row(s)`, data.deleted > 0 ? 'success' : 'info');
+            if (data.deleted > 0) this.loadTab();
+        } catch (err) {
+            App.showToast(err.message || 'Cleanup failed', 'error');
+        }
+    },
+
+    // ── PAYMENT PROVIDERS ──
+
+    _providerSelection: null, // tracks which card is selected before save
+
+    async renderPaymentProviders(area) {
+        try {
+            const cfg = await API.get('/api/ext/donations/admin/crypto/provider/config');
+            const { active_provider, providers, config } = cfg;
+            this._providerSelection = active_provider;
+
+            const tip = (text) => `<span class="pp-tip" title="${App.escapeHtml(text)}" style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,0.1);color:var(--text-muted);font-size:0.65rem;cursor:help;margin-left:4px;font-style:normal;flex-shrink:0">ℹ</span>`;
+
+            const providerCards = providers.map(p => {
+                const isActive = p.id === active_provider;
+                const isConfigured = p.id === 'manual'
+                    ? true  // manual doesn't need API keys
+                    : (() => {
+                        const pc = config[p.id];
+                        if (!pc) return false;
+                        return Object.values(pc).some(v => v?.set === true);
+                    })();
+                const badge = isConfigured
+                    ? `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(74,222,128,0.1);color:var(--neon-green);font-weight:600">✓ Configured</span>`
+                    : `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.06);color:var(--text-muted);font-weight:600">Not set up</span>`;
+
+                const unsafeBadge = p.warning
+                    ? `<span style="font-size:0.6rem;padding:2px 6px;border-radius:8px;background:rgba(239,68,68,0.12);color:#ef4444;font-weight:700;display:block;margin-top:6px">⚠ ${p.warning.split('.')[0]}</span>`
+                    : '';
+
+                return `
+                <div class="pp-card" data-provider="${p.id}"
+                    style="cursor:pointer;padding:14px 16px;border-radius:10px;border:2px solid ${isActive ? p.color : 'rgba(255,255,255,0.07)'};
+                           background:${isActive ? `rgba(${p.id==='manual'?'239,68,68':'41,182,246'},0.05)` : 'rgba(255,255,255,0.02)'};
+                           transition:border-color 0.2s,background 0.2s;position:relative"
+                    onclick="DonationsAdminPage._selectProvider('${p.id}')">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                        <div>
+                            <div style="font-weight:700;font-size:0.95rem;color:${p.color};margin-bottom:3px">${App.escapeHtml(p.name)}</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted)">Fee: <strong style="color:var(--text-secondary)">${p.fee}</strong> · ${p.coins.map(c=>c.toUpperCase()).join(' + ')}</div>
+                            ${unsafeBadge}
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                            ${badge}
+                            ${isActive ? `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:${p.color}22;color:${p.color};font-weight:700">● Active</span>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            area.innerHTML = `
+            <div style="display:grid;gap:1.5rem">
+
+                <!-- Provider Selection -->
+                <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                    <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.06)">
+                        <h2 style="margin:0;font-size:1.1rem;font-weight:700">Payment Provider</h2>
+                        <p style="color:var(--text-muted);margin:4px 0 0;font-size:0.82rem">Select how crypto payments are processed. Click a card, configure its API keys below, then save.</p>
+                    </div>
+                    <div style="padding:1rem 1.25rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px" id="pp-cards">
+                        ${providerCards}
+                    </div>
+                </div>
+
+                <!-- Config Panel -->
+                <div id="pp-config-panel" style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                    ${this._renderProviderConfigPanel(active_provider, config, providers)}
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                    <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
+                        onclick="DonationsAdminPage._testProviderConnection()">⚡ Test Connection</button>
+                    <button class="mc-btn" style="background:rgba(74,222,128,0.1);color:var(--neon-green);border-color:rgba(74,222,128,0.3)"
+                        onclick="DonationsAdminPage._saveProviderSettings()">💾 Save Settings</button>
+                    <span id="pp-save-status" style="font-size:0.8rem;color:var(--text-muted)"></span>
+                </div>
+
+                <!-- Dashboard -->
+                <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                    <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center">
+                        <div>
+                            <h2 style="margin:0;font-size:1.1rem;font-weight:700">Provider Dashboard</h2>
+                            <p style="color:var(--text-muted);margin:4px 0 0;font-size:0.82rem">Recent payments from the active provider.</p>
+                        </div>
+                        <button class="mc-btn" style="padding:4px 10px;font-size:0.75rem;background:rgba(255,255,255,0.04)"
+                            onclick="DonationsAdminPage._loadProviderDashboard()">↻ Refresh</button>
+                    </div>
+                    <div id="pp-dashboard" style="padding:1rem 1.25rem">
+                        <div style="text-align:center;color:var(--text-muted);padding:1rem;font-size:0.85rem">Loading dashboard…</div>
+                    </div>
+                </div>
+
+            </div>`;
+
+            this._loadProviderDashboard();
+        } catch (err) {
+            area.innerHTML = `<div style="padding:2rem;color:var(--neon-magenta);text-align:center">${App.escapeHtml(err.message || 'Failed to load provider settings')}</div>`;
+        }
+    },
+
+    _renderProviderConfigPanel(providerId, config, providers) {
+        const tip = (text) => `<span title="${App.escapeHtml(text)}" style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,0.1);color:var(--text-muted);font-size:0.65rem;cursor:help;margin-left:4px;font-style:normal;flex-shrink:0">ℹ</span>`;
+        const meta = (providers || []).find(p => p.id === providerId) || { name: providerId, color: '#fff', docsUrl: null, warning: null };
+
+        const pw = (id, label, tipText, placeholder) => `
+            <div style="margin-bottom:12px">
+                <label style="font-size:0.8rem;color:var(--text-secondary);display:flex;align-items:center;gap:2px;margin-bottom:5px">
+                    ${App.escapeHtml(label)}${tip(tipText)}
+                </label>
+                <input type="password" id="${id}" class="input-field" placeholder="${App.escapeHtml(placeholder || '••••••••')}"
+                    style="max-width:380px;font-family:monospace;font-size:0.82rem">
+            </div>`;
+
+        const webhookUrl = `${window.location.origin}/api/ext/donations/crypto/webhook/${providerId}`;
+
+        let fields = '';
+        if (providerId === 'manual') {
+            fields = `
+                <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:8px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2)">
+                    <span style="font-size:1.4rem;flex-shrink:0">⚠️</span>
+                    <div>
+                        <div style="font-weight:700;color:#ef4444;font-size:0.9rem;margin-bottom:4px">Experimental — Not Recommended for Production</div>
+                        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.5">
+                            Manual HD Wallet mode runs a blockchain polling loop on your server. You are responsible for securing your seed phrase — if lost, funds are unrecoverable.
+                            Verify your addresses with <strong>Solflare</strong> (SOL) and <strong>Electrum-LTC</strong> (LTC) using your mnemonic.
+                        </div>
+                        <div style="margin-top:8px">
+                            <a href="#" onclick="DonationsAdminPage.switchTab('crypto',null);return false"
+                               style="font-size:0.8rem;color:var(--neon-cyan);text-decoration:none">→ Go to Crypto Settings to manage your seed phrase</a>
+                        </div>
+                    </div>
+                </div>`;
+        } else if (providerId === 'nowpayments') {
+            const c = config?.nowpayments || {};
+            fields = `
+                ${pw('pp-np-api-key', 'API Key', 'Your NOWPayments API key. Find it at: nowpayments.io → My Account → API Keys', c.api_key?.set ? `✓ Set (${c.api_key.preview})` : 'Enter API key')}
+                ${pw('pp-np-ipn-secret', 'IPN Secret', 'Used to verify webhook signatures. Set this in NOWPayments → API Settings → IPN Secret. Must match what you set there.', c.ipn_secret?.set ? `✓ Set (${c.ipn_secret.preview})` : 'Enter IPN secret')}
+                <div style="margin-bottom:12px">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.85rem">
+                        <input type="checkbox" id="pp-np-sandbox" ${config?.nowpayments?.sandbox ? 'checked' : ''} style="width:16px;height:16px">
+                        Sandbox mode ${tip('Use the NOWPayments sandbox API for testing. Payments won\'t be real. Sandbox keys differ from production keys — get them at: nowpayments.io/sandbox')}
+                    </label>
+                </div>`;
+        } else if (providerId === 'coinpayments') {
+            const c = config?.coinpayments || {};
+            fields = `
+                ${pw('pp-cp-pub', 'Public Key', 'Your CoinPayments API public key. Get it at: coinpayments.net → Account → API Keys → Create API Key', c.public_key?.set ? `✓ Set (${c.public_key.preview})` : 'Enter public key')}
+                ${pw('pp-cp-priv', 'Private Key', 'Your CoinPayments API private key (shown only once on creation). Store it securely.', c.private_key?.set ? `✓ Set (${c.private_key.preview})` : 'Enter private key')}
+                ${pw('pp-cp-ipn', 'IPN Secret', 'A secret you define for IPN signature verification. Set the same value in CoinPayments → Account → Merchant Settings → IPN Secret.', c.ipn_secret?.set ? `✓ Set (${c.ipn_secret.preview})` : 'Enter IPN secret')}
+                ${pw('pp-cp-merchant', 'Merchant ID', 'Your CoinPayments merchant ID. Found at: coinpayments.net → Account → Merchant Settings → Merchant ID.', c.merchant_id?.set ? `✓ Set (${c.merchant_id.preview})` : 'Enter merchant ID')}`;
+        } else if (providerId === 'plisio') {
+            const c = config?.plisio || {};
+            fields = `
+                ${pw('pp-pl-api', 'API Key', 'Your Plisio secret API key. Get it at: plisio.net → Settings → API. Grants full account access — keep it secret.', c.api_key?.set ? `✓ Set (${c.api_key.preview})` : 'Enter API key')}
+                ${pw('pp-pl-ipn', 'IPN Secret / Callback Key', 'Optional separate key for IPN verification. If blank, the API key is used. Set under: plisio.net → Stores → your store → Callback URL key.', c.ipn_key?.set ? `✓ Set (${c.ipn_key.preview})` : 'Enter IPN key (optional)')}`;
+        } else if (providerId === 'oxapay') {
+            const c = config?.oxapay || {};
+            fields = `
+                ${pw('pp-ox-merchant', 'Merchant Key', 'Your Oxapay merchant API key. Get it at: oxapay.com → Merchant API → Create Merchant Key. Used to create invoices.', c.merchant_key?.set ? `✓ Set (${c.merchant_key.preview})` : 'Enter merchant key')}
+                ${pw('pp-ox-api', 'API Key (Webhook Verify)', 'Used to verify incoming webhook signatures. Found at: oxapay.com → API Keys. Different from the merchant key.', c.api_key?.set ? `✓ Set (${c.api_key.preview})` : 'Enter API key')}`;
+        }
+
+        const docsLink = meta.docsUrl
+            ? `<a href="${App.escapeHtml(meta.docsUrl)}" target="_blank" rel="noopener" style="font-size:0.78rem;color:var(--neon-cyan);text-decoration:none">→ View ${App.escapeHtml(meta.name)} API docs ↗</a>`
+            : '';
+
+        const webhookBlock = providerId !== 'manual' ? `
+            <div style="margin-top:16px;padding:12px 14px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px;display:flex;align-items:center;gap:4px">
+                    Webhook / IPN URL ${tip('Paste this URL into your payment provider\'s dashboard as the callback/IPN/webhook URL. The provider will POST payment confirmations to this endpoint.')}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <code style="font-size:0.75rem;color:var(--neon-cyan);background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;word-break:break-all">${App.escapeHtml(webhookUrl)}</code>
+                    <button class="mc-btn" style="padding:3px 8px;font-size:0.7rem"
+                        onclick="navigator.clipboard.writeText('${App.escapeHtml(webhookUrl)}').then(()=>App.showToast('Copied!','success'))">Copy</button>
+                </div>
+            </div>` : '';
+
+        return `
+            <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center">
+                <h2 style="margin:0;font-size:1.05rem;font-weight:700;color:${meta.color}">${App.escapeHtml(meta.name)} Configuration</h2>
+                ${docsLink}
+            </div>
+            <div style="padding:1.25rem">
+                ${fields}
+                ${webhookBlock}
+            </div>`;
+    },
+
+    _selectProvider(id) {
+        this._providerSelection = id;
+        // Update card borders
+        document.querySelectorAll('.pp-card').forEach(el => {
+            const pid = el.dataset.provider;
+            const meta = { manual:'#ef4444', nowpayments:'#29b6f6', coinpayments:'#22c55e', plisio:'#a78bfa', oxapay:'#fb923c' };
+            const color = meta[pid] || '#fff';
+            const active = pid === id;
+            el.style.borderColor = active ? color : 'rgba(255,255,255,0.07)';
+            el.style.background  = active ? `${color}0d` : 'rgba(255,255,255,0.02)';
+        });
+        // Re-render config panel
+        const panel = document.getElementById('pp-config-panel');
+        if (panel) {
+            // We need the full config — fetch it fresh or reuse cached
+            API.get('/api/ext/donations/admin/crypto/provider/config').then(cfg => {
+                panel.innerHTML = this._renderProviderConfigPanel(id, cfg.config, cfg.providers);
+            }).catch(() => {});
+        }
+    },
+
+    async _testProviderConnection() {
+        const id = this._providerSelection || 'manual';
+        const btn = event?.target;
+        if (btn) { btn.disabled = true; btn.textContent = 'Testing…'; }
+        try {
+            const result = await API.get(`/api/ext/donations/admin/crypto/provider/test/${id}`);
+            if (result.ok) {
+                App.showToast(`✓ ${result.latency_ms}ms — connection OK`, 'success');
+            } else {
+                App.showToast(result.message || 'Connection failed', 'error');
+            }
+        } catch (err) {
+            App.showToast(err.message || 'Test failed', 'error');
+        }
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ Test Connection'; }
+    },
+
+    async _saveProviderSettings() {
+        const id = this._providerSelection;
+        if (!id) { App.showToast('Select a provider first', 'warning'); return; }
+        const btn = event?.target;
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+        const g = (elId) => document.getElementById(elId)?.value?.trim() || undefined;
+        const cb = (elId) => document.getElementById(elId)?.checked;
+
+        const payload = { provider: id };
+        if (id === 'nowpayments') {
+            if (g('pp-np-api-key')) payload.nowpayments_api_key    = g('pp-np-api-key');
+            if (g('pp-np-ipn-secret')) payload.nowpayments_ipn_secret = g('pp-np-ipn-secret');
+            payload.nowpayments_sandbox = cb('pp-np-sandbox') || false;
+        } else if (id === 'coinpayments') {
+            if (g('pp-cp-pub'))  payload.coinpayments_public_key  = g('pp-cp-pub');
+            if (g('pp-cp-priv')) payload.coinpayments_private_key = g('pp-cp-priv');
+            if (g('pp-cp-ipn'))  payload.coinpayments_ipn_secret  = g('pp-cp-ipn');
+            if (g('pp-cp-merchant')) payload.coinpayments_merchant_id = g('pp-cp-merchant');
+        } else if (id === 'plisio') {
+            if (g('pp-pl-api')) payload.plisio_api_key = g('pp-pl-api');
+            if (g('pp-pl-ipn')) payload.plisio_ipn_key = g('pp-pl-ipn');
+        } else if (id === 'oxapay') {
+            if (g('pp-ox-merchant')) payload.oxapay_merchant_key = g('pp-ox-merchant');
+            if (g('pp-ox-api'))      payload.oxapay_api_key      = g('pp-ox-api');
+        }
+
+        try {
+            await API.put('/api/ext/donations/admin/crypto/provider/config', payload);
+            App.showToast('Provider settings saved', 'success');
+            const status = document.getElementById('pp-save-status');
+            if (status) status.textContent = `Saved at ${new Date().toLocaleTimeString()}`;
+            // Reload tab to reflect new active provider
+            this.loadTab();
+        } catch (err) {
+            App.showToast(err.message || 'Save failed', 'error');
+        }
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Settings'; }
+    },
+
+    async _loadProviderDashboard() {
+        const el = document.getElementById('pp-dashboard');
+        if (!el) return;
+        el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:1rem;font-size:0.85rem">Loading…</div>';
+        try {
+            const data = await API.get('/api/ext/donations/admin/crypto/provider/dashboard');
+            const payments = data.recent_payments || [];
+
+            const statusBadge = s => {
+                const map = { completed:'var(--neon-green)', finished:'var(--neon-green)', confirmed:'var(--neon-green)', Paid:'var(--neon-green)',
+                              pending:'#eab308', waiting:'#eab308', failed:'#ef4444', expired:'#ef4444' };
+                const color = map[s] || 'var(--text-muted)';
+                return `<span style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:${color}18;color:${color};font-weight:600">${App.escapeHtml(s||'—')}</span>`;
+            };
+
+            const tableRows = payments.length ? payments.map(p => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.03)">
+                    <td style="padding:8px 10px;font-size:0.75rem;color:var(--text-muted)">${App.escapeHtml(p.created_at ? new Date(p.created_at).toLocaleString() : '—')}</td>
+                    <td style="padding:8px 10px;font-family:monospace;color:var(--neon-green)">$${parseFloat(p.amount_usd||0).toFixed(2)}</td>
+                    <td style="padding:8px 10px;font-size:0.78rem;color:var(--text-secondary)">${App.escapeHtml((p.coin||'').toUpperCase())}</td>
+                    <td style="padding:8px 10px">${statusBadge(p.status)}</td>
+                    <td style="padding:8px 10px;font-family:monospace;font-size:0.68rem;color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${App.escapeHtml(p.provider_id||'')}">
+                        ${App.escapeHtml(p.provider_id ? p.provider_id.slice(0,16)+'…' : '—')}
+                    </td>
+                </tr>`).join('') : `<tr><td colspan="5" style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.85rem">No recent payments found.</td></tr>`;
+
+            el.innerHTML = `
+                <div style="overflow-x:auto">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+                        <thead>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Date</th>
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Amount</th>
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Coin</th>
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Status</th>
+                                <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">Provider ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+                ${data.balance_info ? `<div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.03);font-size:0.8rem;color:var(--text-secondary)">💰 Balance: ${App.escapeHtml(String(data.balance_info))}</div>` : ''}
+                ${data.payout_info  ? `<div style="margin-top:6px;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.02);font-size:0.75rem;color:var(--text-muted)">ℹ ${App.escapeHtml(String(data.payout_info))}</div>` : ''}`;
+        } catch (err) {
+            el.innerHTML = `<div style="padding:1rem;color:#ef4444;font-size:0.85rem">${App.escapeHtml(err.message || 'Failed to load dashboard')}</div>`;
         }
     },
 
