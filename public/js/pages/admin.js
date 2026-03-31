@@ -68,7 +68,13 @@ var AdminPage = {
       '</div>';
 
     this.bindTabs();
-    this.showOverview();
+
+    // Restore the tab that was active before the refresh (reads ?tab= from the URL)
+    const _adminQs  = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const _adminTab = _adminQs.get('tab') || 'overview';
+    const _adminBtn = document.querySelector(`.admin-nav-item[data-tab="${_adminTab}"]`);
+    if (_adminBtn) _adminBtn.click();
+    else this.showOverview();
   },
 
   showMoreMenu() {
@@ -95,6 +101,10 @@ var AdminPage = {
         document.querySelectorAll('.admin-nav-item').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         const tab = btn.dataset.tab;
+        if (!tab) return; // back button and other non-tab items have no data-tab
+
+        // Silently update the URL so refresh restores this tab (no hashchange fired)
+        history.replaceState(null, '', '#/admin?tab=' + tab);
         
         // Update title/subtitle based on tab
         const titleEl = document.getElementById('admin-view-title');

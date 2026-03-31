@@ -40,6 +40,14 @@ window.DonationsAdminPage = {
             </div>`;
 
         container.innerHTML = html;
+
+        // Restore sub-tab from URL on render (e.g. #/admin?tab=donations&subtab=crypto)
+        const _dQs     = new URLSearchParams(window.location.hash.split('?')[1] || '');
+        const _subtab  = _dQs.get('subtab');
+        if (_subtab && document.querySelector(`.mc-chart-btn[onclick*="'${_subtab}'"]`)) {
+            this.activeTab = _subtab;
+        }
+
         this.loadTab();
     },
 
@@ -49,6 +57,10 @@ window.DonationsAdminPage = {
             btn.closest('.mc-chart-controls').querySelectorAll('.mc-chart-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         }
+        // Silently update URL so refresh restores this sub-tab
+        const _qs = new URLSearchParams(window.location.hash.split('?')[1] || '');
+        _qs.set('subtab', tab);
+        history.replaceState(null, '', '#/admin?' + _qs.toString());
         this.loadTab();
     },
 
