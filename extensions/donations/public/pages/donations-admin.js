@@ -609,6 +609,29 @@ window.DonationsAdminPage = {
             area.innerHTML = `
                 <div style="display:grid;gap:1.5rem">
 
+                    <!-- ── Master Enable/Disable Switch ── -->
+                    <div style="background:var(--bg-card);border:1px solid ${cfg.payments_enabled ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.08)'};border-radius:12px;padding:1.1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;box-shadow:0 4px 16px rgba(0,0,0,0.2)">
+                        <div>
+                            <div style="font-size:1rem;font-weight:700;color:var(--text-primary);margin-bottom:3px">
+                                Crypto Payments
+                                <span style="margin-left:8px;font-size:0.7rem;padding:2px 8px;border-radius:10px;font-weight:700;
+                                    background:${cfg.payments_enabled ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)'};
+                                    color:${cfg.payments_enabled ? 'var(--neon-green)' : 'var(--text-muted)'}">
+                                    ${cfg.payments_enabled ? '● Enabled' : '○ Disabled'}
+                                </span>
+                            </div>
+                            <div style="font-size:0.8rem;color:var(--text-muted)">When disabled, the /donate page shows no crypto option regardless of provider or coin settings.</div>
+                        </div>
+                        <button id="crypto-master-toggle" class="mc-btn" style="white-space:nowrap;flex-shrink:0;
+                            background:${cfg.payments_enabled ? 'rgba(239,68,68,0.1)' : 'rgba(74,222,128,0.1)'};
+                            color:${cfg.payments_enabled ? '#ef4444' : 'var(--neon-green)'};
+                            border-color:${cfg.payments_enabled ? 'rgba(239,68,68,0.3)' : 'rgba(74,222,128,0.3)'};
+                            padding:9px 20px;font-weight:700"
+                            onclick="DonationsAdminPage._toggleCryptoMasterSwitch(${!cfg.payments_enabled})">
+                            ${cfg.payments_enabled ? '⛔ Disable' : '✅ Enable'}
+                        </button>
+                    </div>
+
                     <!-- ── Payment Provider ── -->
                     <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
                         <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.06)">
@@ -787,6 +810,19 @@ window.DonationsAdminPage = {
             this._loadCoinsGrid(active_provider, cfg.enabled_coins || ['sol', 'ltc']);
         } catch (err) {
             area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load crypto settings.</p>';
+        }
+    },
+
+    async _toggleCryptoMasterSwitch(enable) {
+        const btn = document.getElementById('crypto-master-toggle');
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+        try {
+            await API.put('/api/ext/donations/admin/crypto/config', { payments_enabled: enable });
+            App.showToast(enable ? 'Crypto payments enabled' : 'Crypto payments disabled', enable ? 'success' : 'info');
+            this.loadTab('crypto');
+        } catch {
+            App.showToast('Failed to update setting', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = enable ? '✅ Enable' : '⛔ Disable'; }
         }
     },
 

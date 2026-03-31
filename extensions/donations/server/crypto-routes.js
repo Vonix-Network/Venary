@@ -592,6 +592,7 @@ module.exports = function cryptoRoutes(extDb) {
                 litecoin_rpc_secondary: Config.get('donations.crypto.litecoin_rpc_secondary', ''),
                 solana_webhook_secret_set:   !!Config.get('donations.crypto.solana_webhook_secret'),
                 litecoin_webhook_secret_set: !!Config.get('donations.crypto.litecoin_webhook_secret'),
+                payments_enabled: Config.get('donations.crypto.payments_enabled', false),
                 balance_display_currencies: Config.get('donations.crypto.balance_display_currencies', ['usd','sol','ltc','eur','gbp']),
                 enabled_coins: Config.get('donations.crypto.enabled_coins', ['sol', 'ltc']),
                 // Wallet info — superadmin only
@@ -626,6 +627,7 @@ module.exports = function cryptoRoutes(extDb) {
             if (solana_webhook_secret !== undefined)   Config.set('donations.crypto.solana_webhook_secret', solana_webhook_secret);
             if (litecoin_webhook_secret !== undefined) Config.set('donations.crypto.litecoin_webhook_secret', litecoin_webhook_secret);
             if (Array.isArray(balance_display_currencies)) Config.set('donations.crypto.balance_display_currencies', balance_display_currencies);
+            if (req.body.payments_enabled !== undefined) Config.set('donations.crypto.payments_enabled', !!req.body.payments_enabled);
             if (Array.isArray(enabled_coins)) {
                 const cleaned = enabled_coins.map(c => String(c).toLowerCase().trim()).filter(c => /^[a-z0-9_-]{1,16}$/.test(c));
                 Config.set('donations.crypto.enabled_coins', cleaned);
@@ -1222,18 +1224,18 @@ module.exports = function cryptoRoutes(extDb) {
      * Used by the public donate page to decide whether to show the crypto payment option.
      */
     router.get('/crypto/provider-public-status', (req, res) => {
-        const provider   = Config.get('donations.crypto.provider', 'manual');
-        const solEnabled = Config.get('donations.crypto.solana_enabled', false);
-        const ltcEnabled = Config.get('donations.crypto.litecoin_enabled', false);
-        const coins = [];
-        if (solEnabled) coins.push('sol');
-        if (ltcEnabled) coins.push('ltc');
+        const paymentsEnabled = Config.get('donations.crypto.payments_enabled', false);
+        if (!paymentsEnabled) {
+            return res.json({ crypto_enabled: false, provider: null, provider_name: null, coins: [] });
+        }
+        const provider    = Config.get('donations.crypto.provider', 'manual');
+        const enabledCoins = Config.get('donations.crypto.enabled_coins', ['sol', 'ltc']);
         const meta = PROVIDERS.find(p => p.id === provider) || PROVIDERS[0];
         res.json({
-            crypto_enabled: coins.length > 0,
+            crypto_enabled: enabledCoins.length > 0,
             provider,
             provider_name: meta.name,
-            coins,
+            coins: enabledCoins,
         });
     });
 
