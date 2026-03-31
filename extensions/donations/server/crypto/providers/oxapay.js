@@ -8,8 +8,7 @@
 const crypto   = require('crypto');
 const BASE_URL = 'https://api.oxapay.com';
 
-/** Map internal coin codes to Oxapay currency codes. */
-const COIN_MAP = { sol: 'SOL', ltc: 'LTC' };
+// Oxapay uses uppercase currency codes (e.g. 'BTC', 'SOL', 'LTC').
 
 async function _post(path, body, Config) {
     const merchantKey = Config.get('donations.crypto.oxapay_merchant_key', '');
@@ -34,9 +33,22 @@ function isConfigured(Config) {
     return !!(Config.get('donations.crypto.oxapay_merchant_key'));
 }
 
+/**
+ * getSupportedCurrencies — fetches the live allowed coin list from Oxapay.
+ * Returns lowercase ticker strings.
+ */
+async function getSupportedCurrencies(Config) {
+    try {
+        const data = await _post('/merchants/allowedCoins', {}, Config);
+        const list = Array.isArray(data?.allowedCoins) ? data.allowedCoins : [];
+        return list.map(c => String(c).toLowerCase()).filter(Boolean).sort();
+    } catch {
+        return ['btc', 'eth', 'ltc', 'sol', 'usdt', 'usdc', 'bnb', 'trx', 'doge', 'bch', 'xmr'];
+    }
+}
+
 async function createPayment({ amount_usd, coin, order_id, notify_url, success_url, description }, Config) {
-    const currency = COIN_MAP[coin];
-    if (!currency) throw new Error(`Oxapay: unsupported coin ${coin}`);
+    const currency = coin.toUpperCase(); // Oxapay uses uppercase tickers
 
     const data = await _post('/merchants/request', {
         amount:      amount_usd,
@@ -130,4 +142,4 @@ function getProviderMeta() {
     return { id: 'oxapay', name: 'Oxapay', fee: '0.4%', color: '#fb923c' };
 }
 
-module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta };
+module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta, getSupportedCurrencies };

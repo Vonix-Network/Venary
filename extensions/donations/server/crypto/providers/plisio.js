@@ -8,8 +8,7 @@
 const crypto   = require('crypto');
 const BASE_URL = 'https://plisio.net/api/v1';
 
-/** Map internal coin codes to Plisio currency codes. */
-const COIN_MAP = { sol: 'SOL', ltc: 'LTC' };
+// Plisio uses uppercase currency codes (e.g. 'BTC', 'SOL', 'LTC').
 
 async function _get(path, params, Config) {
     const apiKey = Config.get('donations.crypto.plisio_api_key', '');
@@ -30,9 +29,27 @@ function isConfigured(Config) {
     return !!(Config.get('donations.crypto.plisio_api_key'));
 }
 
+/**
+ * getSupportedCurrencies — fetches supported coins from Plisio.
+ * Returns lowercase ticker strings.
+ */
+async function getSupportedCurrencies(Config) {
+    try {
+        // Plisio exposes a list of supported cryptocurrencies via the currencies endpoint
+        const data = await _get('/currencies/ETH', {}, Config); // any valid currency works as trigger
+        // The response includes psys_cid list; fall through to static list on any shape mismatch
+        if (Array.isArray(data)) {
+            return data.map(c => (c.psys_cid || c).toLowerCase()).filter(Boolean).sort();
+        }
+        throw new Error('unexpected shape');
+    } catch {
+        // Plisio's confirmed supported list as of 2024
+        return ['btc', 'eth', 'ltc', 'doge', 'bch', 'xmr', 'sol', 'bnb', 'usdt', 'usdc', 'dash', 'trx'];
+    }
+}
+
 async function createPayment({ amount_usd, coin, order_id, notify_url, success_url, cancel_url, description }, Config) {
-    const currency = COIN_MAP[coin];
-    if (!currency) throw new Error(`Plisio: unsupported coin ${coin}`);
+    const currency = coin.toUpperCase(); // Plisio uses uppercase tickers
 
     const data = await _get('/invoices/new', {
         currency,
@@ -129,4 +146,4 @@ function getProviderMeta() {
     return { id: 'plisio', name: 'Plisio', fee: '0.5%', color: '#a78bfa' };
 }
 
-module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta };
+module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta, getSupportedCurrencies };

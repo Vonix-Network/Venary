@@ -8,8 +8,7 @@
 const crypto  = require('crypto');
 const BASE_URL = 'https://www.coinpayments.net/api.php';
 
-/** Map internal coin codes to CoinPayments currency codes. */
-const COIN_MAP = { sol: 'SOL', ltc: 'LTC' };
+// CoinPayments uses uppercase currency codes (e.g. 'BTC', 'SOL', 'LTC').
 
 /**
  * Sign a CoinPayments API request with HMAC-SHA512.
@@ -49,9 +48,21 @@ function isConfigured(Config) {
               Config.get('donations.crypto.coinpayments_merchant_id'));
 }
 
+/**
+ * getSupportedCurrencies — fetches the live accepted-coins list from CoinPayments.
+ * Returns lowercase ticker strings.
+ */
+async function getSupportedCurrencies(Config) {
+    try {
+        const result = await _call({ cmd: 'rates', accepted: 1, short: 1 }, Config);
+        return Object.keys(result || {}).map(c => c.toLowerCase()).filter(Boolean).sort();
+    } catch {
+        return ['btc', 'eth', 'ltc', 'sol', 'usdt', 'usdc', 'bnb', 'xmr', 'doge', 'bch'];
+    }
+}
+
 async function createPayment({ amount_usd, coin, order_id, notify_url, success_url, cancel_url, description }, Config) {
-    const currency2 = COIN_MAP[coin];
-    if (!currency2) throw new Error(`CoinPayments: unsupported coin ${coin}`);
+    const currency2 = coin.toUpperCase(); // CoinPayments uses uppercase tickers
 
     const result = await _call({
         cmd:            'create_transaction',
@@ -158,4 +169,4 @@ function getProviderMeta() {
     return { id: 'coinpayments', name: 'CoinPayments', fee: '0.5%', color: '#22c55e' };
 }
 
-module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta };
+module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta, getSupportedCurrencies };

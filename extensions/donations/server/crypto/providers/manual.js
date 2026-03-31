@@ -59,6 +59,13 @@ async function getDashboardData(Config, extDb) {
  * pingTest — returns whether the seed is configured.
  * @param {object} Config
  */
+/**
+ * getSupportedCurrencies — manual mode only supports SOL and LTC (HD wallet chains).
+ */
+async function getSupportedCurrencies() {
+    return ['ltc', 'sol'];
+}
+
 async function pingTest(Config) {
     const ok = isConfigured(Config);
     return { ok, message: ok ? 'Seed phrase is configured.' : 'No seed phrase configured. Set one in Crypto Settings.' };
@@ -68,4 +75,4 @@ function getProviderMeta() {
     return { id: 'manual', name: 'Manual HD Wallet', fee: '0%', color: '#ef4444' };
 }
 
-module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta };
+module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta, getSupportedCurrencies };

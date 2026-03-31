@@ -9,8 +9,7 @@ const crypto = require('crypto');
 const BASE_URL      = 'https://api.nowpayments.io/v1';
 const BASE_SANDBOX  = 'https://api-sandbox.nowpayments.io/v1';
 
-/** Map internal coin codes to NOWPayments currency codes. */
-const COIN_MAP = { sol: 'sol', ltc: 'ltc' };
+// NOWPayments uses lowercase currency codes (e.g. 'btc', 'sol', 'ltc').
 
 function _base(Config) {
     return Config.get('donations.crypto.nowpayments_sandbox', false) ? BASE_SANDBOX : BASE_URL;
@@ -45,9 +44,22 @@ function isConfigured(Config) {
  * @param {{ amount_usd, coin, order_id, notify_url, success_url, cancel_url, description }} opts
  * @param {object} Config
  */
+/**
+ * getSupportedCurrencies — fetches the full live currency list from NOWPayments.
+ * Returns an array of lowercase coin ticker strings (e.g. ['btc','eth','sol','ltc',...]).
+ */
+async function getSupportedCurrencies(Config) {
+    try {
+        const data = await _fetch(`${_base(Config)}/currencies`, { headers: _headers(Config) });
+        const list = Array.isArray(data?.currencies) ? data.currencies : [];
+        return list.map(c => String(c).toLowerCase()).filter(Boolean).sort();
+    } catch {
+        return ['btc', 'eth', 'ltc', 'sol', 'usdt', 'usdc', 'bnb', 'xmr', 'doge', 'trx'];
+    }
+}
+
 async function createPayment({ amount_usd, coin, order_id, notify_url, success_url, cancel_url, description }, Config) {
-    const pay_currency = COIN_MAP[coin];
-    if (!pay_currency) throw new Error(`NOWPayments: unsupported coin ${coin}`);
+    const pay_currency = coin.toLowerCase(); // NOWPayments uses lowercase tickers
 
     const body = {
         price_amount:    amount_usd,
@@ -158,4 +170,4 @@ function getProviderMeta() {
     return { id: 'nowpayments', name: 'NOWPayments', fee: '0.5%', color: '#29b6f6' };
 }
 
-module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta };
+module.exports = { isConfigured, createPayment, verifyWebhook, getDashboardData, pingTest, getProviderMeta, getSupportedCurrencies };

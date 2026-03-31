@@ -101,6 +101,28 @@ module.exports = function cryptoRoutes(extDb) {
     // PUBLIC — RATES
     // ══════════════════════════════════════════════════════
 
+    /**
+     * GET /crypto/currencies — list of coins the active provider accepts.
+     * Public endpoint. Results are cached for 5 minutes to avoid hammering provider APIs.
+     */
+    const _currencyCache = { data: null, at: 0 };
+    router.get('/crypto/currencies', async (req, res) => {
+        try {
+            if (_currencyCache.data && Date.now() - _currencyCache.at < 300_000) {
+                return res.json(_currencyCache.data);
+            }
+            const provider = getProvider(Config);
+            const currencies = await provider.getSupportedCurrencies(Config);
+            const result = { currencies, provider: Config.get('donations.crypto.provider', 'manual') };
+            _currencyCache.data = result;
+            _currencyCache.at   = Date.now();
+            res.json(result);
+        } catch (err) {
+            console.error('[Donations/Crypto] GET /crypto/currencies error:', err);
+            res.status(500).json({ error: 'Failed to load supported currencies' });
+        }
+    });
+
     /** GET /crypto/rates — current SOL/USD + LTC/USD */
     router.get('/crypto/rates', async (req, res) => {
         try {
@@ -120,13 +142,24 @@ module.exports = function cryptoRoutes(extDb) {
     /** POST /crypto/intent — create a payment intent (manual or provider) */
     router.post('/crypto/intent', intentLimiter, optionalAuth, async (req, res) => {
         try {
-            const { rank_id, amount, coin, mc_username } = req.body;
-            if (!coin || !['sol', 'ltc'].includes(coin))
-                return res.status(400).json({ error: 'coin must be "sol" or "ltc"' });
+            const { rank_id, amount, mc_username } = req.body;
+            const coin = (req.body.coin || '').toLowerCase().trim();
+            const activeProvider = Config.get('donations.crypto.provider', 'manual');
 
-            const chainEnabled = Config.get(`donations.crypto.${coin === 'sol' ? 'solana' : 'litecoin'}_enabled`, false);
-            if (!chainEnabled)
-                return res.status(503).json({ error: `${coin.toUpperCase()} payments are not enabled` });
+            if (!coin) return res.status(400).json({ error: 'coin is required' });
+
+            if (activeProvider === 'manual') {
+                // Manual HD wallet only supports SOL and LTC
+                if (!['sol', 'ltc'].includes(coin))
+                    return res.status(400).json({ error: 'Manual mode only supports "sol" or "ltc"' });
+                const chainEnabled = Config.get(`donations.crypto.${coin === 'sol' ? 'solana' : 'litecoin'}_enabled`, false);
+                if (!chainEnabled)
+                    return res.status(503).json({ error: `${coin.toUpperCase()} payments are not enabled` });
+            } else {
+                // Hosted providers: validate coin against live supported list (with cache)
+                if (!/^[a-z0-9_-]{1,16}$/.test(coin))
+                    return res.status(400).json({ error: 'Invalid coin ticker' });
+            }
 
             // Validate rank or custom amount
             let rankRow = null, usdAmount = 0;
@@ -161,7 +194,6 @@ module.exports = function cryptoRoutes(extDb) {
             const { crypto_amount, rate_used } = await exchange.lockRate(usdAmount, coin);
 
             // ── Payment provider fork ──
-            const activeProvider = Config.get('donations.crypto.provider', 'manual');
             if (activeProvider !== 'manual') {
                 const intentId   = uuidv4();
                 const expiresAt  = new Date(Date.now() + 240 * 60 * 60 * 1000).toISOString();
