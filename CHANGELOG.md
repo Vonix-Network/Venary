@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Donations Extension** â€” Added a "Ranked Users" tab in the admin panel to view users with active ranks.
 
+### Fixed
+- **Navigation** â€” Fixed an issue where the profile picture dropdown menu was transparent by restoring the missing `.notifications-dropdown` CSS selector.
+
 ### Changed
 - **Admin Dashboard** â€” Full redesign of the Extensions management dashboard, replacing the basic list with a modern glassmorphic grid layout, active count stats, and enhanced visual hierarchy.
 - **Donations Extension** â€” Redesigned the "Overview" and "Ranks" tabs in the admin panel with modern glassmorphic cards and improved visual hierarchy.

@@ -936,6 +936,8 @@ textarea.input-field {
     animation: fadeUp 0.2s ease;
     min-width: 180px;
 }
+
+.notifications-dropdown {
     position: absolute;
     bottom: 50px;
     left: 0;
