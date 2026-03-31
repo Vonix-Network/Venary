@@ -67,13 +67,20 @@ function verifyWebhook(rawBody, headers, Config) {
     let parsed;
     try { parsed = JSON.parse(rawBody.toString()); } catch { throw new Error('Plisio: invalid JSON body'); }
 
-    if (secret) {
-        const { verify_hash, ...rest } = parsed;
-        const sorted = JSON.stringify(Object.fromEntries(Object.entries(rest).sort()));
-        const expected = crypto.createHmac('sha1', secret).update(sorted).digest('hex');
-        if (expected !== verify_hash) {
+    if (!secret) {
+        throw new Error('Plisio: IPN secret not configured — refusing to process unverified webhook');
+    }
+    const { verify_hash, ...rest } = parsed;
+    const sorted = JSON.stringify(Object.fromEntries(Object.entries(rest).sort()));
+    const expected = crypto.createHmac('sha1', secret).update(sorted).digest('hex');
+    // Timing-safe comparison to prevent HMAC oracle attacks
+    try {
+        if (!crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(verify_hash || '', 'hex'))) {
             throw new Error('Plisio: invalid verify_hash');
         }
+    } catch (e) {
+        if (e.message === 'Plisio: invalid verify_hash') throw e;
+        throw new Error('Plisio: invalid verify_hash'); // length mismatch = tampered
     }
 
     return {

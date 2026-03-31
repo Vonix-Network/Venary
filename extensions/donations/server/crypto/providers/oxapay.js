@@ -68,13 +68,20 @@ function verifyWebhook(rawBody, headers, Config) {
     let parsed;
     try { parsed = JSON.parse(rawBody.toString()); } catch { throw new Error('Oxapay: invalid JSON body'); }
 
-    if (apiKey) {
-        const { hmac: receivedHmac, ...rest } = parsed;
-        const sortedStr = JSON.stringify(Object.fromEntries(Object.entries(rest).sort()));
-        const expected = crypto.createHmac('sha512', apiKey).update(sortedStr).digest('hex');
-        if (expected !== receivedHmac) {
+    if (!apiKey) {
+        throw new Error('Oxapay: API key not configured — refusing to process unverified webhook');
+    }
+    const { hmac: receivedHmac, ...rest } = parsed;
+    const sortedStr = JSON.stringify(Object.fromEntries(Object.entries(rest).sort()));
+    const expected = crypto.createHmac('sha512', apiKey).update(sortedStr).digest('hex');
+    // Timing-safe comparison to prevent HMAC oracle attacks
+    try {
+        if (!crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(receivedHmac || '', 'hex'))) {
             throw new Error('Oxapay: invalid HMAC signature');
         }
+    } catch (e) {
+        if (e.message === 'Oxapay: invalid HMAC signature') throw e;
+        throw new Error('Oxapay: invalid HMAC signature'); // length mismatch = tampered
     }
 
     return {

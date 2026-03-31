@@ -1152,8 +1152,6 @@ module.exports = function cryptoRoutes(extDb) {
      * Verifies signature, looks up the intent, calls completeCryptoIntent on confirmation.
      */
     async function handleProviderWebhook(req, res, providerId) {
-        // Always respond 200 first to prevent provider retries on our end
-        res.sendStatus(200);
         try {
             const provider = getProviderById(providerId);
             let parsed;
@@ -1161,31 +1159,42 @@ module.exports = function cryptoRoutes(extDb) {
                 parsed = provider.verifyWebhook(req.body, req.headers, Config);
             } catch (err) {
                 console.warn(`[Donations/Crypto] ${providerId} webhook signature invalid:`, err.message);
-                return;
+                // Respond 200 even on bad signature — prevents provider from treating our error as a reason to retry
+                return res.sendStatus(200);
             }
 
             if (!parsed.is_confirmed) {
-                console.log(`[Donations/Crypto] ${providerId} webhook: payment ${parsed.provider_payment_id} not yet confirmed (status: ${parsed.status})`);
-                return;
+                return res.sendStatus(200); // not confirmed yet — acknowledge and ignore
             }
 
-            // Look up intent by order_id first, then provider_payment_id
+            // Atomic idempotency guard: attempt to claim the intent in a single UPDATE.
+            // Two concurrent webhooks for the same payment will race here; only one wins.
+            const claim = await extDb.run(
+                `UPDATE crypto_payment_intents SET status = 'detected'
+                 WHERE (id = ? OR provider_payment_id = ?) AND status = 'pending'`,
+                [parsed.order_id, parsed.provider_payment_id]
+            );
+
+            if (!claim.changes) {
+                // Either already processed or never existed — safe to acknowledge
+                return res.sendStatus(200);
+            }
+
+            // Respond 200 now that we hold the claim — provider won't retry
+            res.sendStatus(200);
+
+            // Fetch full intent and complete it
             const intent = await extDb.get(
                 `SELECT * FROM crypto_payment_intents WHERE id = ? OR provider_payment_id = ? LIMIT 1`,
                 [parsed.order_id, parsed.provider_payment_id]
             );
-            if (!intent) {
-                console.warn(`[Donations/Crypto] ${providerId} webhook: no intent found for order ${parsed.order_id} / pid ${parsed.provider_payment_id}`);
-                return;
-            }
-            if (!['pending', 'detected'].includes(intent.status)) {
-                return; // already processed
-            }
+            if (!intent) return; // shouldn't happen after claim, but guard anyway
 
-            await monitor.completeCryptoIntent(intent.id, parsed.amount_received ? String(parsed.provider_payment_id) : null, parsed.amount_received || 0, extDb, balanceMgr, Config, coreDb);
+            await monitor.completeCryptoIntent(intent.id, parsed.provider_payment_id ? String(parsed.provider_payment_id) : null, parsed.amount_received || 0, extDb, balanceMgr, Config, coreDb);
             console.log(`[Donations/Crypto] ${providerId} webhook: intent ${intent.id} completed via IPN`);
         } catch (err) {
             console.error(`[Donations/Crypto] ${providerId} webhook handler error:`, err);
+            if (!res.headersSent) res.sendStatus(500); // cause provider retry on genuine server error
         }
     }
 

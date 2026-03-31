@@ -85,20 +85,26 @@ async function createPayment({ amount_usd, coin, order_id, notify_url, success_u
  */
 function verifyWebhook(rawBody, headers, Config) {
     const secret = Config.get('donations.crypto.nowpayments_ipn_secret', '');
-    if (secret) {
-        const sig = headers['x-nowpayments-sig'] || '';
-        // NOWPayments signs a JSON object with keys sorted alphabetically
-        let sortedBody;
-        try {
-            const parsed = JSON.parse(rawBody.toString());
-            sortedBody = JSON.stringify(Object.fromEntries(Object.entries(parsed).sort()));
-        } catch {
-            throw new Error('NOWPayments: invalid JSON body');
-        }
-        const expected = crypto.createHmac('sha512', secret).update(sortedBody).digest('hex');
+    if (!secret) {
+        throw new Error('NOWPayments: IPN secret not configured — refusing to process unverified webhook');
+    }
+    const sig = headers['x-nowpayments-sig'] || '';
+    let sortedBody;
+    try {
+        const parsed = JSON.parse(rawBody.toString());
+        sortedBody = JSON.stringify(Object.fromEntries(Object.entries(parsed).sort()));
+    } catch {
+        throw new Error('NOWPayments: invalid JSON body');
+    }
+    const expected = crypto.createHmac('sha512', secret).update(sortedBody).digest('hex');
+    // Timing-safe comparison to prevent HMAC oracle attacks
+    try {
         if (!crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expected, 'hex'))) {
             throw new Error('NOWPayments: invalid IPN signature');
         }
+    } catch (e) {
+        if (e.message === 'NOWPayments: invalid IPN signature') throw e;
+        throw new Error('NOWPayments: invalid IPN signature'); // length mismatch = tampered
     }
     const data = JSON.parse(rawBody.toString());
     return {

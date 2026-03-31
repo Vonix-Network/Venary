@@ -51,44 +51,70 @@ const LITECOIN_NETWORK = {
 };
 
 // ── Encryption key derivation ──
-// Key = PBKDF2(JWT_SECRET + static salt, 100000 iterations, SHA-256) → 32 bytes
-const SALT = 'crypto-wallet-salt-v1';
+// v2 (current): PBKDF2(JWT_SECRET, unique_random_salt, 100000 iterations, SHA-256)
+//   Ciphertext format: salt_hex:iv_hex:ciphertext_hex  (3 colon-delimited parts)
+// v1 (legacy):  PBKDF2(JWT_SECRET+static_salt, static_salt, 100000 iterations, SHA-256)
+//   Ciphertext format: iv_hex:ciphertext_hex             (2 colon-delimited parts)
+const LEGACY_STATIC_SALT = 'crypto-wallet-salt-v1';
 
-function _deriveKey() {
-    const secret = (process.env.JWT_SECRET || 'venary-gaming-platform-secret-key-2024') + SALT;
-    return crypto.pbkdf2Sync(secret, SALT, 100000, 32, 'sha256');
+function _deriveKeyV1() {
+    // Legacy key derivation — used only for decrypting seeds stored before v2 upgrade.
+    // The original code incorrectly used the same constant as both the password suffix and PBKDF2 salt.
+    const secret = (process.env.JWT_SECRET || 'venary-gaming-platform-secret-key-2024') + LEGACY_STATIC_SALT;
+    return crypto.pbkdf2Sync(secret, LEGACY_STATIC_SALT, 100000, 32, 'sha256');
+}
+
+function _deriveKeyV2(saltBuf) {
+    // Current key derivation — per-seed random salt, correct PBKDF2 usage.
+    const password = process.env.JWT_SECRET || 'venary-gaming-platform-secret-key-2024';
+    return crypto.pbkdf2Sync(password, saltBuf, 100000, 32, 'sha256');
 }
 
 /**
- * Encrypt a BIP39 mnemonic with AES-256-CBC.
- * Returns `iv_hex:ciphertext_hex` — never logs the plaintext.
+ * Encrypt a BIP39 mnemonic with AES-256-CBC using a per-seed random PBKDF2 salt (v2).
+ * Returns `salt_hex:iv_hex:ciphertext_hex` — never logs the plaintext.
  * @param {string} mnemonic
  * @returns {string}
  */
 function encryptSeed(mnemonic) {
-    const key = _deriveKey();
-    const iv = crypto.randomBytes(16);
+    const salt = crypto.randomBytes(16); // unique per seed — correct PBKDF2 usage
+    const key  = _deriveKeyV2(salt);
+    const iv   = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     const encrypted = Buffer.concat([cipher.update(mnemonic, 'utf8'), cipher.final()]);
-    return iv.toString('hex') + ':' + encrypted.toString('hex');
+    // v2 format: 3 parts — salt:iv:ciphertext
+    return salt.toString('hex') + ':' + iv.toString('hex') + ':' + encrypted.toString('hex');
 }
 
 /**
  * Decrypt an AES-256-CBC encrypted seed.
+ * Supports both v2 (salt:iv:ciphertext) and v1 (iv:ciphertext) formats for backward compat.
  * Throws SeedDecryptionError on any failure — never logs keys or plaintext.
- * @param {string} ciphertext  `iv_hex:ciphertext_hex`
+ * @param {string} ciphertext
  * @returns {string} mnemonic
  */
 function decryptSeed(ciphertext) {
     try {
-        const [ivHex, encHex] = ciphertext.split(':');
-        if (!ivHex || !encHex) throw new Error('malformed ciphertext');
-        const key = _deriveKey();
-        const iv = Buffer.from(ivHex, 'hex');
-        const enc = Buffer.from(encHex, 'hex');
-        const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-        const decrypted = Buffer.concat([decipher.update(enc), decipher.final()]);
-        return decrypted.toString('utf8');
+        const parts = ciphertext.split(':');
+        if (parts.length === 3) {
+            // v2: salt:iv:ciphertext
+            const [saltHex, ivHex, encHex] = parts;
+            const key = _deriveKeyV2(Buffer.from(saltHex, 'hex'));
+            const decipher = crypto.createDecipheriv('aes-256-cbc', key, Buffer.from(ivHex, 'hex'));
+            return Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()]).toString('utf8');
+        } else if (parts.length === 2) {
+            // v1 legacy: iv:ciphertext — decrypt with static key, log upgrade advisory
+            const [ivHex, encHex] = parts;
+            if (!ivHex || !encHex) throw new Error('malformed ciphertext');
+            const key = _deriveKeyV1();
+            const decipher = crypto.createDecipheriv('aes-256-cbc', key, Buffer.from(ivHex, 'hex'));
+            const plaintext = Buffer.concat([decipher.update(Buffer.from(encHex, 'hex')), decipher.final()]).toString('utf8');
+            // Advisory only — do not log the plaintext
+            console.warn('[Donations/Crypto] ⚠ Legacy v1 seed format detected. Re-save the seed phrase in Crypto Settings to upgrade to v2 encryption.');
+            return plaintext;
+        } else {
+            throw new Error('malformed ciphertext');
+        }
     } catch {
         throw new SeedDecryptionError();
     }

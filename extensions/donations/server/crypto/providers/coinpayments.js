@@ -82,12 +82,19 @@ function verifyWebhook(rawBody, headers, Config) {
     const secret = Config.get('donations.crypto.coinpayments_ipn_secret', '');
     const merchantId = Config.get('donations.crypto.coinpayments_merchant_id', '');
 
-    if (secret) {
-        const sig = headers['hmac'] || '';
-        const expected = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
+    if (!secret) {
+        throw new Error('CoinPayments: IPN secret not configured — refusing to process unverified webhook');
+    }
+    const sig = headers['hmac'] || '';
+    const expected = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
+    // Timing-safe comparison to prevent HMAC oracle attacks
+    try {
         if (!crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expected, 'hex'))) {
             throw new Error('CoinPayments: invalid IPN signature');
         }
+    } catch (e) {
+        if (e.message === 'CoinPayments: invalid IPN signature') throw e;
+        throw new Error('CoinPayments: invalid IPN signature'); // length mismatch = tampered
     }
 
     const params = Object.fromEntries(new URLSearchParams(rawBody.toString()));
