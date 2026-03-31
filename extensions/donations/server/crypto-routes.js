@@ -1224,15 +1224,19 @@ module.exports = function cryptoRoutes(extDb) {
      * Used by the public donate page to decide whether to show the crypto payment option.
      */
     router.get('/crypto/provider-public-status', (req, res) => {
+        const stripeKey = Config.get('stripe_secret_key', '');
+        const stripeEnabled = !!(stripeKey && stripeKey !== 'YOUR_STRIPE_SECRET_KEY');
+
         const paymentsEnabled = Config.get('donations.crypto.payments_enabled', false);
         if (!paymentsEnabled) {
-            return res.json({ crypto_enabled: false, provider: null, provider_name: null, coins: [] });
+            return res.json({ crypto_enabled: false, stripe_enabled: stripeEnabled, provider: null, provider_name: null, coins: [] });
         }
-        const provider    = Config.get('donations.crypto.provider', 'manual');
+        const provider     = Config.get('donations.crypto.provider', 'manual');
         const enabledCoins = Config.get('donations.crypto.enabled_coins', ['sol', 'ltc']);
         const meta = PROVIDERS.find(p => p.id === provider) || PROVIDERS[0];
         res.json({
-            crypto_enabled: enabledCoins.length > 0,
+            crypto_enabled:  enabledCoins.length > 0,
+            stripe_enabled:  stripeEnabled,
             provider,
             provider_name: meta.name,
             coins: enabledCoins,

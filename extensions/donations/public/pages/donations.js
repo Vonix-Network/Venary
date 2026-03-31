@@ -316,11 +316,14 @@ window.DonationsPage = {
     },
 
     async purchase(rankId, btn) {
-        // If crypto is enabled, show a payment method picker first
-        if (this._cryptoStatus?.crypto_enabled && this._cryptoStatus?.coins?.length) {
+        const cs = this._cryptoStatus;
+        const hasStripe = cs?.stripe_enabled;
+        const hasCoins  = cs?.crypto_enabled && cs?.coins?.length;
+        // Show picker if there is more than one payment method available
+        if (hasCoins || (hasStripe && hasCoins)) {
             return this._showPaymentPicker(rankId, null, btn);
         }
-        // Stripe-only fallback
+        // Stripe-only fallback (no crypto configured)
         if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
         try {
             const result = await API.post('/api/ext/donations/checkout', { rank_id: rankId });
@@ -405,7 +408,8 @@ window.DonationsPage = {
             if (!mcUsername) { App.showToast('Please enter your Minecraft username', 'warning'); return; }
         }
         // If crypto is enabled, show payment picker for one-time too
-        if (this._cryptoStatus?.crypto_enabled && this._cryptoStatus?.coins?.length) {
+        const cs = this._cryptoStatus;
+        if (cs?.crypto_enabled && cs?.coins?.length) {
             return this._showPaymentPicker(null, amount, null, mcUsername);
         }
         const btn = document.getElementById('donate-onetime-submit');
@@ -468,71 +472,83 @@ window.DonationsPage = {
         }
     },
 
+    /** Display names and icons for known coin tickers */
+    _COIN_META: {
+        btc:  { name: 'Bitcoin',      icon: '₿',  color: '#f7931a' },
+        eth:  { name: 'Ethereum',     icon: 'Ξ',  color: '#627eea' },
+        sol:  { name: 'Solana',       icon: '◎',  color: '#14f195' },
+        ltc:  { name: 'Litecoin',     icon: 'Ł',  color: '#345d9d' },
+        bnb:  { name: 'BNB',          icon: '⬡',  color: '#f3ba2f' },
+        usdt: { name: 'Tether (USDT)',icon: '₮',  color: '#26a17b' },
+        usdc: { name: 'USD Coin',     icon: '$',  color: '#2775ca' },
+        trx:  { name: 'TRON',         icon: '◈',  color: '#e50915' },
+        doge: { name: 'Dogecoin',     icon: 'Ð',  color: '#c3a634' },
+        bch:  { name: 'Bitcoin Cash', icon: 'Ƀ',  color: '#8dc351' },
+        xmr:  { name: 'Monero',       icon: 'ɱ',  color: '#ff6600' },
+        ada:  { name: 'Cardano',      icon: '₳',  color: '#0033ad' },
+        dot:  { name: 'Polkadot',     icon: '●',  color: '#e6007a' },
+        matic:{ name: 'Polygon',      icon: '⬡',  color: '#8247e5' },
+        dash: { name: 'Dash',         icon: 'Đ',  color: '#008ce7' },
+        xrp:  { name: 'XRP',          icon: '✕',  color: '#346aa9' },
+    },
+
     /**
-     * Show a payment method picker modal: Card (Stripe) or Crypto.
+     * Show a flat payment method picker: Card (Stripe) + one button per active coin.
      * @param {string|null} rankId
-     * @param {number|null} amount — for one-time donations
-     * @param {HTMLElement|null} btn — the button that triggered this, to re-enable on cancel
+     * @param {number|null} amount
+     * @param {HTMLElement|null} btn
      * @param {string} [mcUsername]
      */
     _showPaymentPicker(rankId, amount, btn, mcUsername) {
-        const cs = this._cryptoStatus;
-        const coinLabels = (cs?.coins || []).map(c => c.toUpperCase()).join(' / ');
-        const providerName = App.escapeHtml(cs?.provider_name || 'Crypto');
+        const cs = this._cryptoStatus || {};
+        const coins = cs.coins || [];
+        const safeRank   = rankId   ? `'${rankId}'`              : 'null';
+        const safeAmt    = amount   ? amount                     : 'null';
+        const safeMcUser = mcUsername ? App.escapeHtml(mcUsername) : '';
+
+        const stripeBtn = cs.stripe_enabled ? `
+            <button class="mc-btn ppm-option" style="background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.3);color:#818cf8"
+                onclick="App.closeModal?.();DonationsPage._pickStripe(${safeRank},${safeAmt})">
+                <span class="ppm-icon">💳</span>
+                <span class="ppm-label">Credit / Debit Card</span>
+                <span class="ppm-sub">Powered by Stripe</span>
+            </button>` : '';
+
+        const coinBtns = coins.map(c => {
+            const m = this._COIN_META[c] || { name: c.toUpperCase(), icon: '◈', color: '#888' };
+            return `<button class="mc-btn ppm-option" style="background:${m.color}12;border-color:${m.color}44;color:${m.color}"
+                onclick="App.closeModal?.();DonationsPage.startCryptoCheckout(${safeRank},${safeAmt},'${c}','${safeMcUser}')">
+                <span class="ppm-icon" style="font-size:1.4rem">${m.icon}</span>
+                <span class="ppm-label">${App.escapeHtml(m.name)}</span>
+                <span class="ppm-sub">${c.toUpperCase()}</span>
+            </button>`;
+        }).join('');
 
         App.showModal('Choose Payment Method', `
-            <div style="display:grid;gap:14px">
-                <p style="color:var(--text-muted);font-size:0.85rem;margin:0">How would you like to complete your payment?</p>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                    <button class="mc-btn" id="ppm-stripe"
-                        style="padding:18px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;height:auto;
-                               background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.3);color:#818cf8"
-                        onclick="DonationsPage._pickStripe(${rankId ? `'${rankId}'` : 'null'},${amount||'null'})">
-                        <span style="font-size:1.6rem">💳</span>
-                        <span style="font-weight:700">Card (Stripe)</span>
-                        <span style="font-size:0.72rem;color:var(--text-muted)">Credit / Debit card</span>
-                    </button>
-                    <button class="mc-btn" id="ppm-crypto"
-                        style="padding:18px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;height:auto;
-                               background:rgba(41,182,246,0.08);border-color:rgba(41,182,246,0.3);color:var(--neon-cyan)"
-                        onclick="DonationsPage._pickCrypto(${rankId ? `'${rankId}'` : 'null'},${amount||'null'},'${App.escapeHtml(mcUsername||'')}')">
-                        <span style="font-size:1.6rem">₿</span>
-                        <span style="font-weight:700">Crypto</span>
-                        <span style="font-size:0.72rem;color:var(--text-muted)">${coinLabels} via ${providerName}</span>
-                    </button>
-                </div>
+            <style>
+                .ppm-option{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 10px;height:auto;width:100%;text-align:center}
+                .ppm-icon{font-size:1.6rem;line-height:1}
+                .ppm-label{font-weight:700;font-size:0.9rem}
+                .ppm-sub{font-size:0.7rem;color:var(--text-muted);font-weight:400}
+            </style>
+            <p style="color:var(--text-muted);font-size:0.82rem;margin:0 0 14px">Select how you'd like to pay:</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px">
+                ${stripeBtn}${coinBtns}
             </div>
         `);
         if (btn) { btn.disabled = false; btn.textContent = 'Purchase'; }
     },
 
     async _pickStripe(rankId, amount) {
-        App.closeModal?.();
-        if (rankId) {
-            const result = await API.post('/api/ext/donations/checkout', { rank_id: rankId }).catch(e => { App.showToast(e.message || 'Payment error', 'error'); return null; });
-            if (result?.url) window.location.href = result.url;
-        } else {
-            const result = await API.post('/api/ext/donations/custom-checkout', { amount }).catch(e => { App.showToast(e.message || 'Payment error', 'error'); return null; });
-            if (result?.url) window.location.href = result.url;
-        }
-    },
-
-    _pickCrypto(rankId, amount, mcUsername) {
-        App.closeModal?.();
-        const coins = this._cryptoStatus?.coins || [];
-        if (coins.length === 1) {
-            return this.startCryptoCheckout(rankId, amount, coins[0], mcUsername);
-        }
-        // Let user pick coin
-        App.showModal('Choose Coin', `
-            <div style="display:grid;gap:12px">
-                ${coins.map(c => `
-                    <button class="mc-btn" style="padding:12px;font-size:0.9rem;${c==='sol'?'background:rgba(41,182,246,0.08);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)':'background:rgba(171,71,188,0.08);color:var(--neon-magenta);border-color:rgba(171,71,188,0.3)'}"
-                        onclick="App.closeModal?.();DonationsPage.startCryptoCheckout(${rankId?`'${rankId}'`:'null'},${amount||'null'},'${c}','${App.escapeHtml(mcUsername||'')}')">
-                        ${c.toUpperCase() === 'SOL' ? '◎ Solana (SOL)' : 'Ł Litecoin (LTC)'}
-                    </button>`).join('')}
-            </div>
-        `);
+        try {
+            if (rankId) {
+                const r = await API.post('/api/ext/donations/checkout', { rank_id: rankId });
+                if (r?.url) window.location.href = r.url;
+            } else {
+                const r = await API.post('/api/ext/donations/custom-checkout', { amount });
+                if (r?.url) window.location.href = r.url;
+            }
+        } catch (e) { App.showToast(e.message || 'Payment error', 'error'); }
     },
 
     async startCryptoCheckout(rankId, amount, coin, mcUsername) {
