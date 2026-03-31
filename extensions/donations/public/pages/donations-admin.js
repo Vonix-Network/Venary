@@ -1836,8 +1836,18 @@ window.DonationsAdminPage = {
             if (g('pp-ox-api'))      payload.oxapay_api_key      = g('pp-ox-api');
         }
 
+        // Collect enabled coins from the grid and save alongside provider settings
+        const enabledCoins = [...document.querySelectorAll('.coin-toggle:checked')].map(el => el.value);
+
         try {
-            await API.put('/api/ext/donations/admin/crypto/provider/config', payload);
+            await Promise.all([
+                API.put('/api/ext/donations/admin/crypto/provider/config', payload),
+                API.put('/api/ext/donations/admin/crypto/config', {
+                    enabled_coins:   enabledCoins,
+                    solana_enabled:  enabledCoins.includes('sol'),
+                    litecoin_enabled: enabledCoins.includes('ltc'),
+                }),
+            ]);
             App.showToast('Provider settings saved', 'success');
             const status = document.getElementById('pp-save-status');
             if (status) status.textContent = `Saved at ${new Date().toLocaleTimeString()}`;
@@ -1846,7 +1856,7 @@ window.DonationsAdminPage = {
         } catch (err) {
             App.showToast(err.message || 'Save failed', 'error');
         }
-        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Settings'; }
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Provider'; }
     },
 
     async _loadProviderDashboard() {
