@@ -4,21 +4,41 @@
    ======================================= */
 'use strict';
 
-const express   = require('express');
-const crypto    = require('crypto');
+const express = require('express');
+const crypto  = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const rateLimit = require('express-rate-limit');
 
 module.exports = function cryptoRoutes(extDb) {
     const router = express.Router();
 
-    // ── Rate limiters ──
+    // ── Lightweight inline rate limiter (no external deps) ──
+    // Stores { count, resetAt } per key; expired entries pruned on each hit.
+    function makeRateLimiter(max, windowMs, handler) {
+        const store = new Map();
+        return function rateLimiter(req, res, next) {
+            const key = req.ip || req.connection.remoteAddress || 'unknown';
+            const now = Date.now();
+            let entry = store.get(key);
+            if (!entry || now >= entry.resetAt) {
+                entry = { count: 0, resetAt: now + windowMs };
+                store.set(key, entry);
+            }
+            entry.count++;
+            if (entry.count > max) return handler(req, res);
+            // Prune expired entries every ~500 requests to prevent unbounded growth
+            if (store.size > 500) {
+                for (const [k, v] of store) { if (now >= v.resetAt) store.delete(k); }
+            }
+            next();
+        };
+    }
+
     // Intent creation: 10 per IP per minute (prevents address exhaustion / abuse)
-    const intentLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false,
-        handler: (_req, res) => res.status(429).json({ error: 'Too many payment requests. Please wait a minute.' }) });
+    const intentLimiter = makeRateLimiter(10, 60_000,
+        (_req, res) => res.status(429).json({ error: 'Too many payment requests. Please wait a minute.' }));
     // Provider webhook callbacks: 200 per IP per minute (provider servers may batch)
-    const webhookLimiter = rateLimit({ windowMs: 60_000, max: 200, standardHeaders: true, legacyHeaders: false,
-        handler: (_req, res) => res.sendStatus(429) });
+    const webhookLimiter = makeRateLimiter(200, 60_000,
+        (_req, res) => res.sendStatus(429));
     const coreDb  = require('../../../server/db');
     const { authenticateToken, optionalAuth } = require('../../../server/middleware/auth');
     const Config  = require('../../../server/config');
