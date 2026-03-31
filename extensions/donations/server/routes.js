@@ -148,6 +148,9 @@ module.exports = function (extDb) {
             await extDb.run(`ALTER TABLE crypto_payment_intents ADD COLUMN provider TEXT DEFAULT 'manual'`).catch(() => {});
             await extDb.run(`ALTER TABLE crypto_payment_intents ADD COLUMN provider_payment_id TEXT`).catch(() => {});
 
+            // ── Balance-applied column for partial balance + Stripe payments ──
+            await extDb.run(`ALTER TABLE donations ADD COLUMN balance_applied REAL DEFAULT 0`).catch(() => {});
+
             // ── Atomic intent address counter (DB-backed, avoids Config race) ──
             await extDb.run(`CREATE TABLE IF NOT EXISTS crypto_intent_counter (key TEXT PRIMARY KEY, value INTEGER NOT NULL DEFAULT 10000)`).catch(() => {});
 
@@ -363,6 +366,28 @@ module.exports = function (extDb) {
                 if (!user) return res.status(401).json({ error: 'User not found' });
             }
 
+            // ── Partial balance application ──
+            // balance_apply is the USD amount the user wants deducted from their credit balance.
+            // Guests cannot apply balance. We validate against their actual balance.
+            let confirmedBalanceApply = 0;
+            if (!isGuest && req.body.balance_apply) {
+                const requestedApply = parseFloat(req.body.balance_apply) || 0;
+                if (requestedApply > 0) {
+                    const balMgr = require('./crypto/balance');
+                    const actualBalance = await balMgr.getBalance(req.user.id, extDb);
+                    // Cap to available balance and rank price
+                    confirmedBalanceApply = Math.min(requestedApply, actualBalance, rank.price);
+                    confirmedBalanceApply = Math.round(confirmedBalanceApply * 100) / 100;
+                }
+            }
+
+            const chargedAmount = Math.max(rank.price - confirmedBalanceApply, 0);
+            if (chargedAmount === 0) {
+                return res.status(400).json({ error: 'Use the balance spend endpoint for fully covered purchases' });
+            }
+            // Stripe minimum is $0.50
+            const stripeAmount = Math.max(chargedAmount, 0.50);
+
             const siteUrl = Config.get('siteUrl', 'http://localhost:3000');
 
             const session = await stripe.checkout.sessions.create({
@@ -372,9 +397,11 @@ module.exports = function (extDb) {
                         currency: 'usd',
                         product_data: {
                             name: rank.name + ' Rank',
-                            description: rank.description || `${rank.name} rank — 30 day access`,
+                            description: confirmedBalanceApply > 0
+                                ? `${rank.name} rank — $${confirmedBalanceApply.toFixed(2)} credit applied`
+                                : (rank.description || `${rank.name} rank — 30 day access`),
                         },
-                        unit_amount: Math.round(rank.price * 100),
+                        unit_amount: Math.round(stripeAmount * 100),
                     },
                     quantity: 1,
                 }],
@@ -405,10 +432,10 @@ module.exports = function (extDb) {
             }
 
             await extDb.run(
-                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_uuid, minecraft_username, expires_at)
-                 VALUES (?, ?, ?, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?)`,
+                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_uuid, minecraft_username, expires_at, balance_applied)
+                 VALUES (?, ?, ?, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?, ?)`,
                 [donationId, isGuest ? null : req.user.id, rank.id, rank.price, session.id, mcUuid, mcUsername,
-                    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()]
+                    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), confirmedBalanceApply]
             );
 
             res.json({ url: session.url, sessionId: session.id });
@@ -965,6 +992,24 @@ module.exports = function (extDb) {
             [donation.id]
         );
         if (!result.changes) return; // another process already completed it
+
+        // Deduct any pre-committed balance after Stripe confirms — safe here since the row is locked.
+        if (donation.user_id && donation.balance_applied > 0) {
+            try {
+                const balMgr = require('./crypto/balance');
+                await balMgr.debit(
+                    donation.user_id,
+                    donation.balance_applied,
+                    'rank_purchase',
+                    `Balance applied to donation #${donation.id}`,
+                    extDb,
+                    donation.id
+                );
+                console.log(`[Donations] Balance deducted: $${donation.balance_applied} from user ${donation.user_id}`);
+            } catch (err) {
+                console.error('[Donations] Balance deduction error (non-fatal):', err.message);
+            }
+        }
 
         // Grant rank if tied to a rank AND an authenticated user.
         // Guest rank purchases (user_id = null) are logged here; rank assignment for guests

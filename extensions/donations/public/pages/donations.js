@@ -64,6 +64,7 @@ window.DonationsPage = {
         this.loadRanks();
         this.loadRecent();
         this.loadCryptoStatus(); // async, non-blocking — populates this._cryptoStatus
+        this.loadUserBalance();  // async, non-blocking — populates this._userBalance
 
         if (!App.currentUser) {
             const gw = document.getElementById('donate-onetime-guest-mc');
@@ -319,18 +320,13 @@ window.DonationsPage = {
         const cs = this._cryptoStatus;
         const hasStripe = cs?.stripe_enabled;
         const hasCoins  = cs?.crypto_enabled && cs?.coins?.length;
-        // Show picker if there is more than one payment method available
-        if (hasCoins || (hasStripe && hasCoins)) {
+        const hasBalance = App.currentUser && this._userBalance > 0;
+        // Show picker if any payment option or balance credit is available
+        if (hasStripe || hasCoins || hasBalance) {
             return this._showPaymentPicker(rankId, null, btn);
         }
-        // Stripe-only fallback (no crypto configured)
-        if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
-        try {
-            const result = await API.post('/api/ext/donations/checkout', { rank_id: rankId });
-            if (result.url) { window.location.href = result.url; return; }
-            App.showToast('Could not create checkout session', 'error');
-        } catch (err) { App.showToast(err.message || 'Payment error', 'error'); }
-        if (btn) { btn.disabled = false; btn.textContent = 'Purchase'; }
+        // No payment methods configured
+        App.showToast('No payment methods are currently configured. Contact an administrator.', 'warning');
     },
 
     async showSwitchConfirm(rankId, rankName, rankPrice) {
@@ -407,9 +403,9 @@ window.DonationsPage = {
             mcUsername = mcInput ? mcInput.value.trim() : '';
             if (!mcUsername) { App.showToast('Please enter your Minecraft username', 'warning'); return; }
         }
-        // If crypto is enabled, show payment picker for one-time too
+        // Show payment picker if any method is available
         const cs = this._cryptoStatus;
-        if (cs?.crypto_enabled && cs?.coins?.length) {
+        if (cs?.stripe_enabled || (cs?.crypto_enabled && cs?.coins?.length)) {
             return this._showPaymentPicker(null, amount, null, mcUsername);
         }
         const btn = document.getElementById('donate-onetime-submit');
@@ -467,12 +463,23 @@ window.DonationsPage = {
     // ── Crypto payment support ──
 
     _cryptoStatus: null,
+    _userBalance: 0,
 
     async loadCryptoStatus() {
         try {
             this._cryptoStatus = await API.get('/api/ext/donations/crypto/provider-public-status');
         } catch {
             this._cryptoStatus = { crypto_enabled: false };
+        }
+    },
+
+    async loadUserBalance() {
+        if (!App.currentUser) { this._userBalance = 0; return; }
+        try {
+            const b = await API.get('/api/ext/donations/crypto/balance');
+            this._userBalance = parseFloat(b?.usd_balance) || 0;
+        } catch {
+            this._userBalance = 0;
         }
     },
 
@@ -506,16 +513,60 @@ window.DonationsPage = {
     _showPaymentPicker(rankId, amount, btn, mcUsername) {
         const cs = this._cryptoStatus || {};
         const coins = cs.coins || [];
-        const safeRank   = rankId   ? `'${rankId}'`              : 'null';
-        const safeAmt    = amount   ? amount                     : 'null';
+        const balance = this._userBalance || 0;
+        const safeRank   = rankId   ? `'${rankId}'` : 'null';
+        const safeAmt    = amount   != null ? amount : 'null';
         const safeMcUser = mcUsername ? App.escapeHtml(mcUsername) : '';
+
+        // Determine the price for balance math — rank lookup or custom amount
+        const rankPrice = rankId
+            ? (this.allRanks.find(r => r.id === rankId)?.price ?? null)
+            : amount;
+
+        // ── Balance section ──
+        let balanceSection = '';
+        if (App.currentUser && balance > 0 && rankPrice != null) {
+            const canCover = balance >= rankPrice;
+            if (canCover) {
+                balanceSection = `
+                    <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                            <span style="font-size:1.3rem">💰</span>
+                            <div>
+                                <div style="font-weight:700;color:#10b981;font-size:0.9rem">Credit Balance Available</div>
+                                <div style="font-size:0.76rem;color:var(--text-muted)">Your balance of <strong style="color:#10b981">$${balance.toFixed(2)}</strong> covers this purchase</div>
+                            </div>
+                        </div>
+                        <button class="mc-btn" style="width:100%;background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.4);color:#10b981;padding:10px;font-weight:700"
+                            onclick="App.closeModal?.();DonationsPage._pickBalanceFree(${safeRank})">
+                            ✓ Complete for Free — use $${Math.min(balance, rankPrice).toFixed(2)} credit
+                        </button>
+                    </div>`;
+            } else {
+                // Partial — keep at least $0.50 for Stripe minimum
+                const cappedApply = parseFloat(Math.min(balance, rankPrice - 0.50).toFixed(2));
+                const remainder   = parseFloat(Math.max(rankPrice - cappedApply, 0.50).toFixed(2));
+                balanceSection = `
+                    <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.25);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+                            <input type="checkbox" id="ppm-apply-balance" data-apply="${cappedApply}" data-price="${rankPrice}"
+                                style="margin-top:3px;accent-color:#f59e0b"
+                                onchange="DonationsPage._onBalanceToggle(this)">
+                            <div>
+                                <div style="font-weight:700;color:#f59e0b;font-size:0.88rem">Apply $${cappedApply.toFixed(2)} credit balance</div>
+                                <div style="font-size:0.76rem;color:var(--text-muted)">Reduces payment to <span id="ppm-remainder">$${remainder.toFixed(2)}</span></div>
+                            </div>
+                        </label>
+                    </div>`;
+            }
+        }
 
         const stripeBtn = cs.stripe_enabled ? `
             <button class="mc-btn ppm-option" style="background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.3);color:#818cf8"
-                onclick="App.closeModal?.();DonationsPage._pickStripe(${safeRank},${safeAmt})">
+                onclick="App.closeModal?.();DonationsPage._pickStripe(${safeRank},${safeAmt},DonationsPage._getBalanceApply())">
                 <span class="ppm-icon">💳</span>
                 <span class="ppm-label">Credit / Debit Card</span>
-                <span class="ppm-sub">Powered by Stripe</span>
+                <span class="ppm-sub" id="ppm-stripe-sub">Powered by Stripe</span>
             </button>` : '';
 
         const coinBtns = coins.map(c => {
@@ -528,6 +579,8 @@ window.DonationsPage = {
             </button>`;
         }).join('');
 
+        const hasPaymentMethods = cs.stripe_enabled || coins.length > 0;
+
         App.showModal('Choose Payment Method', `
             <style>
                 .ppm-option{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 10px;height:auto;width:100%;text-align:center}
@@ -535,18 +588,53 @@ window.DonationsPage = {
                 .ppm-label{font-weight:700;font-size:0.9rem}
                 .ppm-sub{font-size:0.7rem;color:var(--text-muted);font-weight:400}
             </style>
+            ${balanceSection}
+            ${hasPaymentMethods ? `
             <p style="color:var(--text-muted);font-size:0.82rem;margin:0 0 14px">Select how you'd like to pay:</p>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px">
                 ${stripeBtn}${coinBtns}
-            </div>
+            </div>` : (!balanceSection ? '<p style="color:var(--text-muted);font-size:0.85rem;text-align:center">No payment methods are currently configured.</p>' : '')}
         `);
         if (btn) { btn.disabled = false; btn.textContent = 'Purchase'; }
     },
 
-    async _pickStripe(rankId, amount) {
+    /** Returns the balance amount to apply (0 if unchecked or not rendered). */
+    _getBalanceApply() {
+        const cb = document.getElementById('ppm-apply-balance');
+        return (cb && cb.checked) ? parseFloat(cb.dataset.apply) || 0 : 0;
+    },
+
+    /** Called when apply-balance checkbox changes — updates the remainder display and Stripe sub. */
+    _onBalanceToggle(cb) {
+        const apply    = parseFloat(cb.dataset.apply) || 0;
+        const price    = parseFloat(cb.dataset.price) || 0;
+        const remainder = cb.checked ? Math.max(price - apply, 0.50) : price;
+        const remEl = document.getElementById('ppm-remainder');
+        if (remEl) remEl.textContent = `$${remainder.toFixed(2)}`;
+        const sub = document.getElementById('ppm-stripe-sub');
+        if (sub) sub.textContent = cb.checked ? `$${remainder.toFixed(2)} after credit` : 'Powered by Stripe';
+    },
+
+    /** Full balance spend — rank fully covered, no Stripe needed. */
+    async _pickBalanceFree(rankId) {
+        if (!rankId) return;
+        try {
+            App.showToast('Applying balance…', 'info');
+            await API.post('/api/ext/donations/crypto/balance/spend', { rank_id: rankId });
+            App.showToast('Rank granted! Your balance has been deducted.', 'success');
+            this._userBalance = 0;
+            await this.loadCurrentRank();
+            this.loadRanks();
+            await this.loadUserBalance();
+        } catch (e) { App.showToast(e.message || 'Balance spend failed', 'error'); }
+    },
+
+    async _pickStripe(rankId, amount, balanceApply) {
         try {
             if (rankId) {
-                const r = await API.post('/api/ext/donations/checkout', { rank_id: rankId });
+                const body = { rank_id: rankId };
+                if (balanceApply > 0) body.balance_apply = balanceApply;
+                const r = await API.post('/api/ext/donations/checkout', body);
                 if (r?.url) window.location.href = r.url;
             } else {
                 const r = await API.post('/api/ext/donations/custom-checkout', { amount });
