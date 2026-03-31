@@ -837,34 +837,47 @@ module.exports = function (extDb) {
 
     router.post('/admin/manual-donation', authenticateToken, requireAdmin, async (req, res) => {
         try {
-            const { username, rank_id, amount, status, created_at, grant_rank } = req.body;
-            if (!username || !amount) return res.status(400).json({ error: 'Username and amount required' });
-
-            const user = await coreDb.get('SELECT id FROM users WHERE username = ? OR display_name = ?', [username, username]);
-            if (!user) return res.status(404).json({ error: 'User not found' });
+            const { username, mc_username, guest_mode, rank_id, amount, status, created_at, grant_rank } = req.body;
+            if (!amount) return res.status(400).json({ error: 'Amount required' });
 
             const donationId = 'manual_' + uuidv4().slice(0, 8);
-            const createdAt = created_at || new Date().toISOString();
-            const expiresAt = new Date(new Date(createdAt).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            const createdAt  = created_at || new Date().toISOString();
+            const expiresAt  = new Date(new Date(createdAt).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            const doneStatus = status || 'completed';
 
-            await extDb.run(
-                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, status, created_at, expires_at)
-                 VALUES (?, ?, ?, ?, 'usd', 'manual', ?, ?, ?)`,
-                [donationId, user.id, rank_id || null, amount, status || 'completed', createdAt, expiresAt]
-            );
+            if (guest_mode) {
+                // Guest — no registered account, store by MC username only
+                if (!mc_username) return res.status(400).json({ error: 'Minecraft username required for guest donations' });
+                await extDb.run(
+                    `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, status, minecraft_username, created_at, expires_at)
+                     VALUES (?, NULL, ?, ?, 'usd', 'manual', ?, ?, ?, ?)`,
+                    [donationId, rank_id || null, amount, doneStatus, mc_username, createdAt, expiresAt]
+                );
+            } else {
+                // Registered user lookup
+                if (!username) return res.status(400).json({ error: 'Username required' });
+                const user = await coreDb.get('SELECT id FROM users WHERE username = ? OR display_name = ?', [username, username]);
+                if (!user) return res.status(404).json({ error: `No registered user found for "${username}"` });
 
-            if (grant_rank && (status === 'completed' || !status) && rank_id) {
-                const existing = await extDb.get('SELECT id FROM user_ranks WHERE user_id = ?', [user.id]);
-                if (existing) {
-                    await extDb.run(
-                        'UPDATE user_ranks SET rank_id = ?, active = 1, expires_at = ?, started_at = ? WHERE user_id = ?',
-                        [rank_id, expiresAt, createdAt, user.id]
-                    );
-                } else {
-                    await extDb.run(
-                        'INSERT INTO user_ranks (id, user_id, rank_id, active, started_at, expires_at) VALUES (?, ?, ?, 1, ?, ?)',
-                        [uuidv4(), user.id, rank_id, createdAt, expiresAt]
-                    );
+                await extDb.run(
+                    `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, status, created_at, expires_at)
+                     VALUES (?, ?, ?, ?, 'usd', 'manual', ?, ?, ?)`,
+                    [donationId, user.id, rank_id || null, amount, doneStatus, createdAt, expiresAt]
+                );
+
+                if (grant_rank && doneStatus === 'completed' && rank_id) {
+                    const existing = await extDb.get('SELECT id FROM user_ranks WHERE user_id = ?', [user.id]);
+                    if (existing) {
+                        await extDb.run(
+                            'UPDATE user_ranks SET rank_id = ?, active = 1, expires_at = ?, started_at = ? WHERE user_id = ?',
+                            [rank_id, expiresAt, createdAt, user.id]
+                        );
+                    } else {
+                        await extDb.run(
+                            'INSERT INTO user_ranks (id, user_id, rank_id, active, started_at, expires_at) VALUES (?, ?, ?, 1, ?, ?)',
+                            [uuidv4(), user.id, rank_id, createdAt, expiresAt]
+                        );
+                    }
                 }
             }
 

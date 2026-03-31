@@ -492,56 +492,116 @@ window.DonationsAdminPage = {
         let ranks;
         try { ranks = await API.get('/api/ext/donations/admin/ranks'); } catch { ranks = []; }
 
+        const rankOptions = ranks.map(r => `<option value="${r.id}">${App.escapeHtml(r.name)}</option>`).join('');
+
         App.showModal('Add Manual Donation', `
-            <div class="donate-admin-form">
-                <div class="full-width">
-                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Username or ID</label>
-                    <input id="md-user" class="input-field" placeholder="User's username" style="width:100%">
+            <div style="display:grid;gap:14px">
+
+                <!-- User type toggle -->
+                <div style="display:flex;gap:0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden">
+                    <button id="md-tab-registered" onclick="DonationsAdminPage._mdSetMode(false)"
+                        style="flex:1;padding:8px;font-size:0.82rem;font-weight:700;border:none;cursor:pointer;
+                               background:rgba(41,182,246,0.15);color:var(--neon-cyan);transition:background 0.15s">
+                        Registered User
+                    </button>
+                    <button id="md-tab-guest" onclick="DonationsAdminPage._mdSetMode(true)"
+                        style="flex:1;padding:8px;font-size:0.82rem;font-weight:700;border:none;cursor:pointer;
+                               background:rgba(255,255,255,0.04);color:var(--text-muted);border-left:1px solid rgba(255,255,255,0.1);transition:background 0.15s">
+                        Guest (MC Username)
+                    </button>
                 </div>
-                <div>
-                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Amount (USD)</label>
-                    <input id="md-amount" type="number" step="0.01" class="input-field" value="10.00" style="width:100%">
+
+                <!-- Registered user field -->
+                <div id="md-registered-field">
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Username / Display Name</label>
+                    <input id="md-user" class="input-field" placeholder="Registered account username" style="width:100%">
                 </div>
-                <div>
-                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Rank (Optional)</label>
-                    <select id="md-rank" class="input-field" style="width:100%">
-                        <option value="">None</option>
-                        ${ranks.map(r => `<option value="${r.id}">${App.escapeHtml(r.name)}</option>`).join('')}
-                    </select>
+
+                <!-- Guest field (hidden initially) -->
+                <div id="md-guest-field" style="display:none">
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">
+                        Minecraft Username
+                        <span style="color:var(--text-muted);font-weight:400"> — used for avatar (mc-heads.net)</span>
+                    </label>
+                    <input id="md-mc-username" class="input-field" placeholder="e.g. Notch" maxlength="16" style="width:100%">
                 </div>
+
+                <!-- Amount + Rank side by side -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Amount (USD)</label>
+                        <input id="md-amount" type="number" step="0.01" min="0.01" class="input-field" value="10.00" style="width:100%">
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Rank (Optional)</label>
+                        <select id="md-rank" class="input-field" style="width:100%">
+                            <option value="">None</option>
+                            ${rankOptions}
+                        </select>
+                    </div>
+                </div>
+
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Date</label>
                     <input id="md-date" type="datetime-local" class="input-field" value="${new Date().toISOString().slice(0, 16)}" style="width:100%">
                 </div>
-                <div style="display:flex;align-items:center;padding-top:24px">
-                    <label style="font-size:0.8rem;color:var(--text-muted);cursor:pointer">
-                        <input id="md-grant" type="checkbox" checked> Grant Rank?
+
+                <div style="display:flex;align-items:center;gap:10px">
+                    <label style="font-size:0.82rem;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:6px">
+                        <input id="md-grant" type="checkbox" checked style="accent-color:var(--neon-green);width:16px;height:16px">
+                        Grant rank to user
                     </label>
+                    <span style="font-size:0.72rem;color:var(--text-muted)">(Registered users only)</span>
                 </div>
-                <div class="full-width" style="text-align:right;margin-top:var(--space-md)">
-                    <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)" onclick="DonationsAdminPage.addManualDonation()">Add Donation</button>
+
+                <div style="text-align:right">
+                    <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)"
+                        onclick="DonationsAdminPage.addManualDonation()">Add Donation</button>
                 </div>
             </div>
         `);
     },
 
-    async addManualDonation() {
-        const username = document.getElementById('md-user').value.trim();
-        const amount = parseFloat(document.getElementById('md-amount').value);
-        const rankId = document.getElementById('md-rank').value;
-        const date = document.getElementById('md-date').value;
-        const grant = document.getElementById('md-grant').checked;
+    _mdSetMode(isGuest) {
+        document.getElementById('md-registered-field').style.display = isGuest ? 'none' : 'block';
+        document.getElementById('md-guest-field').style.display      = isGuest ? 'block' : 'none';
+        const regTab   = document.getElementById('md-tab-registered');
+        const guestTab = document.getElementById('md-tab-guest');
+        regTab.style.background   = isGuest ? 'rgba(255,255,255,0.04)' : 'rgba(41,182,246,0.15)';
+        regTab.style.color        = isGuest ? 'var(--text-muted)'      : 'var(--neon-cyan)';
+        guestTab.style.background = isGuest ? 'rgba(41,182,246,0.15)'  : 'rgba(255,255,255,0.04)';
+        guestTab.style.color      = isGuest ? 'var(--neon-cyan)'       : 'var(--text-muted)';
+    },
 
-        if (!username || isNaN(amount)) { App.showToast('Username and amount required', 'error'); return; }
+    async addManualDonation() {
+        const isGuest  = document.getElementById('md-guest-field')?.style.display !== 'none';
+        const amount   = parseFloat(document.getElementById('md-amount')?.value);
+        const rankId   = document.getElementById('md-rank')?.value;
+        const date     = document.getElementById('md-date')?.value;
+        const grant    = document.getElementById('md-grant')?.checked;
+
+        if (isNaN(amount) || amount <= 0) { App.showToast('Valid amount required', 'error'); return; }
+
+        const payload = {
+            amount,
+            rank_id:    rankId || undefined,
+            created_at: date ? new Date(date).toISOString() : undefined,
+            grant_rank: grant,
+        };
+
+        if (isGuest) {
+            const mc = document.getElementById('md-mc-username')?.value.trim();
+            if (!mc) { App.showToast('Minecraft username required for guest donations', 'error'); return; }
+            payload.guest_mode  = true;
+            payload.mc_username = mc;
+        } else {
+            const username = document.getElementById('md-user')?.value.trim();
+            if (!username) { App.showToast('Username required', 'error'); return; }
+            payload.username = username;
+        }
 
         try {
-            await API.post('/api/ext/donations/admin/manual-donation', { 
-                username, 
-                rank_id: rankId, 
-                amount, 
-                created_at: date ? new Date(date).toISOString() : null,
-                grant_rank: grant
-            });
+            await API.post('/api/ext/donations/admin/manual-donation', payload);
             App.showToast('Manual donation added!', 'success');
             App.closeModal();
             this.loadTab();
