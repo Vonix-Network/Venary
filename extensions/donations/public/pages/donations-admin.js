@@ -1756,14 +1756,13 @@ window.DonationsAdminPage = {
 
         const chips = coins.map(coin => {
             const color = COIN_COLORS[coin] || '#888';
-            const checked = enabledSet.has(coin);
-            return `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;
-                        background:${checked ? color + '18' : 'rgba(255,255,255,0.03)'};
-                        border:1px solid ${checked ? color + '55' : 'rgba(255,255,255,0.08)'};
+            const on = enabledSet.has(coin);
+            return `<label data-coin-color="${color}" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;
+                        background:${on ? color + '18' : 'rgba(255,255,255,0.03)'};
+                        border:1px solid ${on ? color + '55' : 'rgba(255,255,255,0.08)'};
                         border-radius:8px;user-select:none;transition:background 0.15s,border-color 0.15s;
-                        font-size:0.8rem;font-weight:600;color:${checked ? color : 'var(--text-muted)'}"
-                    onclick="(function(lbl){lbl.style.background=lbl.querySelector('input').checked?'rgba(255,255,255,0.03)':'${color}18';lbl.style.borderColor=lbl.querySelector('input').checked?'rgba(255,255,255,0.08)':'${color}55';lbl.style.color=lbl.querySelector('input').checked?'var(--text-muted)':'${color}'})(this)">
-                <input type="checkbox" class="coin-toggle" value="${coin}" ${checked ? 'checked' : ''}
+                        font-size:0.8rem;font-weight:600;color:${on ? color : 'var(--text-muted)'}">
+                <input type="checkbox" class="coin-toggle" value="${coin}" ${on ? 'checked' : ''}
                     style="accent-color:${color};width:14px;height:14px;cursor:pointer;flex-shrink:0">
                 ${coin.toUpperCase()}
             </label>`;
@@ -1773,11 +1772,23 @@ window.DonationsAdminPage = {
         grid.style.flexWrap = 'wrap';
         grid.style.gap = '8px';
         grid.innerHTML = chips || '<span style="color:var(--text-muted);font-size:0.82rem">No coins available for this provider.</span>';
+
+        // Use change event (fires after checkbox state is already updated) to update chip styles
+        grid.addEventListener('change', e => {
+            if (!e.target.classList.contains('coin-toggle')) return;
+            const lbl = e.target.closest('label');
+            if (!lbl) return;
+            const color = lbl.dataset.coinColor || '#888';
+            const on = e.target.checked;
+            lbl.style.background  = on ? color + '18' : 'rgba(255,255,255,0.03)';
+            lbl.style.borderColor = on ? color + '55' : 'rgba(255,255,255,0.08)';
+            lbl.style.color       = on ? color : 'var(--text-muted)';
+        });
     },
 
-    _toggleAllCoins(checked) {
+    _toggleAllCoins(state) {
         document.querySelectorAll('.coin-toggle').forEach(el => {
-            if (el.checked !== checked) el.click();
+            if (el.checked !== state) el.click();
         });
     },
 
