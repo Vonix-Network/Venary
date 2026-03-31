@@ -4,12 +4,21 @@
    ======================================= */
 'use strict';
 
-const express = require('express');
-const crypto  = require('crypto');
+const express   = require('express');
+const crypto    = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+const rateLimit = require('express-rate-limit');
 
 module.exports = function cryptoRoutes(extDb) {
     const router = express.Router();
+
+    // ── Rate limiters ──
+    // Intent creation: 10 per IP per minute (prevents address exhaustion / abuse)
+    const intentLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false,
+        handler: (_req, res) => res.status(429).json({ error: 'Too many payment requests. Please wait a minute.' }) });
+    // Provider webhook callbacks: 200 per IP per minute (provider servers may batch)
+    const webhookLimiter = rateLimit({ windowMs: 60_000, max: 200, standardHeaders: true, legacyHeaders: false,
+        handler: (_req, res) => res.sendStatus(429) });
     const coreDb  = require('../../../server/db');
     const { authenticateToken, optionalAuth } = require('../../../server/middleware/auth');
     const Config  = require('../../../server/config');
@@ -89,7 +98,7 @@ module.exports = function cryptoRoutes(extDb) {
     // ══════════════════════════════════════════════════════
 
     /** POST /crypto/intent — create a payment intent (manual or provider) */
-    router.post('/crypto/intent', optionalAuth, async (req, res) => {
+    router.post('/crypto/intent', intentLimiter, optionalAuth, async (req, res) => {
         try {
             const { rank_id, amount, coin, mc_username } = req.body;
             if (!coin || !['sol', 'ltc'].includes(coin))
@@ -107,7 +116,7 @@ module.exports = function cryptoRoutes(extDb) {
                 usdAmount = rankRow.price;
             } else if (amount) {
                 usdAmount = parseFloat(amount);
-                if (isNaN(usdAmount) || usdAmount < 1 || usdAmount > 10000)
+                if (!Number.isFinite(usdAmount) || usdAmount < 1 || usdAmount > 10000)
                     return res.status(400).json({ error: 'Amount must be between $1 and $10,000' });
             } else {
                 return res.status(400).json({ error: 'rank_id or amount required' });
@@ -176,8 +185,23 @@ module.exports = function cryptoRoutes(extDb) {
                 });
             }
 
-            // Derive a unique intent address
-            const { address, index } = wallet.deriveIntentAddress(coin, Config);
+            // Atomically allocate the next intent address index from the DB counter.
+            // DB UPDATE is serialized per SQLite connection, preventing the Config race.
+            const counterKey = `intent_${coin}`;
+            await extDb.run(
+                `INSERT INTO crypto_intent_counter (key, value) VALUES (?, 10001)
+                 ON CONFLICT(key) DO UPDATE SET value = value + 1`,
+                [counterKey]
+            );
+            const counterRow = await extDb.get('SELECT value FROM crypto_intent_counter WHERE key = ?', [counterKey]);
+            const index = counterRow.value;
+            const seedKey = coin === 'sol' ? 'donations.crypto.solana_seed_encrypted' : 'donations.crypto.litecoin_seed_encrypted';
+            const seedEnc = Config.get(seedKey);
+            if (!seedEnc) return res.status(503).json({ error: `${coin.toUpperCase()} wallet seed not configured` });
+            const intentMnemonic = wallet.decryptSeed(seedEnc);
+            const { address } = coin === 'sol'
+                ? wallet.deriveSolanaAddress(intentMnemonic, index)
+                : wallet.deriveLitecoinAddress(intentMnemonic, index);
 
             // Build intent record
             const intentId = uuidv4();
@@ -525,7 +549,7 @@ module.exports = function cryptoRoutes(extDb) {
             });
         } catch (err) {
             console.error('[Donations/Crypto] GET /admin/crypto/config error:', err);
-            res.status(500).json({ error: err.message || 'Failed to load crypto config' });
+            res.status(500).json({ error: 'Failed to load crypto config' });
         }
     });
 
@@ -553,7 +577,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ message: 'Crypto config updated' });
         } catch (err) {
             console.error('[Donations/Crypto] PUT /admin/crypto/config error:', err);
-            res.status(500).json({ error: err.message || 'Failed to save crypto config' });
+            res.status(500).json({ error: 'Failed to save crypto config' });
         }
     });
 
@@ -577,7 +601,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ message: 'Wallet seed updated successfully' });
         } catch (err) {
             console.error('[Donations/Crypto] Wallet update error:', err);
-            res.status(500).json({ error: err.message || 'Failed to save wallet seed' });
+            res.status(500).json({ error: 'Failed to save wallet seed' });
         }
     });
 
@@ -589,7 +613,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ mnemonic, word_count: mnemonic.split(' ').length });
         } catch (err) {
             console.error('[Donations/Crypto] generate-seed error:', err);
-            res.status(500).json({ error: err.message || 'Failed to generate seed phrase' });
+            res.status(500).json({ error: 'Failed to generate seed phrase' });
         }
     });
 
@@ -657,7 +681,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json(result);
         } catch (err) {
             console.error('[Donations/Crypto] GET /admin/crypto/status error:', err);
-            res.status(500).json({ error: err.message || 'Failed to check chain status' });
+            res.status(500).json({ error: 'Failed to check chain status' });
         }
     });
 
@@ -672,6 +696,19 @@ module.exports = function cryptoRoutes(extDb) {
             const limit  = Math.min(parseInt(req.query.limit) || 25, 100);
             const offset = (page - 1) * limit;
             const { status, coin, date_from, date_to } = req.query;
+
+            // Allowlist filter values to prevent SQL injection via enum or date params
+            const VALID_STATUS = ['pending','detected','completed','expired','cancelled'];
+            const VALID_COIN   = ['sol','ltc'];
+            const ISO_DATE_RE  = /^\d{4}-\d{2}-\d{2}(T[\d:.Z+-]*)?$/;
+            if (status && !VALID_STATUS.includes(status))
+                return res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUS.join(', ')}` });
+            if (coin && !VALID_COIN.includes(coin))
+                return res.status(400).json({ error: `Invalid coin. Must be one of: ${VALID_COIN.join(', ')}` });
+            if (date_from && !ISO_DATE_RE.test(date_from))
+                return res.status(400).json({ error: 'date_from must be ISO 8601 format (YYYY-MM-DD)' });
+            if (date_to && !ISO_DATE_RE.test(date_to))
+                return res.status(400).json({ error: 'date_to must be ISO 8601 format (YYYY-MM-DD)' });
 
             let where = '1=1';
             const params = [];
@@ -705,7 +742,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ intents, total: total.c, page, limit });
         } catch (err) {
             console.error('[Donations/Crypto] GET /admin/crypto/intents error:', err);
-            res.status(500).json({ error: err.message || 'Failed to load intents' });
+            res.status(500).json({ error: 'Failed to load intents' });
         }
     });
 
@@ -726,7 +763,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ success: true });
         } catch (err) {
             console.error('[Donations/Crypto] Intent confirm error:', err);
-            res.status(500).json({ error: err.message || 'Failed to confirm intent' });
+            res.status(500).json({ error: 'Failed to confirm intent' });
         }
     });
 
@@ -780,7 +817,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ balances: rows, total: countRow.c, page, limit });
         } catch (err) {
             console.error('[Donations/Crypto] GET /admin/balances error:', err);
-            res.status(500).json({ error: err.message || 'Failed to load balances' });
+            res.status(500).json({ error: 'Failed to load balances' });
         }
     });
 
@@ -812,7 +849,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json(ledger);
         } catch (err) {
             console.error('[Donations/Crypto] GET /admin/balances/:userId/ledger error:', err);
-            res.status(500).json({ error: err.message || 'Failed to load ledger' });
+            res.status(500).json({ error: 'Failed to load ledger' });
         }
     });
 
@@ -834,7 +871,7 @@ module.exports = function cryptoRoutes(extDb) {
             });
         } catch (err) {
             console.error('[Donations/Crypto] GET /admin/crypto/stats error:', err);
-            res.status(500).json({ error: err.message || 'Failed to load stats' });
+            res.status(500).json({ error: 'Failed to load stats' });
         }
     });
 
@@ -870,7 +907,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ user_addresses: userRows, admin_addresses: adminRows });
         } catch (err) {
             console.error('[Donations/Crypto] wallet/addresses error:', err);
-            res.status(500).json({ error: err.message || 'Failed to load wallet addresses' });
+            res.status(500).json({ error: 'Failed to load wallet addresses' });
         }
     });
 
@@ -910,7 +947,7 @@ module.exports = function cryptoRoutes(extDb) {
             }
         } catch (err) {
             console.error('[Donations/Crypto] wallet/address/balance error:', err);
-            res.status(500).json({ error: err.message || 'Failed to fetch balance' });
+            res.status(500).json({ error: 'Failed to fetch balance' });
         }
     });
 
@@ -984,7 +1021,7 @@ module.exports = function cryptoRoutes(extDb) {
             }
         } catch (err) {
             console.error('[Donations/Crypto] wallet/address/transactions error:', err);
-            res.status(500).json({ error: err.message || 'Failed to fetch transactions' });
+            res.status(500).json({ error: 'Failed to fetch transactions' });
         }
     });
 
@@ -1023,7 +1060,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ derivation_index: nextIndex, sol_address, ltc_address, label });
         } catch (err) {
             console.error('[Donations/Crypto] wallet/derive error:', err);
-            res.status(500).json({ error: err.message || 'Failed to derive address' });
+            res.status(500).json({ error: 'Failed to derive address' });
         }
     });
 
@@ -1088,7 +1125,7 @@ module.exports = function cryptoRoutes(extDb) {
             });
         } catch (err) {
             console.error('[Donations/Crypto] wallet/verify error:', err);
-            res.status(500).json({ error: err.message || 'Verification failed' });
+            res.status(500).json({ error: 'Verification failed' });
         }
     });
 
@@ -1114,7 +1151,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ deleted: malformed.length, message: malformed.length ? `Removed ${malformed.length} malformed row(s).` : 'No malformed rows found.' });
         } catch (err) {
             console.error('[Donations/Crypto] wallet/admin-addresses/malformed error:', err);
-            res.status(500).json({ error: err.message || 'Cleanup failed' });
+            res.status(500).json({ error: 'Cleanup failed' });
         }
     });
 
@@ -1198,10 +1235,10 @@ module.exports = function cryptoRoutes(extDb) {
         }
     }
 
-    router.post('/crypto/webhook/nowpayments',  (req, res) => handleProviderWebhook(req, res, 'nowpayments'));
-    router.post('/crypto/webhook/coinpayments', (req, res) => handleProviderWebhook(req, res, 'coinpayments'));
-    router.post('/crypto/webhook/plisio',       (req, res) => handleProviderWebhook(req, res, 'plisio'));
-    router.post('/crypto/webhook/oxapay',       (req, res) => handleProviderWebhook(req, res, 'oxapay'));
+    router.post('/crypto/webhook/nowpayments',  webhookLimiter, (req, res) => handleProviderWebhook(req, res, 'nowpayments'));
+    router.post('/crypto/webhook/coinpayments', webhookLimiter, (req, res) => handleProviderWebhook(req, res, 'coinpayments'));
+    router.post('/crypto/webhook/plisio',       webhookLimiter, (req, res) => handleProviderWebhook(req, res, 'plisio'));
+    router.post('/crypto/webhook/oxapay',       webhookLimiter, (req, res) => handleProviderWebhook(req, res, 'oxapay'));
 
     // ══════════════════════════════════════════════════════
     // ADMIN — PAYMENT PROVIDER CONFIG & DASHBOARD
@@ -1248,7 +1285,7 @@ module.exports = function cryptoRoutes(extDb) {
             });
         } catch (err) {
             console.error('[Donations/Crypto] provider/config GET error:', err);
-            res.status(500).json({ error: err.message || 'Server error' });
+            res.status(500).json({ error: 'Server error' });
         }
     });
 
@@ -1290,7 +1327,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json({ message: 'Provider settings saved.' });
         } catch (err) {
             console.error('[Donations/Crypto] provider/config PUT error:', err);
-            res.status(500).json({ error: err.message || 'Server error' });
+            res.status(500).json({ error: 'Server error' });
         }
     });
 
@@ -1305,7 +1342,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json(data);
         } catch (err) {
             console.error('[Donations/Crypto] provider/dashboard error:', err);
-            res.status(500).json({ error: err.message || 'Failed to load dashboard' });
+            res.status(500).json({ error: 'Failed to load dashboard' });
         }
     });
 
@@ -1324,7 +1361,7 @@ module.exports = function cryptoRoutes(extDb) {
             res.json(result);
         } catch (err) {
             console.error('[Donations/Crypto] provider/test error:', err);
-            res.status(500).json({ error: err.message || 'Test failed' });
+            res.status(500).json({ error: 'Test failed' });
         }
     });
 

@@ -148,6 +148,9 @@ module.exports = function (extDb) {
             await extDb.run(`ALTER TABLE crypto_payment_intents ADD COLUMN provider TEXT DEFAULT 'manual'`).catch(() => {});
             await extDb.run(`ALTER TABLE crypto_payment_intents ADD COLUMN provider_payment_id TEXT`).catch(() => {});
 
+            // ── Atomic intent address counter (DB-backed, avoids Config race) ──
+            await extDb.run(`CREATE TABLE IF NOT EXISTS crypto_intent_counter (key TEXT PRIMARY KEY, value INTEGER NOT NULL DEFAULT 10000)`).catch(() => {});
+
             console.log('[Donations] ✅ Crypto tables migration complete');
         } catch (err) {
             console.error('[Donations] Migration error:', err.message);
