@@ -30,8 +30,7 @@ window.DonationsAdminPage = {
                     <button class="mc-chart-btn ${this.activeTab === 'ranked-users' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('ranked-users', this)">Ranked Users</button>
                     <button class="mc-chart-btn ${this.activeTab === 'history' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('history', this)">Donations</button>
                     <button class="mc-chart-btn ${this.activeTab === 'settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('settings', this)">Settings</button>
-                    <button class="mc-chart-btn ${this.activeTab === 'crypto' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('crypto', this)">Crypto Settings</button>
-                    <button class="mc-chart-btn ${this.activeTab === 'payment-providers' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('payment-providers', this)">Payment Providers</button>
+                    <button class="mc-chart-btn ${this.activeTab === 'crypto' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('crypto', this)">Crypto</button>
                     ${App.currentUser?.role === 'superadmin' ? `<button class="mc-chart-btn ${this.activeTab === 'wallet' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('wallet', this)">Wallet</button>` : ''}
                     <button class="mc-chart-btn ${this.activeTab === 'balance-settings' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('balance-settings', this)">Balance Settings</button>
                     <button class="mc-chart-btn ${this.activeTab === 'balances' ? 'active' : ''}" onclick="DonationsAdminPage.switchTab('balances', this)">User Balances</button>
@@ -65,7 +64,6 @@ window.DonationsAdminPage = {
             case 'history': return this.renderHistory(area);
             case 'settings': return this.renderSettings(area);
             case 'crypto': return this.renderCryptoSettings(area);
-            case 'payment-providers': return this.renderPaymentProviders(area);
             case 'wallet': return this.renderWallet(area);
             case 'balance-settings': return this.renderBalanceSettings(area);
             case 'balances': return this.renderUserBalances(area);
@@ -558,177 +556,250 @@ window.DonationsAdminPage = {
 
     async renderCryptoSettings(area) {
         try {
-            const [cfg, status] = await Promise.all([
+            const [cfg, status, provCfg] = await Promise.all([
                 API.get('/api/ext/donations/admin/crypto/config'),
                 API.get('/api/ext/donations/admin/crypto/status').catch(() => ({})),
+                API.get('/api/ext/donations/admin/crypto/provider/config').catch(() => ({ active_provider: 'manual', providers: [], config: {} })),
             ]);
 
             const isSuperadmin = App.currentUser?.role === 'superadmin';
+            const { active_provider, providers, config: provConfig } = provCfg;
+            this._providerSelection = active_provider;
+            const isManual = active_provider === 'manual';
+
             const statusBadge = s => {
                 const map = { connected: ['var(--neon-green)', '●', 'rgba(74,222,128,0.1)'], degraded: ['#eab308', '●', 'rgba(234,179,8,0.1)'], offline: ['var(--neon-magenta)', '●', 'rgba(239,68,68,0.1)'], disabled: ['var(--text-muted)', '○', 'rgba(255,255,255,0.05)'] };
                 const [color, dot, bg] = map[s] || ['var(--text-muted)', '○', 'rgba(255,255,255,0.05)'];
                 return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;background:${bg};color:${color};font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;border:1px solid ${color}30">${dot} ${s}</span>`;
             };
 
+            const providerCards = (providers || []).map(p => {
+                const isActive = p.id === active_provider;
+                const isConfigured = p.id === 'manual' ? true : (() => {
+                    const pc = provConfig[p.id];
+                    return pc && Object.values(pc).some(v => v?.set === true);
+                })();
+                const badge = isConfigured
+                    ? `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(74,222,128,0.1);color:var(--neon-green);font-weight:600">✓ Configured</span>`
+                    : `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.06);color:var(--text-muted);font-weight:600">Not set up</span>`;
+                const unsafeBadge = p.warning
+                    ? `<span style="font-size:0.6rem;padding:2px 6px;border-radius:8px;background:rgba(239,68,68,0.12);color:#ef4444;font-weight:700;display:block;margin-top:6px">⚠ ${p.warning.split('.')[0]}</span>`
+                    : '';
+                return `
+                <div class="pp-card" data-provider="${p.id}"
+                    style="cursor:pointer;padding:14px 16px;border-radius:10px;border:2px solid ${isActive ? p.color : 'rgba(255,255,255,0.07)'};
+                           background:${isActive ? `${p.color}0d` : 'rgba(255,255,255,0.02)'};
+                           transition:border-color 0.2s,background 0.2s"
+                    onclick="DonationsAdminPage._selectProvider('${p.id}')">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                        <div>
+                            <div style="font-weight:700;font-size:0.95rem;color:${p.color};margin-bottom:3px">${App.escapeHtml(p.name)}</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted)">Fee: <strong style="color:var(--text-secondary)">${p.fee}</strong></div>
+                            ${unsafeBadge}
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                            ${badge}
+                            ${isActive ? `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:${p.color}22;color:${p.color};font-weight:700">● Active</span>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
             area.innerHTML = `
                 <div style="display:grid;gap:1.5rem">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                        <div>
-                            <h2 style="margin:0;font-size:1.5rem;background:linear-gradient(135deg,#29b6f6,#ab47bc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800">Crypto Integration</h2>
-                            <p style="color:var(--text-muted);margin:4px 0 0 0;font-size:0.9rem">Manage your blockchain settings, RPC nodes, and HD wallets.</p>
+
+                    <!-- ── Payment Provider ── -->
+                    <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                        <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.06)">
+                            <h2 style="margin:0;font-size:1.1rem;font-weight:700">Payment Provider</h2>
+                            <p style="color:var(--text-muted);margin:4px 0 0;font-size:0.82rem">Select how crypto payments are processed. Click a card, configure API keys below, then save.</p>
+                        </div>
+                        <div style="padding:1rem 1.25rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px" id="pp-cards">
+                            ${providerCards}
                         </div>
                     </div>
 
-                    <!-- Blockchain Toggles -->
+                    <!-- ── Provider Config Panel ── -->
+                    <div id="pp-config-panel" style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                        ${this._renderProviderConfigPanel(active_provider, provConfig, providers)}
+                    </div>
+
+                    <!-- ── Provider Actions ── -->
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                        <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
+                            onclick="DonationsAdminPage._testProviderConnection()">⚡ Test Connection</button>
+                        <button class="mc-btn" style="background:rgba(74,222,128,0.1);color:var(--neon-green);border-color:rgba(74,222,128,0.3)"
+                            onclick="DonationsAdminPage._saveProviderSettings()">💾 Save Provider</button>
+                        <span id="pp-save-status" style="font-size:0.8rem;color:var(--text-muted)"></span>
+                    </div>
+
+                    <!-- ── Active Chains ── -->
                     <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
                         <h3 style="margin:0 0 1rem 0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
-                            <span style="color:var(--neon-cyan)">⚡</span> Active Chains
+                            <span style="color:var(--neon-cyan)">⚡</span> Active Coins
+                            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;margin-left:4px">Controls which coins are offered to customers at checkout</span>
                         </h3>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">
-                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:1.2rem;transition:transform 0.2s, background 0.2s">
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
+                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:1.2rem">
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                                     <div style="display:flex;align-items:center;gap:10px">
-                                        <div style="width:32px;height:32px;background:linear-gradient(135deg, #14F195, #9945FF);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:0.8rem">SOL</div>
-                                        <span style="font-weight:700;font-size:1.1rem">Solana</span>
+                                        <div style="width:32px;height:32px;background:linear-gradient(135deg,#14F195,#9945FF);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:0.8rem">SOL</div>
+                                        <span style="font-weight:700;font-size:1.05rem">Solana</span>
                                     </div>
-                                    ${statusBadge(status.solana || 'disabled')}
+                                    ${statusBadge(isManual ? (status.solana || 'disabled') : 'via provider')}
                                 </div>
                                 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--text-secondary)">
                                     <input type="checkbox" id="cfg-sol-enabled" ${cfg.solana_enabled ? 'checked' : ''} style="accent-color:#14F195;width:18px;height:18px;cursor:pointer">
-                                    Enable Solana Network
+                                    Enable Solana payments
                                 </label>
                             </div>
-                            
-                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:1.2rem;transition:transform 0.2s, background 0.2s">
+                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:1.2rem">
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                                     <div style="display:flex;align-items:center;gap:10px">
-                                        <div style="width:32px;height:32px;background:linear-gradient(135deg, #345D9D, #B8B8B8);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:0.8rem">LTC</div>
-                                        <span style="font-weight:700;font-size:1.1rem">Litecoin</span>
+                                        <div style="width:32px;height:32px;background:linear-gradient(135deg,#345D9D,#B8B8B8);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:0.8rem">LTC</div>
+                                        <span style="font-weight:700;font-size:1.05rem">Litecoin</span>
                                     </div>
-                                    ${statusBadge(status.litecoin || 'disabled')}
+                                    ${statusBadge(isManual ? (status.litecoin || 'disabled') : 'via provider')}
                                 </div>
                                 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--text-secondary)">
                                     <input type="checkbox" id="cfg-ltc-enabled" ${cfg.litecoin_enabled ? 'checked' : ''} style="accent-color:#345D9D;width:18px;height:18px;cursor:pointer">
-                                    Enable Litecoin Network
+                                    Enable Litecoin payments
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    <!-- RPC & Webhooks split -->
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:1.5rem">
-                        <!-- Left Col: RPCs -->
-                        <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:1.2rem">
-                            <h3 style="margin:0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
-                                <span style="color:#f5a623">🔗</span> Infrastructure Nodes
-                            </h3>
-                            
-                            <div style="background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.02);border-radius:8px;padding:1rem">
-                                <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;font-size:0.85rem;text-transform:uppercase;letter-spacing:1px">Solana RPCs</div>
-                                <div style="margin-bottom:10px">
-                                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Primary Node URL</label>
-                                    <input id="cfg-sol-rpc-primary" class="input-field" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.solana_rpc_primary || '')}" placeholder="https://api.mainnet-beta.solana.com">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Fallback Node URL (Optional)</label>
-                                    <input id="cfg-sol-rpc-secondary" class="input-field" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.solana_rpc_secondary || '')}" placeholder="Optional fallback RPC">
-                                </div>
-                            </div>
-
-                            <div style="background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.02);border-radius:8px;padding:1rem">
-                                <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;font-size:0.85rem;text-transform:uppercase;letter-spacing:1px">Litecoin RPCs</div>
-                                <div style="margin-bottom:10px">
-                                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Primary Node URL</label>
-                                    <input id="cfg-ltc-rpc-primary" class="input-field" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.litecoin_rpc_primary || '')}" placeholder="https://api.blockcypher.com/v1/ltc/main">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Fallback Node URL (Optional)</label>
-                                    <input id="cfg-ltc-rpc-secondary" class="input-field" style="width:100%;font-family:monospace;font-size:0.85rem" value="${App.escapeHtml(cfg.litecoin_rpc_secondary || '')}" placeholder="Optional fallback RPC">
-                                </div>
-                            </div>
+                    <!-- ── Manual Mode Infrastructure (RPC + Webhooks + Wallet) ── -->
+                    <div style="border:1px solid rgba(255,255,255,${isManual ? '0.08' : '0.03'});border-radius:12px;padding:0;overflow:hidden;opacity:${isManual ? '1' : '0.55'}">
+                        <div style="padding:10px 1.25rem;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:8px">
+                            <span style="color:#f5a623;font-size:0.9rem">🔧</span>
+                            <span style="font-size:0.85rem;font-weight:700;color:var(--text-secondary)">Manual HD Wallet Settings</span>
+                            <span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px">${isManual ? 'Active — configure your infrastructure below' : 'Not needed for your current provider'}</span>
                         </div>
+                        <div style="padding:1.25rem;display:grid;gap:1.5rem">
 
-                        <!-- Right Col: Webhooks & Wallets -->
-                        <div style="display:flex;flex-direction:column;gap:1.5rem">
-                            <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
-                                <h3 style="margin:0 0 1rem 0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
-                                    <span style="color:var(--neon-green)">🔔</span> Webhook Secrets
-                                </h3>
-                                <div style="display:flex;flex-direction:column;gap:1rem">
-                                    <div>
-                                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Solana Webhook Secret (Helius)</label>
-                                        <div style="position:relative">
-                                            <input id="cfg-sol-webhook" type="password" class="input-field" placeholder="${cfg.solana_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
-                                            ${cfg.solana_webhook_secret_set ? '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--neon-green);font-size:0.8rem;background:rgba(74,222,128,0.1);padding:2px 6px;border-radius:4px">✓ Set</span>' : ''}
+                            <!-- RPCs -->
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1.5rem">
+                                <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:10px;padding:1.25rem;display:flex;flex-direction:column;gap:1rem">
+                                    <h4 style="margin:0;font-size:0.95rem;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                                        <span style="color:#f5a623">🔗</span> Infrastructure Nodes
+                                    </h4>
+                                    <div style="background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.02);border-radius:8px;padding:1rem">
+                                        <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;font-size:0.8rem;text-transform:uppercase;letter-spacing:1px">Solana RPCs</div>
+                                        <div style="margin-bottom:10px">
+                                            <label style="font-size:0.72rem;color:var(--text-muted);display:block;margin-bottom:4px">Primary Node URL</label>
+                                            <input id="cfg-sol-rpc-primary" class="input-field" style="width:100%;font-family:monospace;font-size:0.82rem" value="${App.escapeHtml(cfg.solana_rpc_primary || '')}" placeholder="https://api.mainnet-beta.solana.com">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.72rem;color:var(--text-muted);display:block;margin-bottom:4px">Fallback Node URL (Optional)</label>
+                                            <input id="cfg-sol-rpc-secondary" class="input-field" style="width:100%;font-family:monospace;font-size:0.82rem" value="${App.escapeHtml(cfg.solana_rpc_secondary || '')}" placeholder="Optional fallback RPC">
                                         </div>
                                     </div>
-                                    <div>
-                                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px">Litecoin Webhook Secret (BlockCypher)</label>
-                                        <div style="position:relative">
-                                            <input id="cfg-ltc-webhook" type="password" class="input-field" placeholder="${cfg.litecoin_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
-                                            ${cfg.litecoin_webhook_secret_set ? '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--neon-green);font-size:0.8rem;background:rgba(74,222,128,0.1);padding:2px 6px;border-radius:4px">✓ Set</span>' : ''}
+                                    <div style="background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.02);border-radius:8px;padding:1rem">
+                                        <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;font-size:0.8rem;text-transform:uppercase;letter-spacing:1px">Litecoin RPCs</div>
+                                        <div style="margin-bottom:10px">
+                                            <label style="font-size:0.72rem;color:var(--text-muted);display:block;margin-bottom:4px">Primary Node URL</label>
+                                            <input id="cfg-ltc-rpc-primary" class="input-field" style="width:100%;font-family:monospace;font-size:0.82rem" value="${App.escapeHtml(cfg.litecoin_rpc_primary || '')}" placeholder="https://api.blockcypher.com/v1/ltc/main">
                                         </div>
+                                        <div>
+                                            <label style="font-size:0.72rem;color:var(--text-muted);display:block;margin-bottom:4px">Fallback Node URL (Optional)</label>
+                                            <input id="cfg-ltc-rpc-secondary" class="input-field" style="width:100%;font-family:monospace;font-size:0.82rem" value="${App.escapeHtml(cfg.litecoin_rpc_secondary || '')}" placeholder="Optional fallback RPC">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Webhook Secrets + HD Wallet -->
+                                <div style="display:flex;flex-direction:column;gap:1.25rem">
+                                    <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:10px;padding:1.25rem">
+                                        <h4 style="margin:0 0 1rem 0;font-size:0.95rem;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                                            <span style="color:var(--neon-green)">🔔</span> Webhook Secrets
+                                        </h4>
+                                        <div style="display:flex;flex-direction:column;gap:1rem">
+                                            <div>
+                                                <label style="font-size:0.72rem;color:var(--text-muted);display:block;margin-bottom:4px">Solana Webhook Secret (Helius)</label>
+                                                <div style="position:relative">
+                                                    <input id="cfg-sol-webhook" type="password" class="input-field" placeholder="${cfg.solana_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
+                                                    ${cfg.solana_webhook_secret_set ? '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--neon-green);font-size:0.75rem;background:rgba(74,222,128,0.1);padding:2px 6px;border-radius:4px">✓ Set</span>' : ''}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label style="font-size:0.72rem;color:var(--text-muted);display:block;margin-bottom:4px">Litecoin Webhook Secret (BlockCypher)</label>
+                                                <div style="position:relative">
+                                                    <input id="cfg-ltc-webhook" type="password" class="input-field" placeholder="${cfg.litecoin_webhook_secret_set ? '••••••••••••••••' : 'Not configured'}" style="width:100%;font-family:monospace;padding-right:45px">
+                                                    ${cfg.litecoin_webhook_secret_set ? '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--neon-green);font-size:0.75rem;background:rgba(74,222,128,0.1);padding:2px 6px;border-radius:4px">✓ Set</span>' : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:10px;padding:1.25rem;flex-grow:1">
+                                        <h4 style="margin:0 0 1rem 0;font-size:0.95rem;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                                            <span style="color:var(--neon-magenta)">🔐</span> HD Wallet Seeds
+                                        </h4>
+                                        ${isSuperadmin ? `
+                                        <div style="display:grid;gap:10px">
+                                            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);padding:10px 14px;border-radius:6px;border-left:3px solid ${cfg.solana_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
+                                                <div>
+                                                    <div style="font-size:0.82rem;color:var(--text-secondary)">Solana Seed</div>
+                                                    ${cfg.solana_seed_masked ? `<code style="font-size:0.7rem;color:var(--text-muted)">${App.escapeHtml(cfg.solana_seed_masked)}</code>` : ''}
+                                                </div>
+                                                <span style="color:${cfg.solana_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'};font-size:0.75rem;font-weight:600;padding:2px 8px;background:${cfg.solana_seed_configured ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.1)'};border-radius:4px">
+                                                    ${cfg.solana_seed_configured ? '✓ Secured' : '⚠ Missing'}
+                                                </span>
+                                            </div>
+                                            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);padding:10px 14px;border-radius:6px;border-left:3px solid ${cfg.litecoin_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
+                                                <div>
+                                                    <div style="font-size:0.82rem;color:var(--text-secondary)">Litecoin Seed</div>
+                                                    ${cfg.litecoin_seed_masked ? `<code style="font-size:0.7rem;color:var(--text-muted)">${App.escapeHtml(cfg.litecoin_seed_masked)}</code>` : ''}
+                                                </div>
+                                                <span style="color:${cfg.litecoin_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'};font-size:0.75rem;font-weight:600;padding:2px 8px;background:${cfg.litecoin_seed_configured ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.1)'};border-radius:4px">
+                                                    ${cfg.litecoin_seed_configured ? '✓ Secured' : '⚠ Missing'}
+                                                </span>
+                                            </div>
+                                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+                                                <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3);padding:8px" onclick="DonationsAdminPage.showWalletSetupModal()">🔑 Set Seeds</button>
+                                                <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3);padding:8px" onclick="DonationsAdminPage.generateNewSeed()">✨ Autogenerate</button>
+                                                <button class="mc-btn" style="grid-column:1/span 2;background:rgba(239,68,68,0.05);color:#ef4444;border-color:rgba(239,68,68,0.2);padding:8px" onclick="DonationsAdminPage.revealSeed()">👁 Reveal Seeds</button>
+                                            </div>
+                                        </div>` : `
+                                        <div style="display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(239,68,68,0.05);border:1px dashed rgba(239,68,68,0.3);border-radius:8px">
+                                            <div style="text-align:center;color:var(--text-muted)">
+                                                <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+                                                <div style="font-size:0.82rem">Wallet seed configuration is restricted to superadmins.</div>
+                                            </div>
+                                        </div>`}
                                     </div>
                                 </div>
                             </div>
 
-                            <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2);flex-grow:1">
-                                <h3 style="margin:0 0 1rem 0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
-                                    <span style="color:var(--neon-magenta)">🔐</span> HD Wallet Setup
-                                </h3>
-                                ${isSuperadmin ? `
-                                <div style="display:grid;gap:12px">
-                                    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);padding:10px 14px;border-radius:6px;border-left:3px solid ${cfg.solana_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
-                                        <div>
-                                            <div style="font-size:0.85rem;color:var(--text-secondary)">Solana Seed</div>
-                                            ${cfg.solana_seed_masked ? `<code style="font-size:0.72rem;color:var(--text-muted)">${App.escapeHtml(cfg.solana_seed_masked)}</code>` : ''}
-                                        </div>
-                                        <span style="color:${cfg.solana_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'};font-size:0.8rem;font-weight:600;padding:2px 8px;background:${cfg.solana_seed_configured ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.1)'};border-radius:4px">
-                                            ${cfg.solana_seed_configured ? '✓ Secured' : '⚠️ Missing'}
-                                        </span>
-                                    </div>
-                                    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);padding:10px 14px;border-radius:6px;border-left:3px solid ${cfg.litecoin_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'}">
-                                        <div>
-                                            <div style="font-size:0.85rem;color:var(--text-secondary)">Litecoin Seed</div>
-                                            ${cfg.litecoin_seed_masked ? `<code style="font-size:0.72rem;color:var(--text-muted)">${App.escapeHtml(cfg.litecoin_seed_masked)}</code>` : ''}
-                                        </div>
-                                        <span style="color:${cfg.litecoin_seed_configured ? 'var(--neon-green)' : 'var(--neon-magenta)'};font-size:0.8rem;font-weight:600;padding:2px 8px;background:${cfg.litecoin_seed_configured ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.1)'};border-radius:4px">
-                                            ${cfg.litecoin_seed_configured ? '✓ Secured' : '⚠️ Missing'}
-                                        </span>
-                                    </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-                                        <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3);padding:8px" onclick="DonationsAdminPage.showWalletSetupModal()">
-                                            🔑 Set Seeds
-                                        </button>
-                                        <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3);padding:8px" onclick="DonationsAdminPage.generateNewSeed()">
-                                            ✨ Autogenerate
-                                        </button>
-                                        <button class="mc-btn" style="grid-column:1 / span 2;background:rgba(239,68,68,0.05);color:#ef4444;border-color:rgba(239,68,68,0.2);padding:8px" onclick="DonationsAdminPage.revealSeed()">
-                                            👁 Reveal Encrypted Seeds
-                                        </button>
-                                    </div>
-                                </div>
-                                ` : `
-                                <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:1.5rem;background:rgba(239,68,68,0.05);border:1px dashed rgba(239,68,68,0.3);border-radius:8px">
-                                    <div style="text-align:center;color:var(--text-muted)">
-                                        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
-                                        <div style="font-size:0.85rem">Wallet seed configuration is restricted to superadmins.</div>
-                                    </div>
-                                </div>
-                                `}
+                            <!-- Save chain config -->
+                            <div style="background:linear-gradient(90deg,rgba(41,182,246,0.08),rgba(171,71,188,0.08));border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:0.9rem 1.25rem;display:flex;justify-content:space-between;align-items:center">
+                                <span style="color:var(--text-secondary);font-size:0.82rem">Save coin toggles, RPC endpoints, and webhook secrets.</span>
+                                <button class="mc-btn" style="background:var(--neon-cyan);color:#000;border:none;padding:9px 20px;font-weight:700;box-shadow:0 0 12px rgba(41,182,246,0.35)" onclick="DonationsAdminPage.saveCryptoConfig()">
+                                    💾 Save Chain Config
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Footer Save Box -->
-                    <div style="background:linear-gradient(90deg, rgba(41,182,246,0.1), rgba(171,71,188,0.1));border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
-                        <span style="color:var(--text-secondary);font-size:0.85rem">Remember to test your webhooks after updating settings.</span>
-                        <button class="mc-btn" style="background:var(--neon-cyan);color:#000;border:none;padding:10px 24px;font-weight:700;font-size:0.95rem;box-shadow:0 0 15px rgba(41,182,246,0.4)" onclick="DonationsAdminPage.saveCryptoConfig()">
-                            💾 Save All Changes
-                        </button>
+                    <!-- ── Provider Dashboard ── -->
+                    <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                        <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <h2 style="margin:0;font-size:1.05rem;font-weight:700">Provider Dashboard</h2>
+                                <p style="color:var(--text-muted);margin:4px 0 0;font-size:0.8rem">Recent payments from the active provider.</p>
+                            </div>
+                            <button class="mc-btn" style="padding:4px 10px;font-size:0.75rem;background:rgba(255,255,255,0.04)"
+                                onclick="DonationsAdminPage._loadProviderDashboard()">↻ Refresh</button>
+                        </div>
+                        <div id="pp-dashboard" style="padding:1rem 1.25rem">
+                            <div style="text-align:center;color:var(--text-muted);padding:1rem;font-size:0.85rem">Loading dashboard…</div>
+                        </div>
                     </div>
 
                 </div>`;
+
+            this._loadProviderDashboard();
         } catch (err) {
             area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load crypto settings.</p>';
         }
@@ -1437,11 +1508,16 @@ window.DonationsAdminPage = {
         }
     },
 
-    // ── PAYMENT PROVIDERS ──
+    // ── PAYMENT PROVIDERS (merged into renderCryptoSettings) ──
 
     _providerSelection: null, // tracks which card is selected before save
 
     async renderPaymentProviders(area) {
+        // Redirected to the unified Crypto tab
+        return this.renderCryptoSettings(area);
+    },
+
+    async _renderPaymentProviders_unused(area) {
         try {
             const cfg = await API.get('/api/ext/donations/admin/crypto/provider/config');
             const { active_provider, providers, config } = cfg;
@@ -1563,9 +1639,8 @@ window.DonationsAdminPage = {
                             Manual HD Wallet mode runs a blockchain polling loop on your server. You are responsible for securing your seed phrase — if lost, funds are unrecoverable.
                             Verify your addresses with <strong>Solflare</strong> (SOL) and <strong>Electrum-LTC</strong> (LTC) using your mnemonic.
                         </div>
-                        <div style="margin-top:8px">
-                            <a href="#" onclick="DonationsAdminPage.switchTab('crypto',null);return false"
-                               style="font-size:0.8rem;color:var(--neon-cyan);text-decoration:none">→ Go to Crypto Settings to manage your seed phrase</a>
+                        <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">
+                            Manage your seed phrase in the <strong style="color:var(--text-secondary)">HD Wallet Seeds</strong> section below.
                         </div>
                     </div>
                 </div>`;
