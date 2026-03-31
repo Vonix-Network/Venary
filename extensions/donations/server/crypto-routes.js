@@ -593,6 +593,7 @@ module.exports = function cryptoRoutes(extDb) {
                 solana_webhook_secret_set:   !!Config.get('donations.crypto.solana_webhook_secret'),
                 litecoin_webhook_secret_set: !!Config.get('donations.crypto.litecoin_webhook_secret'),
                 balance_display_currencies: Config.get('donations.crypto.balance_display_currencies', ['usd','sol','ltc','eur','gbp']),
+                enabled_coins: Config.get('donations.crypto.enabled_coins', ['sol', 'ltc']),
                 // Wallet info — superadmin only
                 solana_seed_configured:   !!solSeedEnc,
                 litecoin_seed_configured: !!ltcSeedEnc,
@@ -613,7 +614,7 @@ module.exports = function cryptoRoutes(extDb) {
                 solana_rpc_primary, solana_rpc_secondary,
                 litecoin_rpc_primary, litecoin_rpc_secondary,
                 solana_webhook_secret, litecoin_webhook_secret,
-                balance_display_currencies,
+                balance_display_currencies, enabled_coins,
             } = req.body;
 
             if (solana_enabled !== undefined)   Config.set('donations.crypto.solana_enabled', !!solana_enabled);
@@ -625,6 +626,10 @@ module.exports = function cryptoRoutes(extDb) {
             if (solana_webhook_secret !== undefined)   Config.set('donations.crypto.solana_webhook_secret', solana_webhook_secret);
             if (litecoin_webhook_secret !== undefined) Config.set('donations.crypto.litecoin_webhook_secret', litecoin_webhook_secret);
             if (Array.isArray(balance_display_currencies)) Config.set('donations.crypto.balance_display_currencies', balance_display_currencies);
+            if (Array.isArray(enabled_coins)) {
+                const cleaned = enabled_coins.map(c => String(c).toLowerCase().trim()).filter(c => /^[a-z0-9_-]{1,16}$/.test(c));
+                Config.set('donations.crypto.enabled_coins', cleaned);
+            }
 
             res.json({ message: 'Crypto config updated' });
         } catch (err) {
@@ -1354,6 +1359,9 @@ module.exports = function cryptoRoutes(extDb) {
                 if (!allowed.includes(provider))
                     return res.status(400).json({ error: `Invalid provider. Must be one of: ${allowed.join(', ')}` });
                 Config.set('donations.crypto.provider', provider);
+                // Bust the currencies cache so the next request fetches fresh coins for the new provider
+                _currencyCache.data = null;
+                _currencyCache.at   = 0;
             }
 
             const keyMap = {

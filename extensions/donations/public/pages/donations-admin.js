@@ -561,6 +561,7 @@ window.DonationsAdminPage = {
                 API.get('/api/ext/donations/admin/crypto/status').catch(() => ({})),
                 API.get('/api/ext/donations/admin/crypto/provider/config').catch(() => ({ active_provider: 'manual', providers: [], config: {} })),
             ]);
+            this._lastCryptoConfig = cfg;
 
             const isSuperadmin = App.currentUser?.role === 'superadmin';
             const { active_provider, providers, config: provConfig } = provCfg;
@@ -633,39 +634,22 @@ window.DonationsAdminPage = {
                         <span id="pp-save-status" style="font-size:0.8rem;color:var(--text-muted)"></span>
                     </div>
 
-                    <!-- ── Active Chains ── -->
-                    <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
-                        <h3 style="margin:0 0 1rem 0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
-                            <span style="color:var(--neon-cyan)">⚡</span> Active Coins
-                            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;margin-left:4px">Controls which coins are offered to customers at checkout</span>
-                        </h3>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
-                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:1.2rem">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                                    <div style="display:flex;align-items:center;gap:10px">
-                                        <div style="width:32px;height:32px;background:linear-gradient(135deg,#14F195,#9945FF);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:0.8rem">SOL</div>
-                                        <span style="font-weight:700;font-size:1.05rem">Solana</span>
-                                    </div>
-                                    ${statusBadge(isManual ? (status.solana || 'disabled') : 'via provider')}
-                                </div>
-                                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--text-secondary)">
-                                    <input type="checkbox" id="cfg-sol-enabled" ${cfg.solana_enabled ? 'checked' : ''} style="accent-color:#14F195;width:18px;height:18px;cursor:pointer">
-                                    Enable Solana payments
-                                </label>
+                    <!-- ── Active Coins (dynamic per-provider) ── -->
+                    <div id="active-coins-section" style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:12px;padding:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+                            <h3 style="margin:0;font-size:1.1rem;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+                                <span style="color:var(--neon-cyan)">⚡</span> Active Coins
+                                <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;margin-left:4px">Select which coins are offered to customers at checkout</span>
+                            </h3>
+                            <div style="display:flex;gap:8px">
+                                <button class="mc-btn" style="padding:4px 12px;font-size:0.72rem;background:rgba(41,182,246,0.08);color:var(--neon-cyan);border-color:rgba(41,182,246,0.25)"
+                                    onclick="DonationsAdminPage._toggleAllCoins(true)">Select All</button>
+                                <button class="mc-btn" style="padding:4px 12px;font-size:0.72rem;background:rgba(255,255,255,0.04);color:var(--text-muted);border-color:rgba(255,255,255,0.12)"
+                                    onclick="DonationsAdminPage._toggleAllCoins(false)">Clear All</button>
                             </div>
-                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:1.2rem">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                                    <div style="display:flex;align-items:center;gap:10px">
-                                        <div style="width:32px;height:32px;background:linear-gradient(135deg,#345D9D,#B8B8B8);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:0.8rem">LTC</div>
-                                        <span style="font-weight:700;font-size:1.05rem">Litecoin</span>
-                                    </div>
-                                    ${statusBadge(isManual ? (status.litecoin || 'disabled') : 'via provider')}
-                                </div>
-                                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--text-secondary)">
-                                    <input type="checkbox" id="cfg-ltc-enabled" ${cfg.litecoin_enabled ? 'checked' : ''} style="accent-color:#345D9D;width:18px;height:18px;cursor:pointer">
-                                    Enable Litecoin payments
-                                </label>
-                            </div>
+                        </div>
+                        <div id="coins-grid" style="min-height:60px;display:flex;align-items:center;justify-content:center">
+                            <span style="color:var(--text-muted);font-size:0.82rem">Loading coins…</span>
                         </div>
                     </div>
 
@@ -800,6 +784,7 @@ window.DonationsAdminPage = {
                 </div>`;
 
             this._loadProviderDashboard();
+            this._loadCoinsGrid(active_provider, cfg.enabled_coins || ['sol', 'ltc']);
         } catch (err) {
             area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load crypto settings.</p>';
         }
@@ -807,14 +792,18 @@ window.DonationsAdminPage = {
 
     async saveCryptoConfig() {
         try {
+            const enabledCoins = [...document.querySelectorAll('.coin-toggle:checked')].map(el => el.value);
             const body = {
-                solana_enabled:  document.getElementById('cfg-sol-enabled')?.checked,
-                litecoin_enabled: document.getElementById('cfg-ltc-enabled')?.checked,
+                enabled_coins: enabledCoins,
                 solana_rpc_primary:    document.getElementById('cfg-sol-rpc-primary')?.value,
                 solana_rpc_secondary:  document.getElementById('cfg-sol-rpc-secondary')?.value,
                 litecoin_rpc_primary:  document.getElementById('cfg-ltc-rpc-primary')?.value,
                 litecoin_rpc_secondary: document.getElementById('cfg-ltc-rpc-secondary')?.value,
             };
+            // Propagate sol/ltc enabled flags from the enabled_coins array for backward-compat
+            body.solana_enabled  = enabledCoins.includes('sol');
+            body.litecoin_enabled = enabledCoins.includes('ltc');
+
             const solWebhook = document.getElementById('cfg-sol-webhook')?.value;
             const ltcWebhook = document.getElementById('cfg-ltc-webhook')?.value;
             if (solWebhook) body.solana_webhook_secret = solWebhook;
@@ -1715,11 +1704,81 @@ window.DonationsAdminPage = {
         // Re-render config panel
         const panel = document.getElementById('pp-config-panel');
         if (panel) {
-            // We need the full config — fetch it fresh or reuse cached
             API.get('/api/ext/donations/admin/crypto/provider/config').then(cfg => {
                 panel.innerHTML = this._renderProviderConfigPanel(id, cfg.config, cfg.providers);
             }).catch(() => {});
         }
+        // Refresh coins grid for the selected provider
+        const currentEnabled = [...document.querySelectorAll('.coin-toggle:checked')].map(el => el.value);
+        this._loadCoinsGrid(id, currentEnabled.length ? currentEnabled : (this._lastCryptoConfig?.enabled_coins || ['sol','ltc']));
+    },
+
+    /** Static fallback coin lists per provider (used when API call fails or for instant display on card switch) */
+    _PROVIDER_COINS: {
+        manual:       ['ltc', 'sol'],
+        nowpayments:  ['ada', 'bnb', 'bch', 'btc', 'dash', 'doge', 'eth', 'ltc', 'matic', 'sol', 'trx', 'usdc', 'usdt', 'xmr', 'xrp'],
+        coinpayments: ['bch', 'bnb', 'btc', 'doge', 'eth', 'ltc', 'sol', 'usdc', 'usdt', 'xmr'],
+        plisio:       ['bch', 'bnb', 'btc', 'dash', 'doge', 'eth', 'ltc', 'sol', 'trx', 'usdc', 'usdt', 'xmr'],
+        oxapay:       ['bch', 'bnb', 'btc', 'doge', 'eth', 'ltc', 'sol', 'trx', 'usdc', 'usdt', 'xmr'],
+    },
+
+    /**
+     * Load the coin list for the given provider from the server, then render checkboxes.
+     * Falls back to the static list if the API call fails.
+     * @param {string} providerId
+     * @param {string[]} enabledCoins  — currently saved/selected coin tickers
+     */
+    async _loadCoinsGrid(providerId, enabledCoins) {
+        const grid = document.getElementById('coins-grid');
+        if (!grid) return;
+        grid.innerHTML = '<span style="color:var(--text-muted);font-size:0.82rem">Loading coins…</span>';
+
+        let coins;
+        try {
+            const data = await API.get('/api/ext/donations/crypto/currencies');
+            // If the provider has changed (card selected but not saved), fall back to static list
+            coins = (data.provider === providerId && Array.isArray(data.currencies) && data.currencies.length)
+                ? data.currencies
+                : (this._PROVIDER_COINS[providerId] || ['sol', 'ltc']);
+        } catch {
+            coins = this._PROVIDER_COINS[providerId] || ['sol', 'ltc'];
+        }
+
+        const enabledSet = new Set((enabledCoins || []).map(c => c.toLowerCase()));
+
+        // Coin color map (accent colours for recognisable tickers)
+        const COIN_COLORS = {
+            btc:'#f7931a', eth:'#627eea', sol:'#14f195', ltc:'#345d9d', bnb:'#f3ba2f',
+            usdt:'#26a17b', usdc:'#2775ca', trx:'#e50915', doge:'#c3a634', bch:'#8dc351',
+            xmr:'#ff6600', ada:'#0033ad', dot:'#e6007a', matic:'#8247e5', dash:'#008ce7',
+            xrp:'#346aa9',
+        };
+
+        const chips = coins.map(coin => {
+            const color = COIN_COLORS[coin] || '#888';
+            const checked = enabledSet.has(coin);
+            return `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;
+                        background:${checked ? color + '18' : 'rgba(255,255,255,0.03)'};
+                        border:1px solid ${checked ? color + '55' : 'rgba(255,255,255,0.08)'};
+                        border-radius:8px;user-select:none;transition:background 0.15s,border-color 0.15s;
+                        font-size:0.8rem;font-weight:600;color:${checked ? color : 'var(--text-muted)'}"
+                    onclick="(function(lbl){lbl.style.background=lbl.querySelector('input').checked?'rgba(255,255,255,0.03)':'${color}18';lbl.style.borderColor=lbl.querySelector('input').checked?'rgba(255,255,255,0.08)':'${color}55';lbl.style.color=lbl.querySelector('input').checked?'var(--text-muted)':'${color}'})(this)">
+                <input type="checkbox" class="coin-toggle" value="${coin}" ${checked ? 'checked' : ''}
+                    style="accent-color:${color};width:14px;height:14px;cursor:pointer;flex-shrink:0">
+                ${coin.toUpperCase()}
+            </label>`;
+        }).join('');
+
+        grid.style.display = 'flex';
+        grid.style.flexWrap = 'wrap';
+        grid.style.gap = '8px';
+        grid.innerHTML = chips || '<span style="color:var(--text-muted);font-size:0.82rem">No coins available for this provider.</span>';
+    },
+
+    _toggleAllCoins(checked) {
+        document.querySelectorAll('.coin-toggle').forEach(el => {
+            if (el.checked !== checked) el.click();
+        });
     },
 
     async _testProviderConnection() {
