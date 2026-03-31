@@ -880,6 +880,34 @@ module.exports = function cryptoRoutes(extDb) {
         }
     });
 
+    /**
+     * POST /admin/balances/adjust-by-username
+     * Adjust (or create) a balance for any registered user looked up by username.
+     * Useful for crediting users who have no existing balance row.
+     */
+    router.post('/admin/balances/adjust-by-username', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const { username, amount, reason } = req.body;
+            if (!username?.trim()) return res.status(400).json({ error: 'Username required' });
+            if (!amount || parseFloat(amount) === 0) return res.status(400).json({ error: 'Non-zero amount required' });
+            if (!reason?.trim()) return res.status(400).json({ error: 'Reason is required' });
+
+            const user = await coreDb.get(
+                'SELECT id, username, display_name FROM users WHERE username = ? OR display_name = ?',
+                [username.trim(), username.trim()]
+            );
+            if (!user) return res.status(404).json({ error: `No registered user found for "${username.trim()}"` });
+
+            await balanceMgr.adminAdjust(req.user.id, user.id, parseFloat(amount), reason.trim(), extDb);
+            const newBalance = await balanceMgr.getBalance(user.id, extDb);
+            res.json({ success: true, user_id: user.id, display_name: user.display_name || user.username, new_balance: newBalance });
+        } catch (err) {
+            if (err instanceof InsufficientBalanceError)
+                return res.status(400).json({ error: 'Cannot debit below zero', shortfall: err.required - err.available });
+            res.status(500).json({ error: err.message || 'Server error' });
+        }
+    });
+
     /** POST /admin/balances/:userId/adjust — manual balance adjustment */
     router.post('/admin/balances/:userId/adjust', authenticateToken, requireAdmin, async (req, res) => {
         try {

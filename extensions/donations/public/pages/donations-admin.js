@@ -1223,9 +1223,13 @@ window.DonationsAdminPage = {
             let html = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;gap:1rem;flex-wrap:wrap">
                     <h3 style="margin:0;font-size:1rem;color:var(--text-secondary)">User Balances</h3>
-                    <input class="input-field" placeholder="Search username..." value="${App.escapeHtml(search)}"
-                        oninput="DonationsAdminPage._balanceSearch=this.value;clearTimeout(DonationsAdminPage._bsTimer);DonationsAdminPage._bsTimer=setTimeout(()=>DonationsAdminPage.loadTab(),400)"
-                        style="max-width:220px">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <input class="input-field" placeholder="Search username..." value="${App.escapeHtml(search)}"
+                            oninput="DonationsAdminPage._balanceSearch=this.value;clearTimeout(DonationsAdminPage._bsTimer);DonationsAdminPage._bsTimer=setTimeout(()=>DonationsAdminPage.loadTab(),400)"
+                            style="max-width:200px">
+                        <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3);white-space:nowrap"
+                            onclick="DonationsAdminPage.showCreditUserModal()">+ Credit User</button>
+                    </div>
                 </div>
                 <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
                 <table class="donate-table">
@@ -1257,6 +1261,83 @@ window.DonationsAdminPage = {
             area.innerHTML = html;
         } catch (err) {
             area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load user balances.</p>';
+        }
+    },
+
+    showCreditUserModal() {
+        App.showModal('Credit / Debit User Balance', `
+            <div style="display:grid;gap:14px">
+                <p style="color:var(--text-muted);font-size:0.82rem;margin:0">
+                    Credit or debit any registered user — even if they have no existing balance.
+                    Positive = add funds, negative = remove funds.
+                </p>
+                <div>
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Username / Display Name</label>
+                    <input id="cu-username" class="input-field" placeholder="Registered username" style="width:100%"
+                        oninput="DonationsAdminPage._cuLookupDebounce()">
+                    <div id="cu-user-preview" style="margin-top:6px;min-height:18px;font-size:0.75rem;color:var(--text-muted)"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Amount (USD)</label>
+                        <input id="cu-amount" type="number" step="0.01" class="input-field" placeholder="e.g. 10.00 or -5.00" style="width:100%">
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Reason (required)</label>
+                        <input id="cu-reason" class="input-field" placeholder="e.g. Guest donation transfer" style="width:100%">
+                    </div>
+                </div>
+                <div style="text-align:right">
+                    <button class="mc-btn" style="background:rgba(102,187,106,0.1);color:var(--neon-green);border-color:rgba(102,187,106,0.3)"
+                        onclick="DonationsAdminPage.submitCreditUser()">Apply</button>
+                </div>
+            </div>
+        `);
+    },
+
+    // Debounced live preview: shows current balance while admin types username
+    _cuLookupDebounce() {
+        clearTimeout(this._cuTimer);
+        this._cuTimer = setTimeout(async () => {
+            const username = document.getElementById('cu-username')?.value.trim();
+            const preview  = document.getElementById('cu-user-preview');
+            if (!preview) return;
+            if (!username) { preview.textContent = ''; return; }
+            preview.textContent = 'Looking up…';
+            try {
+                // Re-use the search endpoint to find the user
+                const results = await API.get(`/api/users/search?q=${encodeURIComponent(username)}&limit=5`);
+                const match = results?.find(u =>
+                    u.username?.toLowerCase() === username.toLowerCase() ||
+                    u.display_name?.toLowerCase() === username.toLowerCase()
+                ) || results?.[0];
+                if (!match) { preview.textContent = '⚠ No matching user found'; preview.style.color = '#f59e0b'; return; }
+                // Fetch current balance
+                const bal = await API.get(`/api/ext/donations/admin/balances/${match.id}/ledger`).catch(() => null);
+                const currentBal = Array.isArray(bal)
+                    ? bal.reduce((s, t) => s + (t.type === 'credit' ? t.amount_usd : -t.amount_usd), 0)
+                    : null;
+                preview.innerHTML = `<span style="color:var(--neon-green)">✓ Found: ${App.escapeHtml(match.display_name || match.username)}</span>`
+                    + (currentBal !== null ? ` &nbsp;·&nbsp; Current balance: <strong>$${currentBal.toFixed(2)}</strong>` : '');
+                preview.style.color = '';
+            } catch { preview.textContent = ''; }
+        }, 400);
+    },
+
+    async submitCreditUser() {
+        const username = document.getElementById('cu-username')?.value.trim();
+        const amount   = parseFloat(document.getElementById('cu-amount')?.value);
+        const reason   = document.getElementById('cu-reason')?.value.trim();
+        if (!username) { App.showToast('Username required', 'warning'); return; }
+        if (isNaN(amount) || amount === 0) { App.showToast('Enter a non-zero amount', 'warning'); return; }
+        if (!reason) { App.showToast('Reason is required', 'warning'); return; }
+        try {
+            const result = await API.post('/api/ext/donations/admin/balances/adjust-by-username', { username, amount, reason });
+            App.showToast(`Balance updated for ${result.display_name}. New balance: $${result.new_balance.toFixed(2)}`, 'success');
+            App.closeModal();
+            this.loadTab();
+        } catch (err) {
+            App.showToast(err.message || 'Failed to apply adjustment', 'error');
         }
     },
 
