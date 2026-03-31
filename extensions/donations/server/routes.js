@@ -691,6 +691,66 @@ module.exports = function (extDb) {
         }
     });
 
+    /** PATCH /admin/donations/:id — update user assignment, rank, amount, or status */
+    router.patch('/admin/donations/:id', authenticateToken, requireAdmin, async (req, res) => {
+        try {
+            const donation = await extDb.get('SELECT * FROM donations WHERE id = ?', [req.params.id]);
+            if (!donation) return res.status(404).json({ error: 'Donation not found' });
+
+            let userId = donation.user_id;
+
+            // Reassign to a registered user (empty string = clear assignment to guest)
+            if (req.body.username !== undefined) {
+                const uname = req.body.username.trim();
+                if (!uname) {
+                    userId = null;
+                } else {
+                    const user = await coreDb.get(
+                        'SELECT id FROM users WHERE username = ? OR display_name = ?',
+                        [uname, uname]
+                    );
+                    if (!user) return res.status(404).json({ error: `No registered user found for "${uname}"` });
+                    userId = user.id;
+                }
+            }
+
+            const newRankId = req.body.rank_id !== undefined ? (req.body.rank_id || null) : donation.rank_id;
+            const newAmount = req.body.amount  !== undefined ? parseFloat(req.body.amount)  : donation.amount;
+            const newStatus = req.body.status  !== undefined ? req.body.status               : donation.status;
+
+            if (isNaN(newAmount) || newAmount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+            const validStatuses = ['pending', 'completed', 'failed', 'refunded'];
+            if (!validStatuses.includes(newStatus)) return res.status(400).json({ error: 'Invalid status' });
+
+            await extDb.run(
+                'UPDATE donations SET user_id=?, rank_id=?, amount=?, status=? WHERE id=?',
+                [userId, newRankId, newAmount, newStatus, donation.id]
+            );
+
+            // If now completed + rank assigned + has a real user, ensure user_ranks is up-to-date
+            if (newStatus === 'completed' && newRankId && userId) {
+                const expiresAt = donation.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                const existing = await extDb.get('SELECT id FROM user_ranks WHERE user_id = ?', [userId]);
+                if (existing) {
+                    await extDb.run(
+                        'UPDATE user_ranks SET rank_id=?, active=1, expires_at=? WHERE user_id=?',
+                        [newRankId, expiresAt, userId]
+                    );
+                } else {
+                    await extDb.run(
+                        'INSERT INTO user_ranks (id, user_id, rank_id, active, started_at, expires_at) VALUES (?,?,?,1,?,?)',
+                        [require('crypto').randomUUID(), userId, newRankId, new Date().toISOString(), expiresAt]
+                    );
+                }
+            }
+
+            res.json({ message: 'Donation updated' });
+        } catch (err) {
+            console.error('[Donations] PATCH donation error:', err);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
     router.get('/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const totalRevenue = await extDb.get("SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE status = 'completed'");

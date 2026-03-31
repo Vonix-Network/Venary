@@ -28,7 +28,7 @@ const API = {
             headers: this.getHeaders(),
         };
 
-        if (body && (method === 'POST' || method === 'PUT')) {
+        if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
             options.body = JSON.stringify(body);
         }
 
@@ -60,6 +60,7 @@ const API = {
     get(endpoint) { return this.request('GET', endpoint); },
     post(endpoint, body) { return this.request('POST', endpoint, body); },
     put(endpoint, body) { return this.request('PUT', endpoint, body); },
+    patch(endpoint, body) { return this.request('PATCH', endpoint, body); },
     delete(endpoint) { return this.request('DELETE', endpoint); },
 
     // Auth

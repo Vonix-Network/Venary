@@ -262,9 +262,17 @@ window.DonationsAdminPage = {
     },
 
     // ── HISTORY ──
+    _donationHistory: [],
+
     async renderHistory(area) {
         try {
-            const data = await API.get('/api/ext/donations/admin/donations?limit=50');
+            const [data, ranks] = await Promise.all([
+                API.get('/api/ext/donations/admin/donations?limit=50'),
+                API.get('/api/ext/donations/admin/ranks').catch(() => []),
+            ]);
+            this._donationHistory = data.donations;
+            this._donationRanks   = ranks;
+
             let html = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
                     <h3 style="margin:0;font-size:1rem;color:var(--text-secondary)">Donation History</h3>
@@ -273,31 +281,119 @@ window.DonationsAdminPage = {
                 <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
                 <table class="donate-table">
                     <thead><tr>
-                        <th>User</th><th>Rank</th><th>Amount</th><th>Status</th><th>Date</th>
+                        <th>User</th><th>Rank</th><th>Amount</th><th>Status</th><th>Date</th><th></th>
                     </tr></thead>
                     <tbody>`;
 
             for (const d of data.donations) {
                 const statusClass = d.status === 'completed' ? 'completed' : d.status === 'pending' ? 'pending' : 'failed';
-                const typeIcon = d.payment_type === 'manual' ? '📝 ' : '';
+                const typeIcon    = d.payment_type === 'manual' ? '📝 ' : '';
+                const isGuest     = !d.user_id;
+                const displayName = isGuest
+                    ? `<span style="color:var(--text-muted);font-size:0.82rem">👤 ${App.escapeHtml(d.minecraft_username || 'Guest')}</span>`
+                    : App.escapeHtml(d.username);
                 html += `
                     <tr>
-                        <td>${App.escapeHtml(d.username)}</td>
+                        <td>${displayName}</td>
                         <td><span style="color:${App.escapeHtml(d.rank_color || '#fff')}">${App.escapeHtml(d.rank_name || '—')}</span></td>
                         <td>$${d.amount.toFixed(2)} <small style="color:var(--text-muted);font-size:0.7rem">${d.payment_type}</small></td>
                         <td><span class="donate-status ${statusClass}">${typeIcon}${d.status}</span></td>
                         <td style="font-size:0.8rem;color:var(--text-muted)">${new Date(d.created_at).toLocaleDateString()}</td>
+                        <td>
+                            <button class="mc-btn" style="padding:3px 10px;font-size:0.72rem;background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:var(--text-secondary)"
+                                onclick="DonationsAdminPage.showEditDonationModal('${d.id}')">Edit</button>
+                        </td>
                     </tr>`;
             }
 
             if (!data.donations.length) {
-                html += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">No donations yet.</td></tr>';
+                html += '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem">No donations yet.</td></tr>';
             }
 
             html += '</tbody></table></div>';
             area.innerHTML = html;
         } catch (err) {
             area.innerHTML = '<p style="color:var(--neon-magenta)">Failed to load donations.</p>';
+        }
+    },
+
+    async showEditDonationModal(donationId) {
+        const d = this._donationHistory?.find(x => x.id === donationId);
+        if (!d) { App.showToast('Donation not found', 'error'); return; }
+
+        const ranks = this._donationRanks || [];
+        const rankOptions = `<option value="">— None —</option>` +
+            ranks.map(r => `<option value="${r.id}" ${d.rank_id === r.id ? 'selected' : ''}>${App.escapeHtml(r.name)}</option>`).join('');
+
+        const currentUser = d.user_id ? d.username : '';
+
+        App.showModal('Edit Donation', `
+            <div style="display:grid;gap:14px">
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 14px;font-size:0.78rem;color:var(--text-muted)">
+                    Ref: <strong style="color:var(--text-secondary);font-family:monospace">${d.id.slice(0,12).toUpperCase()}</strong>
+                    &nbsp;·&nbsp; ${new Date(d.created_at).toLocaleString()}
+                    &nbsp;·&nbsp; ${d.payment_type}
+                </div>
+
+                <div>
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">
+                        Assign to Registered User
+                        <span style="font-weight:400"> — leave blank to keep as guest</span>
+                    </label>
+                    <input id="ed-username" class="input-field" style="width:100%"
+                        value="${App.escapeHtml(currentUser)}"
+                        placeholder="Registered username or display name">
+                    ${d.user_id ? '' : `<div style="margin-top:5px;font-size:0.72rem;color:#f59e0b">⚠ Currently unassigned (guest: ${App.escapeHtml(d.minecraft_username || '—')})</div>`}
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Amount (USD)</label>
+                        <input id="ed-amount" type="number" step="0.01" min="0.01" class="input-field" style="width:100%" value="${d.amount.toFixed(2)}">
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Status</label>
+                        <select id="ed-status" class="input-field" style="width:100%">
+                            ${['pending','completed','failed','refunded'].map(s =>
+                                `<option value="${s}" ${d.status === s ? 'selected' : ''}>${s}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Rank</label>
+                    <select id="ed-rank" class="input-field" style="width:100%">${rankOptions}</select>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:4px">
+                    <button class="mc-btn" style="background:rgba(255,255,255,0.04);color:var(--text-muted);border-color:rgba(255,255,255,0.1)"
+                        onclick="App.closeModal()">Cancel</button>
+                    <button class="mc-btn" style="background:rgba(41,182,246,0.1);color:var(--neon-cyan);border-color:rgba(41,182,246,0.3)"
+                        onclick="DonationsAdminPage.saveEditDonation('${d.id}')">Save Changes</button>
+                </div>
+            </div>
+        `);
+    },
+
+    async saveEditDonation(donationId) {
+        const username = document.getElementById('ed-username')?.value.trim();
+        const amount   = document.getElementById('ed-amount')?.value;
+        const status   = document.getElementById('ed-status')?.value;
+        const rankId   = document.getElementById('ed-rank')?.value;
+
+        try {
+            await API.patch(`/api/ext/donations/admin/donations/${donationId}`, {
+                username,   // server treats '' as clear-to-guest, non-empty as lookup
+                amount:  parseFloat(amount),
+                status,
+                rank_id: rankId || null,
+            });
+            App.showToast('Donation updated', 'success');
+            App.closeModal();
+            this.renderHistory(document.getElementById('donate-admin-content'));
+        } catch (err) {
+            App.showToast(err.message || 'Failed to update donation', 'error');
         }
     },
 
