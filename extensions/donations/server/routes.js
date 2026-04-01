@@ -1040,9 +1040,10 @@ module.exports = function (extDb) {
                 );
             }
 
-            // Send receipt email
+            // Send receipt email (skip synthetic @mc.local addresses)
             const user = await coreDb.get('SELECT username, display_name, email FROM users WHERE id = ?', [donation.user_id]);
-            if (user && user.email) {
+            const hasRealEmail = user && user.email && !user.email.endsWith('@mc.local');
+            if (hasRealEmail) {
                 sendReceiptEmail(user, donation, rank, expiresAt).catch(err => {
                     console.error('[Donations] Receipt email error:', err);
                 });
@@ -1065,6 +1066,19 @@ module.exports = function (extDb) {
                 } catch (err) {
                     console.error('[Donations] Balance credit error:', err.message);
                 }
+
+                // Send a receipt email for the custom donation too
+                try {
+                    const user = await coreDb.get('SELECT username, display_name, email FROM users WHERE id = ?', [donation.user_id]);
+                    const hasRealEmail = user && user.email && !user.email.endsWith('@mc.local');
+                    if (hasRealEmail) {
+                        await sendReceiptEmail(user, donation, null, null).catch(err => {
+                            console.error('[Donations] Custom donation receipt email error:', err);
+                        });
+                    }
+                } catch (err) {
+                    console.error('[Donations] Custom donation email lookup error:', err.message);
+                }
             }
             await sendDiscordWebhook(donation, null);
         }
@@ -1082,9 +1096,15 @@ module.exports = function (extDb) {
         const accentColor = Config.get('accentColor', '#7b2fff');
         const rankColor = rank?.color || primaryColor;
         const displayName = user.display_name || user.username;
-        const expiryDate = new Date(expiresAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const isRankPurchase = !!rank;
+        const expiryDate = isRankPurchase && expiresAt
+            ? new Date(expiresAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+            : null;
         const donationDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         const receiptId = donation.id.slice(0, 8).toUpperCase();
+        const balanceApplied = parseFloat(donation.balance_applied) || 0;
+        const fullAmount = parseFloat(donation.amount) || 0;
+        const chargedAmount = Math.max(fullAmount - balanceApplied, 0);
 
         const perks = (() => { try { return JSON.parse(rank?.perks || '[]'); } catch { return []; } })();
         const perksHtml = perks.length > 0
@@ -1093,7 +1113,9 @@ module.exports = function (extDb) {
 
         await Mailer.send({
             to: user.email,
-            subject: `Your ${rank?.name || 'Donation'} rank receipt — ${siteName}`,
+            subject: isRankPurchase
+                ? `Your ${rank.name} rank receipt — ${siteName}`
+                : `Your donation receipt — ${siteName}`,
             html: `
 <!DOCTYPE html>
 <html>
@@ -1112,12 +1134,19 @@ module.exports = function (extDb) {
     <p style="color:#e8e8f0;font-size:1rem;margin:0 0 8px 0">Hey <strong>${displayName}</strong>,</p>
     <p style="color:#a0a0b8;font-size:0.9rem;margin:0 0 28px 0">Thank you for supporting <strong style="color:#e8e8f0">${siteName}</strong>! Your donation means a lot to us. Here's your receipt.</p>
 
+    ${isRankPurchase ? `
     <!-- Rank Badge -->
     <div style="background:#0d1117;border:2px solid ${rankColor};border-radius:12px;padding:20px 24px;margin-bottom:24px;text-align:center">
-      <div style="font-size:2rem;margin-bottom:8px">${rank?.icon || '⭐'}</div>
-      <div style="font-size:1.3rem;font-weight:700;color:${rankColor};letter-spacing:1px">${rank?.name || 'Donation'} Rank</div>
-      <div style="color:#a0a0b8;font-size:0.8rem;margin-top:4px">Active until ${expiryDate}</div>
-    </div>
+      <div style="font-size:2rem;margin-bottom:8px">${rank.icon || '⭐'}</div>
+      <div style="font-size:1.3rem;font-weight:700;color:${rankColor};letter-spacing:1px">${rank.name} Rank</div>
+      ${expiryDate ? `<div style="color:#a0a0b8;font-size:0.8rem;margin-top:4px">Active until ${expiryDate}</div>` : ''}
+    </div>` : `
+    <!-- Custom donation badge -->
+    <div style="background:#0d1117;border:2px solid ${primaryColor};border-radius:12px;padding:20px 24px;margin-bottom:24px;text-align:center">
+      <div style="font-size:2rem;margin-bottom:8px">💙</div>
+      <div style="font-size:1.1rem;font-weight:700;color:${primaryColor}">One-Time Donation</div>
+      <div style="color:#a0a0b8;font-size:0.8rem;margin-top:4px">Thank you for your generosity!</div>
+    </div>`}
 
     <!-- Transaction Details -->
     <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
@@ -1129,17 +1158,27 @@ module.exports = function (extDb) {
         <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Date</td>
         <td style="padding:10px 0;color:#e8e8f0;font-size:0.85rem;text-align:right">${donationDate}</td>
       </tr>
+      ${isRankPurchase ? `
       <tr style="border-bottom:1px solid #1f2937">
         <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Rank</td>
-        <td style="padding:10px 0;font-size:0.85rem;text-align:right;color:${rankColor};font-weight:600">${rank?.name || '—'}</td>
+        <td style="padding:10px 0;font-size:0.85rem;text-align:right;color:${rankColor};font-weight:600">${rank.name}</td>
       </tr>
       <tr style="border-bottom:1px solid #1f2937">
         <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Duration</td>
         <td style="padding:10px 0;color:#e8e8f0;font-size:0.85rem;text-align:right">30 days</td>
+      </tr>` : ''}
+      ${balanceApplied > 0 ? `
+      <tr style="border-bottom:1px solid #1f2937">
+        <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Subtotal</td>
+        <td style="padding:10px 0;color:#e8e8f0;font-size:0.85rem;text-align:right">$${fullAmount.toFixed(2)} USD</td>
       </tr>
+      <tr style="border-bottom:1px solid #1f2937">
+        <td style="padding:10px 0;color:#6b7280;font-size:0.85rem">Credit Applied</td>
+        <td style="padding:10px 0;color:#10b981;font-size:0.85rem;text-align:right">−$${balanceApplied.toFixed(2)}</td>
+      </tr>` : ''}
       <tr>
-        <td style="padding:14px 0;color:#e8e8f0;font-size:1rem;font-weight:700">Total</td>
-        <td style="padding:14px 0;color:#22c55e;font-size:1.1rem;font-weight:800;text-align:right">$${parseFloat(donation.amount).toFixed(2)} USD</td>
+        <td style="padding:14px 0;color:#e8e8f0;font-size:1rem;font-weight:700">Total Charged</td>
+        <td style="padding:14px 0;color:#22c55e;font-size:1.1rem;font-weight:800;text-align:right">$${chargedAmount.toFixed(2)} USD</td>
       </tr>
     </table>
 
@@ -1152,7 +1191,7 @@ module.exports = function (extDb) {
 
     <!-- CTA -->
     <div style="text-align:center;margin-top:8px">
-      <a href="${siteUrl}/#/donate" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,${primaryColor},${accentColor});color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.9rem">View Your Rank</a>
+      <a href="${siteUrl}/#/donate" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,${primaryColor},${accentColor});color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.9rem">${isRankPurchase ? 'View Your Rank' : 'Back to Donations'}</a>
     </div>
   </div>
 
