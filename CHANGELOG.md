@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Navigation** â€” Fixed an issue where the profile picture dropdown menu was transparent by restoring the missing `.notifications-dropdown` CSS selector.
 
 ### Changed
-- **Navigation** â€” Redesigned the public navigation sidebar to be collapsible by default, expanding to full width on hover to maximize screen real estate.
 - **Admin Dashboard** â€” Full redesign of the Extensions management dashboard, replacing the basic list with a modern glassmorphic grid layout, active count stats, and enhanced visual hierarchy.
 - **Donations Extension** â€” Redesigned the "Overview" and "Ranks" tabs in the admin panel with modern glassmorphic cards and improved visual hierarchy.
 
