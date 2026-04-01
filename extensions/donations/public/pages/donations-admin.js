@@ -299,9 +299,11 @@ window.DonationsAdminPage = {
                         <td>$${d.amount.toFixed(2)} <small style="color:var(--text-muted);font-size:0.7rem">${d.payment_type}</small></td>
                         <td><span class="donate-status ${statusClass}">${typeIcon}${d.status}</span></td>
                         <td style="font-size:0.8rem;color:var(--text-muted)">${new Date(d.created_at).toLocaleDateString()}</td>
-                        <td>
+                        <td style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
                             <button class="mc-btn" style="padding:3px 10px;font-size:0.72rem;background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:var(--text-secondary)"
                                 onclick="DonationsAdminPage.showEditDonationModal('${d.id}')">Edit</button>
+                            ${d.status === 'completed' ? `<button class="mc-btn" style="padding:3px 10px;font-size:0.72rem;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.25);color:#10b981"
+                                onclick="DonationsAdminPage.showReceiptModal('${d.id}')">Receipt</button>` : ''}
                         </td>
                     </tr>`;
             }
@@ -395,6 +397,66 @@ window.DonationsAdminPage = {
         } catch (err) {
             App.showToast(err.message || 'Failed to update donation', 'error');
         }
+    },
+
+    showReceiptModal(donationId) {
+        const d = this._donationHistory?.find(x => x.id === donationId);
+        if (!d) { App.showToast('Donation not found', 'error'); return; }
+
+        const refId      = d.id.slice(0, 8).toUpperCase();
+        const dateStr    = new Date(d.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const expiryStr  = d.expires_at ? new Date(d.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
+        const rankColor  = d.rank_color || 'var(--neon-cyan)';
+        const balApplied = parseFloat(d.balance_applied) || 0;
+        const fullAmt    = parseFloat(d.amount) || 0;
+        const charged    = Math.max(fullAmt - balApplied, 0);
+        const isGuest    = !d.user_id;
+        const displayName = d.username || (isGuest ? (d.minecraft_username || 'Guest') : 'Unknown');
+
+        const rankBlock = d.rank_name ? `
+            <div style="background:${App.escapeHtml(rankColor)}14;border:1px solid ${App.escapeHtml(rankColor)}44;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+                <span style="font-size:1.8rem">${d.rank_icon || '⭐'}</span>
+                <div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Rank Granted</div>
+                    <div style="font-size:1.1rem;font-weight:700;color:${App.escapeHtml(rankColor)}">${App.escapeHtml(d.rank_name)}</div>
+                    ${expiryStr ? `<div style="font-size:0.74rem;color:var(--text-muted);margin-top:2px">Active 30 days — expires ${expiryStr}</div>` : ''}
+                </div>
+            </div>` : `
+            <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:12px 18px;margin-bottom:16px;text-align:center">
+                <div style="font-size:1.4rem">💙</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">One-Time Donation (no rank)</div>
+            </div>`;
+
+        const rows = [
+            ['Receipt #',    `<code style="font-size:0.82rem;color:var(--text-primary)">${refId}</code>`],
+            ['Date',         dateStr],
+            ['Donor',        App.escapeHtml(displayName) + (isGuest ? ' <span style="font-size:0.7rem;color:var(--text-muted)">(Guest)</span>' : '')],
+            ['Payment type', App.escapeHtml(d.payment_type || 'one-time')],
+            d.rank_name ? ['Rank', `<span style="color:${App.escapeHtml(rankColor)};font-weight:600">${App.escapeHtml(d.rank_name)}</span>`] : null,
+            balApplied > 0 ? ['Subtotal', `$${fullAmt.toFixed(2)}`] : null,
+            balApplied > 0 ? ['Credit Applied', `<span style="color:#10b981">−$${balApplied.toFixed(2)}</span>`] : null,
+            ['Total Charged', `<strong style="color:#22c55e;font-size:1rem">$${charged.toFixed(2)} USD</strong>`],
+            d.guest_email ? ['Receipt Email', App.escapeHtml(d.guest_email)] : null,
+            d.minecraft_username ? ['Minecraft User', App.escapeHtml(d.minecraft_username)] : null,
+            d.stripe_session_id ? ['Stripe Session', `<code style="font-size:0.7rem;color:var(--text-muted)">${App.escapeHtml(d.stripe_session_id.slice(0, 24))}…</code>`] : null,
+        ].filter(Boolean);
+
+        const tableRows = rows.map(([label, val]) =>
+            `<tr style="border-bottom:1px solid var(--border-subtle)">
+                <td style="padding:9px 0;font-size:0.82rem;color:var(--text-muted);width:40%">${label}</td>
+                <td style="padding:9px 0;font-size:0.82rem;color:var(--text-primary);text-align:right">${val}</td>
+            </tr>`
+        ).join('');
+
+        App.showModal(`Receipt — ${refId}`, `
+            ${rankBlock}
+            <table style="width:100%;border-collapse:collapse">${tableRows}</table>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-subtle);display:flex;gap:8px;justify-content:flex-end">
+                <button class="mc-btn" style="background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.3);color:#818cf8;font-size:0.8rem;padding:6px 14px"
+                    onclick="DonationsAdminPage.showEditDonationModal('${d.id}');App.closeModal()">Edit Donation</button>
+                <button class="mc-btn" style="font-size:0.8rem;padding:6px 14px" onclick="App.closeModal()">Close</button>
+            </div>
+        `);
     },
 
     // ── SETTINGS ──

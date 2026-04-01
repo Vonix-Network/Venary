@@ -151,6 +151,9 @@ module.exports = function (extDb) {
             // ── Balance-applied column for partial balance + Stripe payments ──
             await extDb.run(`ALTER TABLE donations ADD COLUMN balance_applied REAL DEFAULT 0`).catch(() => {});
 
+            // ── Guest email — optional email address for receipt + account linking on registration ──
+            await extDb.run(`ALTER TABLE donations ADD COLUMN guest_email TEXT`).catch(() => {});
+
             // ── Atomic intent address counter (DB-backed, avoids Config race) ──
             await extDb.run(`CREATE TABLE IF NOT EXISTS crypto_intent_counter (key TEXT PRIMARY KEY, value INTEGER NOT NULL DEFAULT 10000)`).catch(() => {});
 
@@ -360,6 +363,10 @@ module.exports = function (extDb) {
                 return res.status(400).json({ error: 'Minecraft username is required for guest donations' });
             }
 
+            // Optional guest email — used for receipt delivery and account linking on registration
+            const rawGuestEmail = isGuest ? (req.body.guest_email || '').trim().toLowerCase() : '';
+            const guestEmail = rawGuestEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawGuestEmail) ? rawGuestEmail : null;
+
             let user = null;
             if (!isGuest) {
                 user = await coreDb.get('SELECT username, email FROM users WHERE id = ?', [req.user.id]);
@@ -408,7 +415,9 @@ module.exports = function (extDb) {
                 mode: 'payment',
                 success_url: siteUrl + '/#/donate?status=success&session_id={CHECKOUT_SESSION_ID}',
                 cancel_url: siteUrl + '/#/donate?status=cancelled',
-                customer_email: (!isGuest && user.email && user.email !== `${user.username.toLowerCase()}@mc.local`) ? user.email : undefined,
+                customer_email: isGuest
+                    ? (guestEmail || undefined)
+                    : (user.email && !user.email.endsWith('@mc.local') ? user.email : undefined),
                 metadata: {
                     user_id: isGuest ? null : req.user.id,
                     rank_id: rank.id,
@@ -432,10 +441,10 @@ module.exports = function (extDb) {
             }
 
             await extDb.run(
-                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_uuid, minecraft_username, expires_at, balance_applied)
-                 VALUES (?, ?, ?, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?, ?)`,
+                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_uuid, minecraft_username, expires_at, balance_applied, guest_email)
+                 VALUES (?, ?, ?, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?, ?, ?)`,
                 [donationId, isGuest ? null : req.user.id, rank.id, rank.price, session.id, mcUuid, mcUsername,
-                    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), confirmedBalanceApply]
+                    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), confirmedBalanceApply, guestEmail]
             );
 
             res.json({ url: session.url, sessionId: session.id });
@@ -462,6 +471,10 @@ module.exports = function (extDb) {
                 return res.status(400).json({ error: 'Minecraft username is required for guest donations' });
             }
 
+            // Optional guest email for receipt + account linking on registration
+            const rawGuestEmailC = isGuest ? (req.body.guest_email || '').trim().toLowerCase() : '';
+            const guestEmailC = rawGuestEmailC && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawGuestEmailC) ? rawGuestEmailC : null;
+
             let user = null;
             if (!isGuest) {
                 user = await coreDb.get('SELECT username, email FROM users WHERE id = ?', [req.user.id]);
@@ -487,7 +500,9 @@ module.exports = function (extDb) {
                 mode: 'payment',
                 success_url: siteUrl + '/#/donate?status=success&session_id={CHECKOUT_SESSION_ID}',
                 cancel_url: siteUrl + '/#/donate?status=cancelled',
-                customer_email: (!isGuest && user.email && user.email !== (user.username.toLowerCase() + '@mc.local')) ? user.email : undefined,
+                customer_email: isGuest
+                    ? (guestEmailC || undefined)
+                    : (user.email && !user.email.endsWith('@mc.local') ? user.email : undefined),
                 metadata: {
                     user_id: isGuest ? '' : req.user.id,
                     rank_id: '',
@@ -500,11 +515,11 @@ module.exports = function (extDb) {
 
             const donationId = uuidv4();
             await extDb.run(
-                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_username, expires_at)
-                 VALUES (?, ?, NULL, ?, 'usd', 'one-time', ?, 'pending', ?, ?)`,
+                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_username, expires_at, guest_email)
+                 VALUES (?, ?, NULL, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?)`,
                 [donationId, isGuest ? null : req.user.id, amount, session.id,
                     isGuest ? guestMcUsername : null,
-                    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()]
+                    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), guestEmailC]
             );
 
             res.json({ url: session.url, sessionId: session.id });
@@ -1049,9 +1064,17 @@ module.exports = function (extDb) {
                 });
             }
 
+            // Guest rank purchase with email — send receipt (rank granted via Minecraft plugin)
+            if (!donation.user_id && donation.guest_email) {
+                sendReceiptEmail(
+                    { email: donation.guest_email, username: donation.minecraft_username || 'Guest', display_name: donation.minecraft_username || 'Guest' },
+                    donation, rank, expiresAt
+                ).catch(err => console.error('[Donations] Guest rank receipt email error:', err));
+            }
+
             await sendDiscordWebhook(donation, rank);
         } else {
-            // Custom no-rank donation — credit balance if user is logged in, then fire Discord webhook
+            // Custom no-rank donation OR guest rank purchase without user_id — credit balance if logged in
             if (donation.user_id) {
                 try {
                     const balanceMgr = require('./crypto/balance');
@@ -1080,6 +1103,15 @@ module.exports = function (extDb) {
                     console.error('[Donations] Custom donation email lookup error:', err.message);
                 }
             }
+
+            // Guest custom donation with email — send receipt
+            if (!donation.user_id && donation.guest_email) {
+                sendReceiptEmail(
+                    { email: donation.guest_email, username: donation.minecraft_username || 'Guest', display_name: donation.minecraft_username || 'Guest' },
+                    donation, null, null
+                ).catch(err => console.error('[Donations] Guest custom receipt email error:', err));
+            }
+
             await sendDiscordWebhook(donation, null);
         }
 

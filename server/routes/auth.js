@@ -70,6 +70,16 @@ router.post('/register', async (req, res) => {
 
         const token = jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '7d' });
 
+        // Link any completed guest donations that used this email address
+        try {
+            const extLoader = require('../extension-loader');
+            const extDb = extLoader.getExtensionDb('donations');
+            if (extDb) {
+                const guestLink = require('../../extensions/donations/server/guest-link');
+                await guestLink.linkByEmail(id, email, extDb);
+            }
+        } catch { /* donations extension may not be active */ }
+
         res.status(201).json({
             token,
             user: { id, username, display_name: display_name || username, email }

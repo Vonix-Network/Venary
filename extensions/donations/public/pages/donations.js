@@ -49,6 +49,13 @@ window.DonationsPage = {
                         <label style="font-size:0.82rem;color:var(--text-secondary);display:block;margin-bottom:6px">Minecraft Username <span style="color:var(--neon-magenta)">*</span></label>
                         <input type="text" id="donate-onetime-mc-username" class="input-field" placeholder="Your Minecraft username" maxlength="16" style="max-width:280px">
                         <small style="display:block;margin-top:4px;font-size:0.72rem;color:var(--text-muted)">Used for your avatar in the donations list</small>
+                        <label style="font-size:0.82rem;color:var(--text-secondary);display:flex;align-items:center;gap:6px;margin-top:14px;margin-bottom:6px">
+                            Email
+                            <span style="font-size:0.68rem;font-weight:700;background:rgba(99,102,241,0.18);color:#818cf8;border:1px solid rgba(99,102,241,0.35);border-radius:4px;padding:1px 6px;letter-spacing:.03em">Recommended</span>
+                            <span title="If you later register an account with this email, your donation history and any credits will automatically be linked to your profile." style="cursor:help;color:var(--text-muted);font-size:0.85rem;line-height:1">ℹ</span>
+                        </label>
+                        <input type="email" id="donate-guest-email" class="input-field" placeholder="your@email.com" style="max-width:280px">
+                        <small style="display:block;margin-top:4px;font-size:0.72rem;color:var(--text-muted)">Optional — used to send your receipt and link donations if you register later</small>
                     </div>
                     <button class="donate-onetime-btn" id="donate-onetime-submit" onclick="DonationsPage.submitOneTime()">Donate Now</button>
                 </div>
@@ -397,22 +404,23 @@ window.DonationsPage = {
         if (!amount && customInput && customInput.value) amount = parseFloat(customInput.value);
         if (!amount || amount < 1) { App.showToast('Please select or enter a donation amount', 'warning'); return; }
         const isGuest = !App.currentUser;
-        let mcUsername = '';
+        let mcUsername = '', guestEmail = '';
         if (isGuest) {
             const mcInput = document.getElementById('donate-onetime-mc-username');
             mcUsername = mcInput ? mcInput.value.trim() : '';
             if (!mcUsername) { App.showToast('Please enter your Minecraft username', 'warning'); return; }
+            guestEmail = (document.getElementById('donate-guest-email')?.value || '').trim();
         }
         // Show payment picker if any method is available
         const cs = this._cryptoStatus;
         if (cs?.stripe_enabled || (cs?.crypto_enabled && cs?.coins?.length)) {
-            return this._showPaymentPicker(null, amount, null, mcUsername);
+            return this._showPaymentPicker(null, amount, null, mcUsername, guestEmail);
         }
         const btn = document.getElementById('donate-onetime-submit');
         if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
         try {
             const payload = { amount };
-            if (isGuest) payload.mc_username = mcUsername;
+            if (isGuest) { payload.mc_username = mcUsername; if (guestEmail) payload.guest_email = guestEmail; }
             const result = await API.post('/api/ext/donations/custom-checkout', payload);
             if (result.url) { window.location.href = result.url; return; }
             App.showToast('Could not create checkout session', 'error');
@@ -504,19 +512,21 @@ window.DonationsPage = {
     },
 
     /**
-     * Show a flat payment method picker: Card (Stripe) + one button per active coin.
+     * Show a flat payment method picker: balance section + Card (Stripe) + one button per active coin.
      * @param {string|null} rankId
      * @param {number|null} amount
      * @param {HTMLElement|null} btn
      * @param {string} [mcUsername]
+     * @param {string} [prefillEmail]  — pre-fills guest email input (from one-time section)
      */
-    _showPaymentPicker(rankId, amount, btn, mcUsername) {
+    _showPaymentPicker(rankId, amount, btn, mcUsername, prefillEmail) {
         const cs = this._cryptoStatus || {};
         const coins = cs.coins || [];
         const balance = this._userBalance || 0;
         const safeRank   = rankId   ? `'${rankId}'` : 'null';
         const safeAmt    = amount   != null ? amount : 'null';
         const safeMcUser = mcUsername ? App.escapeHtml(mcUsername) : '';
+        const safeEmail  = prefillEmail ? App.escapeHtml(prefillEmail) : '';
 
         // Determine the price for balance math — rank lookup or custom amount
         const rankPrice = rankId
@@ -581,6 +591,21 @@ window.DonationsPage = {
 
         const hasPaymentMethods = cs.stripe_enabled || coins.length > 0;
 
+        // Guest email section — shown for guests only (not logged-in users)
+        const guestEmailSection = !App.currentUser ? `
+            <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:var(--text-secondary);margin-bottom:8px">
+                    Email
+                    <span style="font-size:0.66rem;font-weight:700;background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.4);border-radius:4px;padding:1px 6px;letter-spacing:.03em">Recommended</span>
+                    <span title="If you register an account later using this email, your donation history and any credits will automatically be transferred to your profile." style="cursor:help;color:var(--text-muted);font-size:0.9rem;line-height:1">ℹ</span>
+                </label>
+                <input type="email" id="ppm-guest-email" class="input-field" placeholder="your@email.com" value="${safeEmail}"
+                    style="width:100%;box-sizing:border-box;font-size:0.85rem">
+                <small style="display:block;margin-top:6px;font-size:0.7rem;color:var(--text-muted)">
+                    Optional — we'll send your receipt here and link this purchase if you register later.
+                </small>
+            </div>` : '';
+
         App.showModal('Choose Payment Method', `
             <style>
                 .ppm-option{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 10px;height:auto;width:100%;text-align:center}
@@ -588,6 +613,7 @@ window.DonationsPage = {
                 .ppm-label{font-weight:700;font-size:0.9rem}
                 .ppm-sub{font-size:0.7rem;color:var(--text-muted);font-weight:400}
             </style>
+            ${guestEmailSection}
             ${balanceSection}
             ${hasPaymentMethods ? `
             <p style="color:var(--text-muted);font-size:0.82rem;margin:0 0 14px">Select how you'd like to pay:</p>
@@ -630,26 +656,36 @@ window.DonationsPage = {
     },
 
     async _pickStripe(rankId, amount, balanceApply) {
+        const guestEmail = !App.currentUser
+            ? (document.getElementById('ppm-guest-email')?.value?.trim() || document.getElementById('donate-guest-email')?.value?.trim() || '')
+            : '';
         try {
             if (rankId) {
                 const body = { rank_id: rankId };
                 if (balanceApply > 0) body.balance_apply = balanceApply;
+                if (guestEmail) body.guest_email = guestEmail;
                 const r = await API.post('/api/ext/donations/checkout', body);
                 if (r?.url) window.location.href = r.url;
             } else {
-                const r = await API.post('/api/ext/donations/custom-checkout', { amount });
+                const body = { amount };
+                if (guestEmail) body.guest_email = guestEmail;
+                const r = await API.post('/api/ext/donations/custom-checkout', body);
                 if (r?.url) window.location.href = r.url;
             }
         } catch (e) { App.showToast(e.message || 'Payment error', 'error'); }
     },
 
     async startCryptoCheckout(rankId, amount, coin, mcUsername) {
+        const guestEmail = !App.currentUser
+            ? (document.getElementById('ppm-guest-email')?.value?.trim() || document.getElementById('donate-guest-email')?.value?.trim() || '')
+            : '';
         App.showToast('Creating payment…', 'info');
         try {
             const payload = { coin };
             if (rankId)    payload.rank_id = rankId;
             if (amount)    payload.amount  = amount;
             if (mcUsername) payload.mc_username = mcUsername;
+            if (guestEmail) payload.guest_email = guestEmail;
 
             const result = await API.post('/api/ext/donations/crypto/intent', payload);
 
