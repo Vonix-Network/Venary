@@ -318,11 +318,7 @@ window.DonationsPage = {
             return '<button class="donate-rank-btn extend" onclick="DonationsPage.purchase(\'' + rank.id + '\',this)">&#9201; Extend (+30 days)</button>';
         }
         if (this.currentRank && this.currentRank.active) {
-            // Offer both a free time-conversion switch and a paid switch-with-new-month
-            return '<div style="display:flex;flex-direction:column;gap:6px;margin-top:auto">' +
-                '<button class="donate-rank-btn switch-btn" onclick="DonationsPage.showFreeSwitchConfirm(\'' + rank.id + '\',\'' + App.escapeHtml(rank.name) + '\',' + rank.price + ')">&#8644; Switch Plan</button>' +
-                '<button class="donate-rank-btn" style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.12);color:var(--text-secondary);font-size:0.78rem;padding:8px" onclick="DonationsPage.showSwitchConfirm(\'' + rank.id + '\',\'' + App.escapeHtml(rank.name) + '\',' + rank.price + ')">&#43; Purchase &amp; Switch (+30 days)</button>' +
-                '</div>';
+            return '<button class="donate-rank-btn switch-btn" onclick="DonationsPage.showFreeSwitchConfirm(\'' + rank.id + '\',\'' + App.escapeHtml(rank.name) + '\',' + rank.price + ')">&#8644; Switch Plan</button>';
         }
         return '<button class="donate-rank-btn" onclick="DonationsPage.purchase(\'' + rank.id + '\',this)">Purchase</button>';
     },
