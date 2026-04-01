@@ -345,9 +345,8 @@ router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
 // POST /api/admin/settings — bulk update (any subset of settings)
 router.post('/settings', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        // Only admin (not moderator) can change settings
-        const requester = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
-        if (!requester || requester.role !== 'admin') {
+        // Only admin/superadmin can change settings (moderators cannot)
+        if (!['admin', 'superadmin'].includes(req.userRole)) {
             return res.status(403).json({ error: 'Only admins can change settings' });
         }
 
