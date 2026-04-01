@@ -211,14 +211,33 @@ module.exports = function (extDb) {
             // Batch user lookup — collect unique non-null user_ids
             const userIds = [...new Set(donations.map(d => d.user_id).filter(Boolean))];
             const userMap = {};
+            const extLoader = require('../../../server/extension-loader');
+            const mcDb = extLoader.getExtensionDb('minecraft');
+            
             for (const uid of userIds) {
                 const u = await coreDb.get('SELECT id, username, display_name, avatar FROM users WHERE id = ?', [uid]);
-                if (u) userMap[uid] = u;
+                if (u) {
+                    userMap[uid] = u;
+                    if (mcDb) {
+                        try {
+                            const link = await mcDb.get('SELECT minecraft_uuid, minecraft_username FROM linked_accounts WHERE user_id = ?', [uid]);
+                            if (link) {
+                                userMap[uid].mc_uuid = link.minecraft_uuid;
+                                userMap[uid].mc_username = link.minecraft_username;
+                            }
+                        } catch { /* ignore if no table/ext */ }
+                    }
+                }
             }
             for (const d of donations) {
                 const user = d.user_id ? userMap[d.user_id] : null;
                 d.username = user?.display_name || user?.username || d.minecraft_username || 'Anonymous';
                 d.avatar = user?.avatar || null;
+                
+                // If donation row lacks MC data, check the linked account
+                if (!d.minecraft_uuid && user?.mc_uuid) d.minecraft_uuid = user.mc_uuid;
+                if (!d.minecraft_username && user?.mc_username) d.minecraft_username = user.mc_username;
+                
                 if (!d.minecraft_uuid && d.minecraft_username) d.mc_username = d.minecraft_username;
                 delete d.user_id;
             }
