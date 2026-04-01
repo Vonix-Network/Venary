@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Navigation** â€” Fixed an issue where the profile picture dropdown menu was transparent by restoring the missing `.notifications-dropdown` CSS selector.
+- **Donations Extension** â€” Fixed an issue in the public donations history list where users without an avatar or Minecraft username were loading a broken image link. Now gracefully falls back to a dynamically generated initial/letter avatar.
 
 ### Changed
 - **Admin Dashboard** â€” Full redesign of the Extensions management dashboard, replacing the basic list with a modern glassmorphic grid layout, active count stats, and enhanced visual hierarchy.

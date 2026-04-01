@@ -509,13 +509,20 @@ window.DonationsPage = {
             for (const d of donations) {
                 // Registered users: always use their site profile picture.
                 // MC-Heads is only for guests who provided a Minecraft username.
-                const avatar = d.avatar
-                    ? d.avatar
-                    : (d.minecraft_uuid
-                        ? 'https://mc-heads.net/avatar/' + d.minecraft_uuid + '/40'
-                        : (d.mc_username ? 'https://mc-heads.net/avatar/' + encodeURIComponent(d.mc_username) + '/40' : '/img/default-avatar.png'));
+                let avatarHtml = '';
+                if (d.avatar) {
+                    avatarHtml = '<img class="donate-recent-avatar" src="' + App.escapeHtml(d.avatar) + '" alt="">';
+                } else if (d.minecraft_uuid) {
+                    avatarHtml = '<img class="donate-recent-avatar" src="https://mc-heads.net/avatar/' + App.escapeHtml(d.minecraft_uuid) + '/40" alt="">';
+                } else if (d.mc_username) {
+                    avatarHtml = '<img class="donate-recent-avatar" src="https://mc-heads.net/avatar/' + encodeURIComponent(d.mc_username) + '/40" alt="">';
+                } else {
+                    const initial = App.escapeHtml((d.username || '?').charAt(0).toUpperCase());
+                    avatarHtml = '<div class="avatar-placeholder donate-recent-avatar" style="font-size:1.2rem; flex-shrink:0;">' + initial + '</div>';
+                }
+
                 html += '<div class="donate-recent-item">' +
-                    '<img class="donate-recent-avatar" src="' + avatar + '" alt="" onerror="this.src=\'/img/default-avatar.png\'">' +
+                    avatarHtml +
                     '<div class="donate-recent-meta">' +
                         '<div class="donate-recent-name">' + App.escapeHtml(d.username) + '</div>' +
                         (d.rank_name ? '<div class="donate-recent-rank" style="color:' + App.escapeHtml(d.rank_color || '#aaa') + '">' + App.escapeHtml(d.rank_name) + '</div>' : '') +
