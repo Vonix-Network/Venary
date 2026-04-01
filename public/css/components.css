@@ -7,7 +7,7 @@
     position: fixed;
     left: 0;
     top: 0;
-    width: var(--nav-width);
+    width: var(--nav-width-collapsed);
     height: 100vh;
     background: rgba(5, 6, 10, 0.4);
     backdrop-filter: blur(30px);
@@ -18,6 +18,13 @@
     z-index: var(--z-nav);
     padding: var(--space-lg) 0;
     transition: width var(--transition-normal), transform var(--transition-normal);
+}
+
+@media (min-width: 769px) {
+    .main-nav:hover,
+    .main-nav:focus-within {
+        width: var(--nav-width);
+    }
 }
 
 .nav-scroll-area {
@@ -73,6 +80,18 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
     letter-spacing: 3px;
+    opacity: 0;
+    visibility: hidden;
+    white-space: nowrap;
+    transition: opacity var(--transition-fast), visibility var(--transition-fast);
+}
+
+@media (min-width: 769px) {
+    .main-nav:hover .brand-text,
+    .main-nav:focus-within .brand-text {
+        opacity: 1;
+        visibility: visible;
+    }
 }
 
 .nav-links {
@@ -93,6 +112,23 @@
     position: relative;
     font-weight: 500;
     font-size: 0.925rem;
+}
+
+.nav-link span:not(.nav-badge) {
+    opacity: 0;
+    visibility: hidden;
+    white-space: nowrap;
+    max-width: 0;
+    transition: all var(--transition-fast);
+}
+
+@media (min-width: 769px) {
+    .main-nav:hover .nav-link span:not(.nav-badge),
+    .main-nav:focus-within .nav-link span:not(.nav-badge) {
+        opacity: 1;
+        visibility: visible;
+        max-width: 200px; /* Arbitrary max-width large enough for text */
+    }
 }
 
 .nav-link:hover {
@@ -192,6 +228,36 @@
     align-items: center;
     justify-content: space-between;
     margin-top: var(--space-md);
+}
+
+@media (min-width: 769px) {
+    .nav-user {
+        padding: var(--space-md) var(--space-sm);
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+    
+    .nav-user > button {
+        opacity: 0;
+        visibility: hidden;
+        position: absolute;
+        pointer-events: none;
+    }
+    
+    .main-nav:hover .nav-user,
+    .main-nav:focus-within .nav-user {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: var(--space-md) var(--space-lg);
+    }
+    
+    .main-nav:hover .nav-user > button,
+    .main-nav:focus-within .nav-user > button {
+        opacity: 1;
+        visibility: visible;
+        position: static;
+        pointer-events: auto;
+    }
 }
 
 .nav-user-info {
@@ -760,7 +826,7 @@ textarea.input-field {
 
 /* ========== Page Container ========== */
 .page-container {
-    margin-left: var(--nav-width);
+    margin-left: var(--nav-width-collapsed);
     min-height: 100vh;
     padding: var(--space-xl);
     transition: margin-left var(--transition-normal);
