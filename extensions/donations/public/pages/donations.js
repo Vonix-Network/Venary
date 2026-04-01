@@ -318,7 +318,11 @@ window.DonationsPage = {
             return '<button class="donate-rank-btn extend" onclick="DonationsPage.purchase(\'' + rank.id + '\',this)">&#9201; Extend (+30 days)</button>';
         }
         if (this.currentRank && this.currentRank.active) {
-            return '<button class="donate-rank-btn switch-btn" onclick="DonationsPage.showSwitchConfirm(\'' + rank.id + '\',\'' + App.escapeHtml(rank.name) + '\',' + rank.price + ')">&#128256; Purchase &amp; Switch</button>';
+            // Offer both a free time-conversion switch and a paid switch-with-new-month
+            return '<div style="display:flex;flex-direction:column;gap:6px;margin-top:auto">' +
+                '<button class="donate-rank-btn switch-btn" onclick="DonationsPage.showFreeSwitchConfirm(\'' + rank.id + '\',\'' + App.escapeHtml(rank.name) + '\',' + rank.price + ')">&#8644; Switch Plan</button>' +
+                '<button class="donate-rank-btn" style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.12);color:var(--text-secondary);font-size:0.78rem;padding:8px" onclick="DonationsPage.showSwitchConfirm(\'' + rank.id + '\',\'' + App.escapeHtml(rank.name) + '\',' + rank.price + ')">&#43; Purchase &amp; Switch (+30 days)</button>' +
+                '</div>';
         }
         return '<button class="donate-rank-btn" onclick="DonationsPage.purchase(\'' + rank.id + '\',this)">Purchase</button>';
     },
@@ -334,6 +338,76 @@ window.DonationsPage = {
         }
         // No payment methods configured
         App.showToast('No payment methods are currently configured. Contact an administrator.', 'warning');
+    },
+
+    /** Free plan switch — converts remaining days at prorated value, no payment. */
+    showFreeSwitchConfirm(rankId, rankName, rankPrice) {
+        if (!this.currentRank || !this.currentRank.active) return;
+        const daysLeft    = this.currentRank.expires_at
+            ? Math.max(0, Math.ceil((new Date(this.currentRank.expires_at) - Date.now()) / 86400000)) : 0;
+        const oldPrice    = this.currentRank.rank_price || 0;
+        const convertedDays = rankPrice > 0 ? Math.floor((daysLeft * (oldPrice / 30)) / (rankPrice / 30)) : daysLeft;
+        const isDowngrade = rankPrice < oldPrice;
+        const fromColor   = App.escapeHtml(this.currentRank.rank_color || 'var(--text-muted)');
+        const toColor     = 'var(--neon-cyan)';
+
+        // Value summary line
+        const valueNote = isDowngrade
+            ? `Switching to a cheaper plan gives you <strong style="color:var(--neon-cyan)">${convertedDays} days</strong> on ${App.escapeHtml(rankName)} in exchange for your ${daysLeft} remaining days.`
+            : `Your ${daysLeft} days of value convert to <strong style="color:var(--neon-cyan)">${convertedDays} days</strong> on the pricier ${App.escapeHtml(rankName)} plan.`;
+
+        App.showModal('Switch Plan — No Charge', `
+            <div class="donate-switch-modal-body">
+                <p class="donate-modal-desc">
+                    Switching from <strong style="color:${fromColor}">${App.escapeHtml(this.currentRank.rank_name)}</strong>
+                    to <strong style="color:${toColor}">${App.escapeHtml(rankName)}</strong> —
+                    your remaining time is converted at its prorated value. <strong>No payment required.</strong>
+                </p>
+                <div class="donate-switch-summary">
+                    <div class="donate-switch-summary-row">
+                        <span>Current plan</span>
+                        <strong style="color:${fromColor}">${App.escapeHtml(this.currentRank.rank_name)} ($${oldPrice.toFixed(2)}/mo)</strong>
+                    </div>
+                    <div class="donate-switch-summary-row">
+                        <span>Remaining days</span>
+                        <strong>${daysLeft} days</strong>
+                    </div>
+                    <div class="donate-switch-summary-row">
+                        <span>Prorated value</span>
+                        <strong>$${((daysLeft * oldPrice) / 30).toFixed(2)}</strong>
+                    </div>
+                    <div class="donate-switch-summary-row">
+                        <span>New plan</span>
+                        <strong style="color:${toColor}">${App.escapeHtml(rankName)} ($${rankPrice.toFixed(2)}/mo)</strong>
+                    </div>
+                    <div class="donate-switch-summary-row total">
+                        <span>Days on new plan</span>
+                        <strong style="color:${toColor}">${convertedDays} days</strong>
+                    </div>
+                </div>
+                <p style="font-size:0.78rem;color:var(--text-muted);margin-top:12px">${valueNote}</p>
+                <div style="display:flex;gap:10px;margin-top:20px">
+                    <button class="donate-rank-btn" style="flex:1"
+                        onclick="DonationsPage._doFreeSwitch('${rankId}',this)">Confirm Switch</button>
+                    <button class="donate-rank-btn donate-rank-btn--locked" style="flex:1;cursor:pointer;opacity:1"
+                        onclick="App.closeModal()">Cancel</button>
+                </div>
+            </div>`);
+    },
+
+    async _doFreeSwitch(rankId, btn) {
+        if (btn) { btn.disabled = true; btn.textContent = 'Switching...'; }
+        try {
+            const result = await API.post('/api/ext/donations/convert-rank', { new_rank_id: rankId });
+            App.closeModal();
+            App.showToast(`Switched to ${result.to_rank} — ${result.new_days} days granted!`, 'success');
+            this.currentRank = null; // force refresh
+            await this.loadCurrentRank();
+            this.loadRanks();
+        } catch (err) {
+            App.showToast(err.message || 'Switch failed', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Confirm Switch'; }
+        }
     },
 
     async showSwitchConfirm(rankId, rankName, rankPrice) {
