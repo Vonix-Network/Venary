@@ -158,6 +158,13 @@ module.exports = function (extDb) {
             await extDb.run(`CREATE TABLE IF NOT EXISTS crypto_intent_counter (key TEXT PRIMARY KEY, value INTEGER NOT NULL DEFAULT 10000)`).catch(() => {});
 
             console.log('[Donations] ✅ Crypto tables migration complete');
+
+            // ── donation_ranks: ensure luckperms_group column exists ──
+            // Safe for both SQLite and PostgreSQL — error means column already exists, caught and ignored.
+            await extDb.run(`ALTER TABLE donation_ranks ADD COLUMN luckperms_group TEXT`).catch(() => {});
+            // Back-fill any rows missing a luckperms_group with a sensible default derived from the rank name.
+            await extDb.run(`UPDATE donation_ranks SET luckperms_group = lower(replace(name, ' ', '_')) WHERE luckperms_group IS NULL OR luckperms_group = ''`).catch(() => {});
+            console.log('[Donations] ✅ donation_ranks luckperms_group migration complete');
         } catch (err) {
             console.error('[Donations] Migration error:', err.message);
         }
@@ -853,9 +860,10 @@ module.exports = function (extDb) {
             const parsedPrice = parseFloat(price);
             if (isNaN(parsedPrice) || parsedPrice < 0) return res.status(400).json({ error: 'price must be a non-negative number' });
             const perksJson = Array.isArray(perks) ? JSON.stringify(perks) : perks;
+            const lpGroup = typeof luckperms_group === 'string' ? luckperms_group.trim().toLowerCase() : null;
             await extDb.run(
                 `UPDATE donation_ranks SET name=?, price=?, color=?, icon=?, description=?, perks=?, luckperms_group=?, sort_order=?, active=? WHERE id=?`,
-                [name.trim(), parsedPrice, color || '#ffffff', icon || '⭐', description, perksJson, luckperms_group, sort_order || 0, active ? 1 : 0, req.params.id]
+                [name.trim(), parsedPrice, color || '#ffffff', icon || '⭐', description, perksJson, lpGroup, sort_order || 0, active ? 1 : 0, req.params.id]
             );
             const updated = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [req.params.id]);
             if (!updated) return res.status(404).json({ error: 'Rank not found' });
@@ -873,10 +881,11 @@ module.exports = function (extDb) {
             if (!name || !price) return res.status(400).json({ error: 'name and price required' });
             const id = 'rank_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_');
             const perksJson = Array.isArray(perks) ? JSON.stringify(perks) : (perks || '[]');
+            const lpGroup = typeof luckperms_group === 'string' && luckperms_group.trim() ? luckperms_group.trim().toLowerCase() : name.toLowerCase().replace(/\s+/g, '_');
             await extDb.run(
                 `INSERT INTO donation_ranks (id, name, price, color, icon, description, perks, luckperms_group, sort_order)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [id, name, price, color || '#ffffff', icon || '⭐', description || '', perksJson, luckperms_group || name.toLowerCase(), sort_order || 0]
+                [id, name, price, color || '#ffffff', icon || '⭐', description || '', perksJson, lpGroup, sort_order || 0]
             );
             const rank = await extDb.get('SELECT * FROM donation_ranks WHERE id = ?', [id]);
             try { rank.perks = JSON.parse(rank.perks || '[]'); } catch { rank.perks = []; }

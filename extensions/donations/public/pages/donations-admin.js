@@ -545,8 +545,9 @@ window.DonationsAdminPage = {
                     <input id="re-icon" class="input-field" value="${rank.icon}" style="width:100%">
                 </div>
                 <div>
-                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">LuckPerms Group</label>
-                    <input id="re-lp" class="input-field" value="${App.escapeHtml(rank.luckperms_group || '')}" style="width:100%">
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">LuckPerms Group Name</label>
+                    <input id="re-lp" class="input-field" value="${App.escapeHtml(rank.luckperms_group || '')}" placeholder="e.g. supporter" style="width:100%">
+                    <div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px">Exact group name from LuckPerms (used in <code style="background:rgba(255,255,255,0.07);padding:1px 4px;border-radius:3px">/lp group &lt;name&gt;</code>). Applied to the player when their subscription is active.</div>
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Sort Order</label>
@@ -582,7 +583,7 @@ window.DonationsAdminPage = {
             icon: document.getElementById('re-icon').value,
             description: document.getElementById('re-desc').value,
             perks: document.getElementById('re-perks').value.split('\n').map(s => s.trim()).filter(Boolean),
-            luckperms_group: document.getElementById('re-lp').value,
+            luckperms_group: document.getElementById('re-lp').value.trim().toLowerCase(),
             sort_order: parseInt(document.getElementById('re-order').value) || 0,
             active: document.getElementById('re-active').checked,
         };

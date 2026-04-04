@@ -368,17 +368,17 @@ module.exports = function (extDb) {
             }
 
             // Get donation rank if donations extension loaded
-            let donationRankId = null;
+            let donationRank = null;
             let totalDonated = 0;
             try {
                 const extLoader = require('../../../server/extension-loader');
                 const donExt = extLoader.extensions.get('donations');
                 if (donExt && donExt.enabled && donExt.db) {
                     const ur = await donExt.db.get(
-                        `SELECT r.id, r.name, r.color FROM user_ranks ur
+                        `SELECT r.id, r.name, r.color, r.luckperms_group FROM user_ranks ur
                          LEFT JOIN donation_ranks r ON ur.rank_id = r.id
                          WHERE ur.user_id = ? AND ur.active = 1`, [user.id]);
-                    if (ur) donationRankId = ur.id;
+                    if (ur) donationRank = { id: ur.id, name: ur.name, color: ur.color, luckperms_group: ur.luckperms_group };
                     const donated = await donExt.db.get('SELECT SUM(amount) as total FROM donations WHERE user_id = ? AND status = ?', [user.id, 'completed']);
                     if (donated) totalDonated = donated.total || 0;
                 }
@@ -394,7 +394,7 @@ module.exports = function (extDb) {
                     minecraft_uuid: link.minecraft_uuid,
                     role: user.role,
                     total_donated: totalDonated,
-                    donation_rank_id: donationRankId
+                    donation_rank: donationRank
                 }
             });
         } catch (err) {
