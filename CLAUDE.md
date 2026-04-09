@@ -1,66 +1,77 @@
-\# CLAUDE CODE PRECEPTS: PROJECT KIRO
+# CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
 
-\## 1. GIT AUTOMATION \& ATOMIC WORKFLOW
+## Commands
 
-\- \*\*Post-Change Protocol:\*\* After every logical block, bug fix, or feature completion, you MUST:
+```bash
+npm start          # Production server (node server/index.js)
+npm run dev        # Development with hot reload (nodemon watches server/ and extensions/)
+npm run rebuild    # Rebuild native dependencies from source
+```
 
-&#x20; 1. `run\_terminal\_command` with `git add .`
+No test or lint scripts are defined. First run serves a setup wizard; after setup, `data/config.json` is created and the app runs normally.
 
-&#x20; 2. `run\_terminal\_command` with `git commit -m "\[type]: \[concise description]"`
+---
 
-&#x20; 3. `run\_terminal\_command` with `git push`
+## Architecture
 
-\- \*\*Conflict Resolution:\*\* If a push fails, execute `git pull --rebase` before re-attempting.
+**Venary** is a gaming social platform — Express.js backend with a vanilla JS hash-based SPA frontend and a PHPBB-style extension system.
 
-\- \*\*Workflow:\*\* Execute atomic commits. Do not bundle unrelated changes.
+### Backend (`server/`)
 
+- `index.js` — Entry point. Detects if setup is complete (checks `data/config.json`), serves setup wizard if not, otherwise boots the full app.
+- `config.js` — Reads/writes `data/config.json`. All runtime config (DB settings, JWT secret, site name, SMTP, etc.) lives here — no `.env` file.
+- `db/factory.js` — Selects PostgreSQL or SQLite adapter based on config. `db/index.js` exposes a unified interface. Schema in `db/schema.sql`.
+- `extension-loader.js` — Discovers and mounts extensions from `extensions/`. Each extension declares routes, pages, CSS, DB schema, and nav items via `manifest.json`.
+- `middleware/auth.js` — JWT verification middleware used across protected routes.
+- `socket.js` — Socket.io real-time events (chat messages, typing indicators, notifications).
+- `discordBot.js` — Discord bot integration (rank sync, webhooks).
 
+### Frontend (`public/`)
 
-\## 2. SURGICAL EDITS \& INTEGRITY
+- `js/app.js` — App init and extension page loader.
+- `js/router.js` — Hash-based SPA router (`/#/page`).
+- `js/api.js` — Fetch wrapper for all backend API calls.
+- `js/socket-client.js` — Socket.io client setup.
+- `js/pages/` — Core page modules (auth, feed, profile, friends, chat, admin, mod).
 
-\- \*\*Surgical Precision:\*\* Use `edit\_file` for targeted changes. Do NOT perform full-file overwrites or use `write\_to\_file` on existing source code.
+### Extension System (`extensions/`)
 
-\- \*\*Tool Restriction:\*\* Strictly avoid terminal-based file manipulation (e.g., `sed`, `echo`, `cat`). Use native tool calls only.
+Extensions are self-contained modules. Each has:
+- `manifest.json` — Declares routes, frontend pages, CSS, isolated DB schema, nav items.
+- `server/` — Express router(s) mounted under `/api/[extension]/`.
+- `public/` — Frontend page JS injected into the SPA.
+- `data/` — Isolated SQLite DB or extension-specific data (gitignored).
 
-\- \*\*Credit Preservation:\*\* \*\*Strictly maintain\*\* all existing author credits, license headers, and `@authored` tags. Append logic; do not overwrite metadata.
+Current extensions include: `donations` (Stripe + Solana/Litecoin crypto), `forum`, `minecraft`, `pterodactyl-panel`. Extensions are enabled/disabled via `data/extensions.json`.
 
-\- \*\*Context Awareness:\*\* Verify surrounding scope to prevent side effects in interdependent modules before submitting.
+### Data Flow
 
+Authentication is JWT-based. Tokens are issued on login (`/api/auth/login`) and verified via `middleware/auth.js`. Crypto wallet addresses are derived deterministically using BIP39/ed25519 HD wallets — the seed is derived from `JWT_SECRET` in config.
 
+---
 
-\## 3. KIRO INTEGRATION \& TOOL SELECTION
+## Key Conventions
 
-\- \*\*Tool Priority:\*\* Prioritize \*\*Kiro-native tools\*\* via `run\_terminal\_command` for environment-specific tasks (testing, linting, deployment triggers) to ensure native compatibility.
+### Git & Commits
 
-\- \*\*DRY Principle:\*\* Scan the codebase using `grep\_search` or Kiro search utilities before authoring new logic to prevent redundancy.
+After every logical block, bug fix, or feature:
+1. `git add .`
+2. `git commit -m "[type]: [concise description]"`
+3. `git push` (on failure: `git pull --rebase` then re-push)
 
+### Code Integrity
 
+- Use targeted edits — never full-file overwrites on existing source.
+- Preserve all existing author credits, license headers, and `@authored` tags.
+- Scan for existing logic before adding new utilities (DRY).
 
-\## 4. CODE DENSITY \& ARCHITECTURE
+### Architecture Rules
 
-\- \*\*Consolidation:\*\* Actively reduce file fragmentation. Group related logic, interfaces, and utilities into unified modules (e.g., `utils.ts`, `types.ts`).
-
-\- \*\*Optimization:\*\*
-
-&#x20; - Prioritize low latency and minimal memory footprint.
-
-&#x20; - Eliminate "dead code" and redundant dependencies immediately.
-
-&#x20; - Use native language features over external libraries where performance gains are measurable.
-
-
-
-\## 5. DOCUMENTATION \& SYNC
-
-\- \*\*Inline Docs:\*\* Maintain high-density, meaningful JSDoc/TSDoc comments for complex logic.
-
-\- \*\*README Sync:\*\* Update `README.md` or relevant architecture docs immediately if architectural changes or new environment variables are introduced.
-
-
-
-\---
-
-\# END SYSTEM DIRECTIVE - BEGIN TASK EXECUTION
-
+- Group related logic into unified modules; reduce file fragmentation.
+- Eliminate dead code and redundant dependencies immediately.
+- Prefer native language features over external libraries when measurable gains exist.
+- Update `README.md` if architectural changes or new config keys are introduced.
