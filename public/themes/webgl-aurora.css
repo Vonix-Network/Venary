@@ -1,0 +1,13 @@
+/*
+ * Name: WebGL Aurora
+ * Description: Additive Blended Light Ribbons
+ * Author: Venary WebGL
+ * Version: 1.0.0
+ */
+
+:root {
+  --bg-primary: rgba(2, 13, 28, 0.5);
+  --bg-card: rgba(15, 25, 45, 0.6);
+  --neon-cyan: #00f0ff;
+  --neon-magenta: #39ff14;
+}

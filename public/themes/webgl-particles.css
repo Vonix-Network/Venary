@@ -1,0 +1,13 @@
+/*
+ * Name: WebGL Particles
+ * Description: Interactive 3D Particle Swarm
+ * Author: Venary WebGL
+ * Version: 1.0.0
+ */
+
+:root {
+  --bg-primary: rgba(16, 5, 22, 0.5);
+  --bg-card: rgba(25, 10, 35, 0.6);
+  --neon-cyan: #e040fb;
+  --neon-magenta: #ff4081;
+}

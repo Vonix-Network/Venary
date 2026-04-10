@@ -10,8 +10,9 @@ var App = {
         // Fetch + apply site settings before anything else
         await this.applySettings();
 
-        // Initialize particle engine
+        // Initialize engines
         ParticleEngine.init();
+        if (typeof WebGLEngine !== 'undefined') WebGLEngine.init();
 
         // Register core routes
         Router.register('/login', function (c) { AuthPage.render(c, 'login'); });
@@ -954,10 +955,22 @@ var App = {
         document.getElementById('themes-modal')?.remove();
         this.showToast('Theme updated to ' + themeId, 'success');
 
-        if (typeof ParticleEngine !== 'undefined') {
-            if (themeId === 'default' || themeId === 'warp' || themeId === 'galaxy' || themeId === 'vonix' || themeId === 'ocean' || themeId === 'prism' || themeId === 'purple' || themeId === 'pink' || themeId === 'lavalamp') {
-                ParticleEngine.refreshTheme();
-            }
+        const webGLThemes = ['webgl-cyber', 'webgl-matrix', 'webgl-stars', 'webgl-geometry', 'webgl-fluid', 'webgl-aurora', 'webgl-particles'];
+        const isWebGL = webGLThemes.includes(themeId);
+        
+        const particleCanvas = document.getElementById('particle-canvas');
+        const webglCanvas = document.getElementById('webgl-canvas');
+        
+        if (isWebGL) {
+            if (particleCanvas) particleCanvas.classList.add('hidden');
+            if (webglCanvas) webglCanvas.classList.remove('hidden');
+            if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy(); 
+            if (typeof WebGLEngine !== 'undefined') WebGLEngine.refreshTheme(themeId);
+        } else {
+            if (particleCanvas) particleCanvas.classList.remove('hidden');
+            if (webglCanvas) webglCanvas.classList.add('hidden');
+            if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
+            if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme();
         }
     },
 

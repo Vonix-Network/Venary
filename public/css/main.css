@@ -168,8 +168,8 @@ select {
   background: rgba(0, 240, 255, 0.4);
 }
 
-/* ========== Particle Canvas ========== */
-#particle-canvas {
+/* ========== Particle & WebGL Canvas ========== */
+#particle-canvas, #webgl-canvas {
   position: fixed;
   top: 0;
   left: 0;

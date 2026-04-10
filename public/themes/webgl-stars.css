@@ -1,0 +1,13 @@
+/*
+ * Name: WebGL Stars
+ * Description: Intergalactic 3D Hyperjump
+ * Author: Venary WebGL
+ * Version: 1.0.0
+ */
+
+:root {
+  --bg-primary: rgba(2, 2, 8, 0.5);
+  --bg-card: rgba(10, 10, 20, 0.6);
+  --neon-cyan: #e3f2fd;
+  --neon-magenta: #bbdefb;
+}

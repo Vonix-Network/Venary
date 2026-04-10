@@ -1,0 +1,13 @@
+/*
+ * Name: WebGL Geometry
+ * Description: Floating Glowing Platonic Solids
+ * Author: Venary WebGL
+ * Version: 1.0.0
+ */
+
+:root {
+  --bg-primary: rgba(11, 16, 33, 0.5);
+  --bg-card: rgba(20, 30, 50, 0.6);
+  --neon-cyan: #29b6f6;
+  --neon-magenta: #ab47bc;
+}

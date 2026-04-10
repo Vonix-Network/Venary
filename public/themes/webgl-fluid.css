@@ -1,0 +1,13 @@
+/*
+ * Name: WebGL Fluid
+ * Description: Dynamic Blue Vertex Waves
+ * Author: Venary WebGL
+ * Version: 1.0.0
+ */
+
+:root {
+  --bg-primary: rgba(10, 21, 38, 0.5);
+  --bg-card: rgba(20, 30, 50, 0.6);
+  --neon-cyan: #42a5f5;
+  --neon-magenta: #29b6f6;
+}
