@@ -894,15 +894,18 @@ var App = {
         }
     },
 
-    async showThemesModal() {
-        const themeId = localStorage.getItem('venary_theme') || 'default';
+    async showAppearanceModal() {
+        const layoutId = localStorage.getItem('venary_layout') || 'default';
+        const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
+        const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
+
         let modalHtml = '<div class="modal-overlay" id="themes-modal">' +
-            '<div class="modal" style="width:500px; max-width:90vw;">' +
+            '<div class="modal" style="width:500px; max-width:95vw;">' +
             '<div class="modal-header">' +
-            '<div class="modal-title">🎨 Themes Store</div>' +
+            '<div class="modal-title">🎨 Appearance Settings</div>' +
             '<button class="btn btn-ghost modal-close" onclick="document.getElementById(\'themes-modal\').remove()">✕</button>' +
             '</div>' +
-            '<div class="modal-body" id="themes-list">' +
+            '<div class="modal-body" id="appearance-modal-body" style="display:flex; flex-direction:column; gap:20px">' +
             '<div class="loading-spinner"></div>' +
             '</div>' +
             '</div></div>';
@@ -910,68 +913,153 @@ var App = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
         try {
-            const themes = await API.get('/api/themes');
-            let listHtml = '<div style="display:flex;flex-direction:column;gap:12px">';
+            const themes = await API.get('/api/themes'); // CSS files acting as colors
+            
+            let layoutsHtml = `
+                <div>
+                    <h3 style="margin-bottom:8px">Layout Style</h3>
+                    <select id="sel-layout" class="input-field" onchange="App.previewAppearance()">
+                        <option value="default" ${layoutId==='default'?'selected':''}>Default</option>
+                        <option value="compact" ${layoutId==='compact'?'selected':''}>Compact</option>
+                        <option value="wide" ${layoutId==='wide'?'selected':''}>Wide</option>
+                    </select>
+                </div>
+            `;
 
+            let colorsHtml = `
+                <div>
+                    <h3 style="margin-bottom:8px">Color Palette</h3>
+                    <select id="sel-color" class="input-field" onchange="App.previewAppearance()">
+                        <option value="default" ${colorId==='default'?'selected':''}>Venary Default</option>
+            `;
             themes.forEach(t => {
-                const isActive = t.id === themeId;
-                const supportsSettings = t.id === 'pink' || t.id === 'lavalamp';
-                const settingsBtn = supportsSettings ? '<button class="btn btn-secondary btn-sm" onclick="App.openThemeSettings(\'' + t.id + '\')" title="Theme Settings" style="padding: 0 8px;">⚙</button>' : '';
-                const actionBtn = isActive ? '' : '<button class="btn btn-primary btn-sm" onclick="App.setTheme(\'' + t.id + '\')">Apply</button>';
-                
-                listHtml += '<div class="card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;' + (isActive ? 'border-color:var(--neon-cyan);box-shadow:0 0 10px rgba(0,217,255,0.2)' : '') + '">' +
-                    '<div>' +
-                    '<div style="font-weight:bold;margin-bottom:4px">' + this.escapeHtml(t.name) + ' ' + (isActive ? '<span class="badge" style="background:var(--neon-cyan);color:#000">Active</span>' : '') + '</div>' +
-                    '<div style="font-size:0.8rem;color:var(--text-muted)">' + this.escapeHtml(t.description) + '</div>' +
-                    '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px">By ' + this.escapeHtml(t.author) + '</div>' +
-                    '</div>' +
-                    '<div style="display:flex;gap:8px">' + settingsBtn + actionBtn + '</div>' +
-                    '</div>';
+                if (t.id === 'default') return; // skip since we hardcoded
+                colorsHtml += `<option value="${t.id}" ${colorId===t.id?'selected':''}>${this.escapeHtml(t.name)}</option>`;
             });
-            listHtml += '</div>';
-            document.getElementById('themes-list').innerHTML = listHtml;
+            colorsHtml += `</select></div>`;
+
+            let bgsHtml = `
+                <div>
+                    <h3 style="margin-bottom:8px">Animated Background</h3>
+                    <select id="sel-bg" class="input-field" onchange="App.previewAppearance()">
+                        <optgroup label="Static & Basic">
+                            <option value="none" ${bgId==='none'?'selected':''}>None (Solid Color)</option>
+                            <option value="default" ${bgId==='default'?'selected':''}>Classic Particles (2D)</option>
+                        </optgroup>
+                        <optgroup label="2D Canvas Experiences">
+                            <option value="pink" ${bgId==='pink'?'selected':''}>Pink Bubbles</option>
+                            <option value="lavalamp" ${bgId==='lavalamp'?'selected':''}>Lava Lamp</option>
+                            <option value="ocean" ${bgId==='ocean'?'selected':''}>Ocean Waves</option>
+                            <option value="galaxy" ${bgId==='galaxy'?'selected':''}>Galaxy</option>
+                            <option value="purple" ${bgId==='purple'?'selected':''}>Purple Void</option>
+                            <option value="warp" ${bgId==='warp'?'selected':''}>Warp Speed</option>
+                            <option value="prism" ${bgId==='prism'?'selected':''}>Prism</option>
+                        </optgroup>
+                        <optgroup label="3D WebGL Experiences">
+                            <option value="webgl-cyber" ${bgId==='webgl-cyber'?'selected':''}>Cyberpunk Grid</option>
+                            <option value="webgl-matrix" ${bgId==='webgl-matrix'?'selected':''}>Matrix Rain</option>
+                            <option value="webgl-stars" ${bgId==='webgl-stars'?'selected':''}>Hyperjump Stars</option>
+                            <option value="webgl-geometry" ${bgId==='webgl-geometry'?'selected':''}>Platonic Solids</option>
+                            <option value="webgl-fluid" ${bgId==='webgl-fluid'?'selected':''}>Fluid Waves</option>
+                            <option value="webgl-aurora" ${bgId==='webgl-aurora'?'selected':''}>Aurora Light</option>
+                            <option value="webgl-particles" ${bgId==='webgl-particles'?'selected':''}>Interactive Swarm</option>
+                        </optgroup>
+                    </select>
+                </div>
+            `;
+
+            let footerHtml = `
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; border-top:1px solid var(--border-subtle); padding-top:16px;">
+                    <button class="btn btn-secondary" onclick="App.cancelAppearance()">Cancel</button>
+                    <button class="btn btn-primary" onclick="App.saveAppearance()">Save & Apply</button>
+                </div>
+            `;
+
+            document.getElementById('appearance-modal-body').innerHTML = layoutsHtml + colorsHtml + bgsHtml + footerHtml;
         } catch (err) {
-            document.getElementById('themes-list').innerHTML = '<div class="error-state">Failed to load themes</div>';
+            document.getElementById('appearance-modal-body').innerHTML = '<div class="error-state">Failed to load appearance settings.</div>';
         }
     },
 
-    setTheme(themeId) {
-        document.documentElement.setAttribute('data-theme', themeId);
-        localStorage.setItem('venary_theme', themeId);
+    cancelAppearance() {
+        // Revert to originally stored values
+        const layoutId = localStorage.getItem('venary_layout') || 'default';
+        const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
+        const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
+        this.applyAppearance(layoutId, colorId, bgId);
+        document.getElementById('themes-modal').remove();
+    },
 
-        // Remove existing theme stylesheet if any
+    previewAppearance() {
+        const layout = document.getElementById('sel-layout').value;
+        const color = document.getElementById('sel-color').value;
+        const bg = document.getElementById('sel-bg').value;
+        this.applyAppearance(layout, color, bg);
+    },
+
+    saveAppearance() {
+        const layout = document.getElementById('sel-layout').value;
+        const color = document.getElementById('sel-color').value;
+        const bg = document.getElementById('sel-bg').value;
+        
+        localStorage.setItem('venary_layout', layout);
+        localStorage.setItem('venary_color', color);
+        localStorage.setItem('venary_bg', bg);
+        
+        document.getElementById('themes-modal').remove();
+        this.showToast('Appearance settings saved!', 'success');
+    },
+
+    applyAppearance(layout, color, bg) {
+        // 1. Layout
+        document.documentElement.classList.remove('layout-default', 'layout-compact', 'layout-wide');
+        if (layout !== 'default') {
+            document.documentElement.classList.add('layout-' + layout);
+        }
+
+        // 2. Color Scheme
+        document.documentElement.setAttribute('data-theme', color);
         const existing = document.getElementById('theme-stylesheet');
         if (existing) existing.remove();
-
-        // Inject new theme stylesheet if not default
-        if (themeId !== 'default') {
+        if (color !== 'default') {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.id = 'theme-stylesheet';
-            link.href = '/themes/' + themeId + '.css';
+            link.href = '/themes/' + color + '.css';
             document.head.appendChild(link);
         }
 
-        document.getElementById('themes-modal')?.remove();
-        this.showToast('Theme updated to ' + themeId, 'success');
-
+        // 3. Background Engine Map
         const webGLThemes = ['webgl-cyber', 'webgl-matrix', 'webgl-stars', 'webgl-geometry', 'webgl-fluid', 'webgl-aurora', 'webgl-particles'];
-        const isWebGL = webGLThemes.includes(themeId);
+        const isWebGL = webGLThemes.includes(bg);
         
         const particleCanvas = document.getElementById('particle-canvas');
         const webglCanvas = document.getElementById('webgl-canvas');
-        
-        if (isWebGL) {
+
+        if (bg === 'none') {
+            if (particleCanvas) particleCanvas.classList.add('hidden');
+            if (webglCanvas) webglCanvas.classList.add('hidden');
+            if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy(); 
+            if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
+        } else if (isWebGL) {
             if (particleCanvas) particleCanvas.classList.add('hidden');
             if (webglCanvas) webglCanvas.classList.remove('hidden');
             if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy(); 
-            if (typeof WebGLEngine !== 'undefined') WebGLEngine.refreshTheme(themeId);
+            if (typeof WebGLEngine !== 'undefined') WebGLEngine.refreshTheme(bg);
         } else {
             if (particleCanvas) particleCanvas.classList.remove('hidden');
             if (webglCanvas) webglCanvas.classList.add('hidden');
             if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
-            if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme();
+            if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme(bg);
         }
+    },
+
+    setTheme(themeId) {
+        // Legacy setter wrapper
+        this.applyAppearance('default', themeId, themeId);
+        localStorage.setItem('venary_color', themeId);
+        localStorage.setItem('venary_bg', themeId);
+        this.showToast('Theme updated to ' + themeId, 'success');
     },
 
     openThemeSettings(themeId) {

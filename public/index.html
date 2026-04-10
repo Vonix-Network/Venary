@@ -13,16 +13,22 @@
     href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet">
   <script>
-    // Set theme early to prevent flashing of incorrect theme
-    const savedTheme = localStorage.getItem('venary_theme') || 'default';
-    document.documentElement.setAttribute('data-theme', savedTheme);
+    // Set color scheme early to prevent flashing of incorrect theme
+    const savedColor = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
+    document.documentElement.setAttribute('data-theme', savedColor);
     // Dynamically inject the theme stylesheet if not default
-    if (savedTheme !== 'default') {
+    if (savedColor !== 'default') {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.id = 'theme-stylesheet';
-      link.href = '/themes/' + savedTheme + '.css';
+      link.href = '/themes/' + savedColor + '.css';
       document.head.appendChild(link);
+    }
+    
+    // Set layout class on html root if needed
+    const savedLayout = localStorage.getItem('venary_layout') || 'default';
+    if(savedLayout !== 'default') {
+      document.documentElement.classList.add('layout-' + savedLayout);
     }
   </script>
   <link rel="stylesheet" href="/css/main.css">
@@ -180,7 +186,7 @@
         </div>
 
         <button class="nav-logout-btn" id="theme-btn" title="Themes Menu" style="margin-right:8px"
-          onclick="App.showThemesModal()">
+          onclick="App.showAppearanceModal()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
             <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -252,7 +258,7 @@
       <!-- Extension nav links + admin/mod links injected here -->
     </div>
     <div class="mobile-drawer-actions">
-      <button class="mobile-drawer-action-btn" onclick="App.showThemesModal(); App.closeMobileDrawer()">
+      <button class="mobile-drawer-action-btn" onclick="App.showAppearanceModal(); App.closeMobileDrawer()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         Themes
       </button>

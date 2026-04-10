@@ -28,13 +28,14 @@ const ParticleEngine = {
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     },
 
-    refreshTheme() {
-        this.theme = document.documentElement.getAttribute('data-theme') || 'default';
+    refreshTheme(forceBgId) {
+        this.theme = document.documentElement.getAttribute('data-theme') || 'default'; // keep for color
+        this.bgStyle = forceBgId || localStorage.getItem('venary_bg') || this.theme;
         this.entities = []; // Reset entities
         this.time = 0;
         this.canvas.style.filter = 'none';
 
-        switch (this.theme) {
+        switch (this.bgStyle) {
             case 'vonix':
             case 'default':
             case 'ocean':

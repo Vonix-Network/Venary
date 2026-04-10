@@ -15,6 +15,16 @@ const WebGLEngine = {
     raycaster: new THREE.Raycaster(),
     objects: [],
     materials: [],
+
+    getCssColor(varName, fallbackHex) {
+        const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        if (val) {
+            // Handle rgba to hex conversion if needed or let THREE.Color parse it
+            // THREE.Color can parse "rgb(..)" or "rgba(..)" natively, but ignores alpha
+            return new THREE.Color(val);
+        }
+        return new THREE.Color(fallbackHex);
+    },
     
     init() {
         this.canvas = document.getElementById('webgl-canvas');
@@ -114,18 +124,21 @@ const WebGLEngine = {
        ============================ */
        
     initCyber() {
-        this.scene.background = new THREE.Color(0x05060A);
-        this.scene.fog = new THREE.FogExp2(0x05060A, 0.05);
+        this.scene.background = this.getCssColor('--bg-primary', 0x05060A);
+        this.scene.fog = new THREE.FogExp2(this.scene.background, 0.05);
 
         // Synthwave Ground Grid
-        const gridHelper = new THREE.GridHelper(100, 100, 0xec407a, 0x29b6f6);
+        const cyan = this.getCssColor('--neon-cyan', 0x29b6f6);
+        const magenta = this.getCssColor('--neon-magenta', 0xec407a);
+        
+        const gridHelper = new THREE.GridHelper(100, 100, magenta, cyan);
         gridHelper.position.y = -2;
         this.scene.add(gridHelper);
         this.objects.push(gridHelper);
 
         // Cyber mountains (wireframe)
         const geometry = new THREE.PlaneGeometry(100, 40, 32, 16);
-        const material = new THREE.MeshBasicMaterial({ color: 0xab47bc, wireframe: true, transparent: true, opacity: 0.3 });
+        const material = new THREE.MeshBasicMaterial({ color: magenta, wireframe: true, transparent: true, opacity: 0.3 });
         const mountains = new THREE.Mesh(geometry, material);
         mountains.rotation.x = -Math.PI / 2;
         mountains.position.y = -2.1;
@@ -152,9 +165,10 @@ const WebGLEngine = {
     },
 
     initMatrix() {
-        this.scene.background = new THREE.Color(0x000500);
+        this.scene.background = this.getCssColor('--bg-primary', 0x000500);
         this.camera.position.z = 20;
 
+        const mainColor = this.getCssColor('--neon-cyan', 0x29b6f6);
         const geometry = new THREE.BufferGeometry();
         const vertices = [];
         const colors = [];
@@ -166,9 +180,9 @@ const WebGLEngine = {
             const z = THREE.MathUtils.randFloatSpread(20);
             vertices.push(x, y, z);
             
-            // Random green shades
-            const g = Math.random() * 0.5 + 0.5;
-            colors.push(0.1, g, 0.2);
+            // Randomize brightness of main color
+            const intensity = Math.random() * 0.5 + 0.5;
+            colors.push(mainColor.r * intensity, mainColor.g * intensity, mainColor.b * intensity);
         }
 
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
@@ -204,7 +218,7 @@ const WebGLEngine = {
     },
 
     initStars() {
-        this.scene.background = new THREE.Color(0x020208);
+        this.scene.background = this.getCssColor('--bg-primary', 0x020208);
         
         const geometry = new THREE.BufferGeometry();
         const vertices = [];
@@ -217,7 +231,8 @@ const WebGLEngine = {
         geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
         
         // Use a sprite optionally, but small points work well
-        const material = new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: true, transparent: true, opacity: 0.8 });
+        const starColor = this.getCssColor('--neon-cyan', 0xffffff);
+        const material = new THREE.PointsMaterial({ color: starColor, size: 2, sizeAttenuation: true, transparent: true, opacity: 0.8 });
         const stars = new THREE.Points( geometry, material );
         this.scene.add( stars );
         this.objects.push(stars);
@@ -239,12 +254,16 @@ const WebGLEngine = {
     },
 
     initGeometry() {
-        this.scene.background = new THREE.Color(0x0b1021);
+        this.scene.background = this.getCssColor('--bg-primary', 0x0b1021);
         
+        const c1 = this.getCssColor('--neon-cyan', 0x29b6f6);
+        const c2 = this.getCssColor('--neon-magenta', 0xab47bc);
+        const c3 = this.getCssColor('--neon-green', 0x66bb6a);
+
         const lights = [];
-        lights[0] = new THREE.PointLight(0x29b6f6, 1, 0);
-        lights[1] = new THREE.PointLight(0xab47bc, 1, 0);
-        lights[2] = new THREE.PointLight(0x66bb6a, 1, 0);
+        lights[0] = new THREE.PointLight(c1, 1, 0);
+        lights[1] = new THREE.PointLight(c2, 1, 0);
+        lights[2] = new THREE.PointLight(c3, 1, 0);
         
         lights[0].position.set(0, 200, 0);
         lights[1].position.set(100, 200, 100);
@@ -269,7 +288,7 @@ const WebGLEngine = {
             opacity: 0.9
         });
         
-        const wireMat = new THREE.MeshBasicMaterial({ color: 0x29b6f6, wireframe: true, transparent: true, opacity: 0.3 });
+        const wireMat = new THREE.MeshBasicMaterial({ color: c1, wireframe: true, transparent: true, opacity: 0.3 });
         
         this.meshGroup = new THREE.Group();
         
@@ -311,13 +330,16 @@ const WebGLEngine = {
     },
 
     initFluid() {
-        this.scene.background = new THREE.Color(0x0a1526);
+        this.scene.background = this.getCssColor('--bg-primary', 0x0a1526);
+        
+        const fluidColor = this.getCssColor('--neon-cyan', 0x42a5f5);
+        const specColor = this.getCssColor('--neon-magenta', 0x29b6f6);
         
         const geometry = new THREE.PlaneGeometry(30, 20, 64, 64);
         const material = new THREE.MeshPhongMaterial({
-            color: 0x42a5f5,
-            emissive: 0x0A2B4C,
-            specular: 0x29b6f6,
+            color: fluidColor,
+            emissive: new THREE.Color(fluidColor).multiplyScalar(0.2),
+            specular: specColor,
             shininess: 100,
             flatShading: true,
             side: THREE.DoubleSide
@@ -358,7 +380,7 @@ const WebGLEngine = {
     },
 
     initAurora() {
-        this.scene.background = new THREE.Color(0x020d1c);
+        this.scene.background = this.getCssColor('--bg-primary', 0x020d1c);
         
         const material = new THREE.MeshBasicMaterial({
             color: 0xffffff,
@@ -376,10 +398,11 @@ const WebGLEngine = {
             const colors = [];
             const pos = geometry.attributes.position;
             
+            const c1 = this.getCssColor('--neon-cyan', 0x00f0ff);
+            const c2 = this.getCssColor('--neon-magenta', 0x39ff14);
+
             for(let i=0; i<pos.count; i++) {
-                const color = new THREE.Color();
-                // Mix cyan, green and purple
-                color.setHSL((r * 0.15 + i * 0.001) % 1.0, 0.8, 0.5);
+                const color = c1.clone().lerp(c2, (Math.sin(i * 0.05) + 1) / 2);
                 colors.push(color.r, color.g, color.b);
             }
             
@@ -416,8 +439,11 @@ const WebGLEngine = {
     },
 
     initParticles() {
-        this.scene.background = new THREE.Color(0x100516);
+        this.scene.background = this.getCssColor('--bg-primary', 0x100516);
         
+        const baseColor = this.getCssColor('--neon-magenta', 0xff4081);
+        this.cursorColor = this.getCssColor('--neon-cyan', 0xe040fb);
+
         const particleCount = 2000;
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
@@ -435,7 +461,7 @@ const WebGLEngine = {
                 z: (Math.random() - 0.5) * 0.05
             });
             
-            colors.push(0.9, 0.2, 0.5); // pinkish base
+            colors.push(baseColor.r, baseColor.g, baseColor.b); 
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -488,10 +514,10 @@ const WebGLEngine = {
                     py += dy * force;
                     
                     // Light up around mouse
-                    col.setXYZ(i, 0.2, 0.8, 1);
+                    col.setXYZ(i, this.cursorColor.r, this.cursorColor.g, this.cursorColor.b);
                 } else {
-                    // Slowly drift back to pink
-                    col.setXYZ(i, 0.9, 0.2 + Math.sin(this.time+i)*0.2, 0.5);
+                    // Slowly drift back
+                    col.setXYZ(i, baseColor.r, baseColor.g + Math.sin(this.time+i)*0.2, baseColor.b);
                 }
 
                 // Wrap

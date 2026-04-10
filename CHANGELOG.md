@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Themes & UI** â€” Integrated Three.js to support WebGL animated backgrounds. Added 7 new interactive 3D themes (Cyberpunk, Matrix, Stars, Geometry, Fluid, Aurora, Particles) to the Themes Store.
+- **Themes & UI** â€” Decoupled Layout, Color Palette, and Backgrounds into independent options inside the new Appearance Settings modal. Users can now freely mix-and-match CSS colors with any 2D canvas or 3D WebGL background engine.
+- **Themes & UI** â€” Added two new responsive layout options: "Compact" and "Wide".
 - **Donations Extension** â€” Added a "Ranked Users" tab in the admin panel to view users with active ranks.
 
 ### Fixed
