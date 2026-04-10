@@ -14,6 +14,14 @@ var App = {
         ParticleEngine.init();
         if (typeof WebGLEngine !== 'undefined') WebGLEngine.init();
 
+        // Restore saved appearance (layout, color, background) on page load
+        {
+            const savedLayout = localStorage.getItem('venary_layout') || 'default';
+            const savedColor  = localStorage.getItem('venary_color')  || localStorage.getItem('venary_theme') || 'default';
+            const savedBg     = localStorage.getItem('venary_bg')     || localStorage.getItem('venary_theme') || 'default';
+            this.applyAppearance(savedLayout, savedColor, savedBg);
+        }
+
         // Register core routes
         Router.register('/login', function (c) { AuthPage.render(c, 'login'); });
         Router.register('/register', function (c) { AuthPage.render(c, 'register'); });
@@ -1112,7 +1120,8 @@ var App = {
             localStorage.setItem('venary_bg_lavalamp', JSON.stringify(cfg));
         }
         document.getElementById('theme-settings-modal')?.remove();
-        if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme();
+        const currentBg = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
+        if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme(currentBg);
         App.showToast('Theme settings applied automatically!', 'success');
     },
 

@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Themes & UI** â€” Integrated Three.js to support WebGL animated backgrounds. Added 7 new interactive 3D themes (Cyberpunk, Matrix, Stars, Geometry, Fluid, Aurora, Particles) to the Themes Store.
-- **Themes & UI** â€” Decoupled Layout, Color Palette, and Backgrounds into independent options inside the new Appearance Settings modal. Users can now freely mix-and-match CSS colors with any 2D canvas or 3D WebGL background engine.
-- **Themes & UI** â€” Added two new responsive layout options: "Compact" and "Wide".
-- **Donations Extension** â€” Added a "Ranked Users" tab in the admin panel to view users with active ranks.
+- **Themes & UI** — Decoupled Layout, Color Palette, and Backgrounds into independent options inside the new Appearance Settings modal. Users can now freely mix-and-match CSS colors with any 2D canvas or 3D WebGL background engine.
+- **Themes & UI** — Added two new responsive layout options: "Compact" and "Wide".
+- **Donations Extension** — Added a "Ranked Users" tab in the admin panel to view users with active ranks.
 
 ### Fixed
+- **Themes & UI** — All `this.theme` references in `ParticleEngine` that controlled background *behavior* (not color) have been corrected to use `this.bgStyle`, fully decoupling color from geometry.
+- **Themes & UI** — `WebGLEngine.clearScene()` now null-guards `this.scene` to prevent crash if engine was never initialized before a theme switch.
+- **Themes & UI** — `WebGLEngine.getCssColor()` now catches exceptions and strips `rgba()` alpha channels before passing to `THREE.Color` to prevent parse errors.
+- **Themes & UI** — Division-by-zero guards added to particle mouse repulsion and camera ray projection calculations.
+- **Themes & UI** — `App.init()` now restores all three saved appearance settings (layout, color, background) on every page load, preventing resets on refresh.
 - **Navigation** â€” Fixed an issue where the profile picture dropdown menu was transparent by restoring the missing `.notifications-dropdown` CSS selector.
 - **Donations Extension** â€” Fixed an issue in the public donations history list where users without an avatar or Minecraft username were loading a broken image link. Now gracefully falls back to a dynamically generated initial/letter avatar.
 

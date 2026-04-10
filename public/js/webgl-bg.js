@@ -17,13 +17,15 @@ const WebGLEngine = {
     materials: [],
 
     getCssColor(varName, fallbackHex) {
-        const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-        if (val) {
-            // Handle rgba to hex conversion if needed or let THREE.Color parse it
-            // THREE.Color can parse "rgb(..)" or "rgba(..)" natively, but ignores alpha
-            return new THREE.Color(val);
+        try {
+            const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            if (!val) return new THREE.Color(fallbackHex);
+            // THREE.Color cannot parse rgba() — strip alpha to get rgb()
+            const cleaned = val.replace(/rgba\s*\(([^,]+),([^,]+),([^,]+),[^)]+\)/, 'rgb($1,$2,$3)');
+            return new THREE.Color(cleaned);
+        } catch (e) {
+            return new THREE.Color(fallbackHex);
         }
-        return new THREE.Color(fallbackHex);
     },
     
     init() {
@@ -76,6 +78,9 @@ const WebGLEngine = {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
         }
+        this.customUpdate = null;
+        
+        if (!this.scene) return; // Not yet initialized
         
         while(this.scene.children.length > 0){ 
             this.scene.remove(this.scene.children[0]); 
@@ -487,7 +492,7 @@ const WebGLEngine = {
             const vector = new THREE.Vector3(this.mouse.x, this.mouse.y, 0.5);
             vector.unproject(this.camera);
             const dir = vector.sub(this.camera.position).normalize();
-            const distance = -this.camera.position.z / dir.z;
+            const distance = dir.z !== 0 ? (-this.camera.position.z / dir.z) : 1;
             const mousePos = this.camera.position.clone().add(dir.multiplyScalar(distance));
 
             for (let i = 0; i < particleCount; i++) {
@@ -508,7 +513,7 @@ const WebGLEngine = {
                 const dy = py - mousePos.y;
                 const distSq = dx*dx + dy*dy;
                 
-                if (distSq < 4) {
+                if (distSq < 4 && distSq > 0.0001) {
                     const force = 0.05 / Math.sqrt(distSq);
                     px += dx * force;
                     py += dy * force;

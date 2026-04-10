@@ -109,9 +109,10 @@ const ParticleEngine = {
     // ─── INITIALIZERS ────────────────────────────────────────────────────────────
 
     initRibbons() {
-        const count = this.theme === 'prism' ? 8 : 5;
+        const count = this.bgStyle === 'prism' ? 8 : 5;
         let colors = [];
         
+        // Color is determined by the color palette (this.theme), not the background
         if (this.theme === 'vonix') {
             colors = [
                 { r: 180, g: 220, b: 255 }, { r: 0, g: 150, b: 255 },
@@ -158,16 +159,16 @@ const ParticleEngine = {
 
         for (let i = 0; i < count; i++) {
             this.entities.push({
-                yOffset: this.theme === 'default' ? (this.canvas.height / 2) + (Math.random() - 0.5) * 200 : this.canvas.height / 2,
-                amplitude: (this.theme === 'prism' ? 80 : 150) + Math.random() * 80,
-                speedMultiplier: (this.theme === 'ocean' ? 0.2 : 0.4) + Math.random() * 0.5,
+                yOffset: this.bgStyle === 'default' ? (this.canvas.height / 2) + (Math.random() - 0.5) * 200 : this.canvas.height / 2,
+                amplitude: (this.bgStyle === 'prism' ? 80 : 150) + Math.random() * 80,
+                speedMultiplier: (this.bgStyle === 'ocean' ? 0.2 : 0.4) + Math.random() * 0.5,
                 phase: Math.random() * Math.PI * 2,
-                wavelength: (this.theme === 'prism' ? 0.003 : 0.0015) + Math.random() * 0.001,
+                wavelength: (this.bgStyle === 'prism' ? 0.003 : 0.0015) + Math.random() * 0.001,
                 color: colors[i % colors.length],
                 mouseInfluence: 0,
                 targetMouseInfluence: 0,
-                thickness: (this.theme === 'prism' ? 5 : 20) + Math.random() * (this.theme === 'prism' ? 10 : 40),
-                opacity: this.theme === 'default' ? 0.15 + i * 0.05 : 0.2 + (Math.random() * 0.3)
+                thickness: (this.bgStyle === 'prism' ? 5 : 20) + Math.random() * (this.bgStyle === 'prism' ? 10 : 40),
+                opacity: this.bgStyle === 'default' ? 0.15 + i * 0.05 : 0.2 + (Math.random() * 0.3)
             });
         }
     },
@@ -233,16 +234,18 @@ const ParticleEngine = {
         this.ctx.globalCompositeOperation = 'source-over';
         
         let bgColor = '#000000';
-        if (this.theme === 'default') bgColor = '#0a0e17';
-        else if (this.theme === 'ocean') bgColor = '#000810';
-        else if (this.theme === 'pink') {
+        if (this.bgStyle === 'default') bgColor = '#0a0e17';
+        else if (this.bgStyle === 'ocean') bgColor = '#000810';
+        else if (this.bgStyle === 'pink') {
             const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { preset: 'pink' };
             bgColor = cfg.preset === 'purple' ? '#0a0512' : '#120a10';
         }
-        else if (this.theme === 'lavalamp') bgColor = '#120302';
-        else if (this.theme === 'purple') bgColor = '#0a0512';
-        else if (this.theme === 'warp') bgColor = '#020005';
-        else if (this.theme === 'galaxy') bgColor = '#050508';
+        else if (this.bgStyle === 'lavalamp') bgColor = '#120302';
+        else if (this.bgStyle === 'purple') bgColor = '#0a0512';
+        else if (this.bgStyle === 'warp') bgColor = '#020005';
+        else if (this.bgStyle === 'galaxy') bgColor = '#050508';
+        else if (this.bgStyle === 'vonix') bgColor = '#05060A';
+        else if (this.bgStyle === 'prism') bgColor = '#080010';
 
         this.ctx.fillStyle = bgColor;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -254,7 +257,7 @@ const ParticleEngine = {
 
         this.ctx.globalCompositeOperation = 'screen';
 
-        switch (this.theme) {
+        switch (this.bgStyle) {
             case 'vonix':
             case 'default':
             case 'ocean':
@@ -304,7 +307,7 @@ const ParticleEngine = {
 
             this.ctx.beginPath();
             
-            if (this.theme !== 'default') {
+            if (this.bgStyle !== 'default') {
                 const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0);
                 gradient.addColorStop(0, `rgba(${r.color.r}, ${r.color.g}, ${r.color.b}, 0)`);
                 gradient.addColorStop(0.5, `rgba(${r.color.r}, ${r.color.g}, ${r.color.b}, ${r.opacity * 1.5})`);
@@ -314,13 +317,13 @@ const ParticleEngine = {
                 let topPoints = [];
                 let bottomPoints = [];
 
-                for (let x = -50; x <= this.canvas.width + 50; x += (this.theme === 'prism' ? 10 : 20)) {
+                for (let x = -50; x <= this.canvas.width + 50; x += (this.bgStyle === 'prism' ? 10 : 20)) {
                     const wave1 = Math.sin(x * r.wavelength + this.time * r.speedMultiplier + r.phase);
                     const wave2 = Math.sin(x * (r.wavelength * 1.8) - this.time * (r.speedMultiplier * 0.6));
                     const wave3 = Math.sin(x * (r.wavelength * 0.4) + this.time * (r.speedMultiplier * 1.3));
 
                     const combinedWave = (wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2);
-                    const offsetBounce = Math.sin(this.time * 0.8 + i) * (this.theme === 'prism' ? 80 : 40);
+                    const offsetBounce = Math.sin(this.time * 0.8 + i) * (this.bgStyle === 'prism' ? 80 : 40);
 
                     const centerDist = Math.abs(x - this.canvas.width / 2);
                     const maxDist = this.canvas.width / 1.5;
