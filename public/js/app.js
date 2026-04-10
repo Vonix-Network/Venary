@@ -930,6 +930,7 @@ var App = {
                         <option value="default" ${layoutId==='default'?'selected':''}>Default</option>
                         <option value="compact" ${layoutId==='compact'?'selected':''}>Compact</option>
                         <option value="wide" ${layoutId==='wide'?'selected':''}>Wide</option>
+                        <option value="top-nav" ${layoutId==='top-nav'?'selected':''}>Top Navbar (Carousel)</option>
                     </select>
                 </div>
             `;
@@ -1020,9 +1021,20 @@ var App = {
 
     applyAppearance(layout, color, bg) {
         // 1. Layout
-        document.documentElement.classList.remove('layout-default', 'layout-compact', 'layout-wide');
+        document.documentElement.classList.remove('layout-default', 'layout-compact', 'layout-wide', 'layout-top-nav');
         if (layout !== 'default') {
             document.documentElement.classList.add('layout-' + layout);
+        }
+        
+        // Show/hide carousel buttons based on layout
+        const carouselPrev = document.getElementById('nav-carousel-prev');
+        const carouselNext = document.getElementById('nav-carousel-next');
+        if (layout === 'top-nav') {
+            if (carouselPrev) carouselPrev.style.display = 'flex';
+            if (carouselNext) carouselNext.style.display = 'flex';
+        } else {
+            if (carouselPrev) carouselPrev.style.display = 'none';
+            if (carouselNext) carouselNext.style.display = 'none';
         }
 
         // 2. Color Scheme
@@ -1179,6 +1191,21 @@ var App = {
             topPx = rect.top + window.scrollY - 400; // open upward if clipping bottom
         }
         container.style.top = topPx + 'px';
+    },
+
+    /**
+     * Scroll the top navigation carousel
+     * @param {number} dir - Direction (-1 for prev, 1 for next)
+     */
+    scrollNavCarousel(dir) {
+        const container = document.getElementById('nav-scroll-area');
+        if (!container) return;
+        // Find visible link width roughly. By default, padding/gap varies. Let's assume ~120px to shift by 1-2 items
+        // Alternatively, get first child width
+        const firstLink = container.querySelector('.nav-link');
+        const shiftAmount = firstLink ? (firstLink.offsetWidth + 16) : 150; 
+        
+        container.scrollBy({ left: dir * shiftAmount * 2, behavior: 'smooth' });
     }
 };
 

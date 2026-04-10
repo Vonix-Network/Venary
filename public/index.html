@@ -92,7 +92,11 @@
         </div>
         <span class="brand-text">VENARY</span>
       </div>
-      <div class="nav-scroll-area">
+      <div class="nav-carousel-container">
+        <button class="nav-carousel-btn" id="nav-carousel-prev" onclick="App.scrollNavCarousel(-1)" style="display: none;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="nav-scroll-area" id="nav-scroll-area">
         <div class="nav-links">
           <a href="#/feed" class="nav-link" data-page="feed" id="nav-feed">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -135,6 +139,10 @@
         <div class="nav-links ext-nav" id="ext-nav-links">
           <!-- Extension nav links injected here dynamically -->
         </div>
+      </div>
+      <button class="nav-carousel-btn" id="nav-carousel-next" onclick="App.scrollNavCarousel(1)" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
       </div>
       <div class="nav-user">
         <div class="nav-user-info" id="nav-user-info">

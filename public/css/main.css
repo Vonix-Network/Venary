@@ -468,3 +468,133 @@ html.layout-compact .post-composer {
 html.layout-compact .composer-textarea {
   min-height: 40px;
 }
+
+/* ========== Top Navbar Layout (Carousel) ========== */
+@media (min-width: 769px) {
+  html.layout-top-nav .main-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-md) var(--space-xl);
+    z-index: var(--z-nav);
+  }
+
+  html.layout-top-nav .nav-brand {
+    margin-bottom: var(--space-md);
+    padding: 0;
+    margin-right: 0;
+    width: 100%;
+    justify-content: center;
+    position: relative;
+    display: flex;
+  }
+
+  html.layout-top-nav .nav-user {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-top: 0;
+    border-top: none;
+    border-left: none;
+    padding: 0;
+    margin-left: 0;
+    display: flex;
+  }
+
+  html.layout-top-nav .page-container {
+    margin-left: 0;
+    padding-top: calc(130px + var(--space-xl));
+  }
+
+  html.layout-top-nav .nav-carousel-container {
+    display: flex !important;
+    align-items: center;
+    margin: 0 auto;
+    max-width: calc(5 * 140px); /* Fit exactly ~5 items (adjusting width per item) */
+    width: 100%;
+  }
+
+  html.layout-top-nav .nav-carousel-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-full);
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  html.layout-top-nav .nav-carousel-btn:hover {
+    background: rgba(0, 240, 255, 0.1);
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+  }
+
+  html.layout-top-nav .nav-scroll-area {
+    display: flex;
+    flex-direction: row;
+    overflow-x: hidden; /* JavaScript will handle scroll */
+    overflow-y: hidden;
+    align-items: center;
+    scroll-behavior: auto; /* Handled by JS smooth */
+    width: 100%;
+  }
+
+  html.layout-top-nav .nav-links {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+  }
+
+  html.layout-top-nav .ext-nav {
+    border-top: none;
+    border-left: 1px solid var(--border-primary);
+    margin-top: 0;
+    padding-top: 0;
+    margin-left: var(--space-sm);
+    padding-left: var(--space-sm);
+  }
+
+  html.layout-top-nav .ext-nav:empty {
+    border-left: none;
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  html.layout-top-nav .nav-link {
+    width: 140px; /* Fixed width to ensure 5 fit nicely */
+    flex-shrink: 0;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-sm);
+  }
+
+  html.layout-top-nav .nav-link span {
+    font-size: 0.8rem;
+  }
+
+  html.layout-top-nav .page-container.full-width {
+    padding-top: calc(130px + var(--space-xl));
+  }
+}
+
+@media (max-width: 900px) and (min-width: 769px) {
+  html.layout-top-nav .nav-carousel-container {
+    max-width: calc(3 * 140px); /* Show less items on intermediate tablet screens */
+  }
+}
+
