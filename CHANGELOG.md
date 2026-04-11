@@ -8,8 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Themes & UI** — Built a high-end, premium Personalization Dashboard for Appearance Settings. It completely replaces standard dropdowns with a rich, interactive tabbed menu featuring layout cards, glowing color swatches, background preview tiles, and live previews.
-- **Themes & UI** — Added a brand new "Style" tab in Appearance Settings that allows globally toggling UI Corner Radius (Sharp, Modern, Pill-shaped) via CSS variable swaps.
 - **Themes & UI** â€” Integrated Three.js to support WebGL animated backgrounds. Added 7 new interactive 3D themes (Cyberpunk, Matrix, Stars, Geometry, Fluid, Aurora, Particles) to the Themes Store.
 - **Themes & UI** — Decoupled Layout, Color Palette, and Backgrounds into independent options inside the new Appearance Settings modal. Users can now freely mix-and-match CSS colors with any 2D canvas or 3D WebGL background engine.
 - **Themes & UI** — Added two new responsive layout options: "Compact" and "Wide".
@@ -17,16 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Donations Extension** — Added a "Ranked Users" tab in the admin panel to view users with active ranks.
 
 ### Fixed
-- **Themes & UI** — Fixed a bug where saving Appearance Settings required a page refresh for animated backgrounds (Particle/WebGL engines) by properly calling the hot-swap functionality after `localStorage` writes.
 - **Themes & UI** — All `this.theme` references in `ParticleEngine` that controlled background *behavior* (not color) have been corrected to use `this.bgStyle`, fully decoupling color from geometry.
 - **Themes & UI** — `WebGLEngine.clearScene()` now null-guards `this.scene` to prevent crash if engine was never initialized before a theme switch.
 - **Themes & UI** — `WebGLEngine.getCssColor()` now catches exceptions and strips `rgba()` alpha channels before passing to `THREE.Color` to prevent parse errors.
 - **Themes & UI** — Division-by-zero guards added to particle mouse repulsion and camera ray projection calculations.
 - **Themes & UI** — `App.init()` now restores all three saved appearance settings (layout, color, background) on every page load, preventing resets on refresh.
-- **Themes & UI** — Fixed side-nav layout bottom user bar positioning after DOM restructuring for the new Top Navbar layout.
-- **Themes & UI** — Implemented true infinite loop DOM rotation and animation for Top Navbar layout navigation carousel arrows.
-- **Navigation** — Fixed an issue where the profile picture dropdown menu was transparent by restoring the missing `.notifications-dropdown` CSS selector.
-- **Donations Extension** — Fixed an issue in the public donations history list where users without an avatar or Minecraft username were loading a broken image link. Now gracefully falls back to a dynamically generated initial/letter avatar.
+- **Navigation** â€” Fixed an issue where the profile picture dropdown menu was transparent by restoring the missing `.notifications-dropdown` CSS selector.
+- **Donations Extension** â€” Fixed an issue in the public donations history list where users without an avatar or Minecraft username were loading a broken image link. Now gracefully falls back to a dynamically generated initial/letter avatar.
 
 ### Changed
 - **Admin Dashboard** â€” Full redesign of the Extensions management dashboard, replacing the basic list with a modern glassmorphic grid layout, active count stats, and enhanced visual hierarchy.
@@ -118,6 +113,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Password hashing with bcryptjs
 - XSS protection via HTML escaping in all user-generated content
 - Auth guards on all protected routes (frontend + backend)
+- Role-based access control (user, moderator, admin)
+
+[1.0.0]: https://github.com/your-org/venary/releases/tag/v1.0.0
 - Role-based access control (user, moderator, admin)
 
 [1.0.0]: https://github.com/your-org/venary/releases/tag/v1.0.0
