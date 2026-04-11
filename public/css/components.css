@@ -21,14 +21,14 @@
 }
 
 .nav-carousel-container {
-    flex: 1;
+    flex: 0 1 auto;
     display: flex;
     flex-direction: column;
     min-height: 0;
 }
 
 .nav-scroll-area {
-    flex: 1;
+    flex: 0 1 auto;
     overflow-y: auto;
     overflow-x: hidden;
     direction: rtl;
