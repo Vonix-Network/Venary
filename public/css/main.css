@@ -578,31 +578,25 @@ html.layout-compact .composer-textarea {
 
 /* ========== Top Navbar Layout (Carousel) ========== */
 @media (min-width: 769px) {
+  /* ─── Nav Shell ─── */
   html.layout-top-nav .main-nav {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
-    height: 75px; 
-    flex-direction: row; /* Single row */
+    height: 68px;
+    flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-lg);
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
     padding: 0 var(--space-xl);
     z-index: var(--z-nav);
+    overflow: visible;
   }
 
-  html.layout-top-nav .nav-brand {
-    margin-bottom: 0;
-    padding: 0;
-    margin-right: auto;
-    width: auto;
-    justify-content: flex-start;
-    position: relative;
-    display: flex;
-  }
-
+  /* Keep sidebar nav-user override clean in top-nav */
   html.layout-top-nav .nav-user {
     position: relative;
     top: auto;
@@ -611,111 +605,185 @@ html.layout-compact .composer-textarea {
     border-top: none;
     border-left: none;
     padding: 0;
-    margin-left: auto;
+    margin-left: 0;
+    flex-shrink: 0;
     display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  html.layout-top-nav .nav-brand {
+    margin-bottom: 0;
+    padding: 0;
+    width: auto;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
   }
 
   html.layout-top-nav .page-container {
     margin-left: 0;
-    padding-top: calc(85px + var(--space-xl));
+    padding-top: calc(68px + var(--space-xl));
   }
 
+  html.layout-top-nav .page-container.full-width {
+    margin-left: 0;
+    padding-top: calc(68px + var(--space-xl));
+  }
+
+  /* ─── Carousel Container ─── */
   html.layout-top-nav .nav-carousel-container {
     display: flex !important;
     align-items: center;
-    margin: 0 auto;
-    max-width: calc(5 * 140px);
-    /* Fit exactly ~5 items (adjusting width per item) */
-    width: 100%;
+    gap: var(--space-sm);
+    flex: 1;
+    min-width: 0;
+    overflow: visible;
   }
 
-  html.layout-top-nav .nav-carousel-btn {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    color: var(--text-secondary);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-full);
-    width: 36px;
-    height: 36px;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-
-  html.layout-top-nav .nav-carousel-btn:hover {
-    background: rgba(0, 240, 255, 0.1);
-    color: var(--neon-cyan);
-    border-color: var(--neon-cyan);
-  }
-
+  /* ─── Scroll Viewport (clips overflow + fade edges) ─── */
   html.layout-top-nav .nav-scroll-area {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    height: 68px;
     display: flex;
     flex-direction: row;
-    overflow-x: hidden;
-    /* JavaScript will handle scroll */
-    overflow-y: hidden;
     align-items: center;
-    scroll-behavior: auto;
-    /* Handled by JS smooth */
-    width: 100%;
+    /* Fade edges for infinite feel */
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
   }
 
-  html.layout-top-nav .nav-links {
+  /* ─── The moving track ─── */
+  html.layout-top-nav #nav-track {
     display: flex;
     flex-direction: row;
-    height: 100%;
+    align-items: center;
+    will-change: transform;
+    /* JS controls transform; CSS transition is toggled by JS */
   }
 
-  html.layout-top-nav .ext-nav {
-    border-top: none;
-    border-left: 1px solid var(--border-primary);
-    margin-top: 0;
-    padding-top: 0;
-    margin-left: var(--space-sm);
-    padding-left: var(--space-sm);
-  }
-
-  html.layout-top-nav .ext-nav:empty {
-    border-left: none;
-    margin-left: 0;
-    padding-left: 0;
-  }
-
+  /* ─── Individual items in Top Nav ─── */
   html.layout-top-nav .nav-link {
-    width: 100px;
     flex-shrink: 0;
-    justify-content: center;
+    width: 108px;
+    display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: var(--space-sm) 0;
-    margin: 0 var(--space-xs);
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 4px;
+    margin: 0 2px;
     border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    position: relative;
+    transition: background 0.2s, color 0.2s;
+    height: 60px;
+  }
+
+  html.layout-top-nav .nav-link span {
+    font-size: 0.79rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 96px;
+    text-align: center;
   }
 
   html.layout-top-nav .nav-link.active {
-    background: linear-gradient(180deg, transparent 0%, rgba(41, 182, 246, 0.2) 100%);
-    border-bottom: 3px solid var(--neon-cyan);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    color: var(--neon-cyan);
+    background: linear-gradient(180deg, transparent 0%, rgba(41, 182, 246, 0.12) 100%);
+  }
+
+  /* Active underline bar */
+  html.layout-top-nav .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 12%;
+    width: 76%;
+    height: 2.5px;
+    border-radius: 99px 99px 0 0;
+    background: var(--gradient-primary);
+    box-shadow: 0 0 10px var(--neon-cyan);
   }
 
   html.layout-top-nav .nav-link.active::before {
     display: none;
   }
 
-  html.layout-top-nav .nav-link span {
-    font-size: 0.8rem;
+  html.layout-top-nav .nav-link svg {
+    flex-shrink: 0;
   }
 
-  html.layout-top-nav .page-container.full-width {
-    padding-top: calc(130px + var(--space-xl));
+  /* Hide ext-nav separator styling in top-nav */
+  html.layout-top-nav .ext-nav {
+    border-top: none;
+    border-left: none;
+    margin: 0;
+    padding: 0;
   }
 
-  /* Portal Dropdown Styling for Top Nav */
+  html.layout-top-nav .nav-links,
+  html.layout-top-nav .ext-nav {
+    display: contents; /* Flatten into track flex context */
+  }
+
+  /* ─── Carousel Buttons ─── */
+  html.layout-top-nav .nav-carousel-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-light);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s,
+                box-shadow 0.2s, transform 0.15s;
+    outline: none;
+    z-index: 2;
+  }
+
+  html.layout-top-nav .nav-carousel-btn:hover {
+    background: rgba(41, 182, 246, 0.12);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 14px rgba(41, 182, 246, 0.25);
+  }
+
+  html.layout-top-nav .nav-carousel-btn:active {
+    transform: scale(0.92);
+  }
+
+  html.layout-top-nav .nav-carousel-btn:disabled,
+  html.layout-top-nav .nav-carousel-btn[data-hidden] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Portal Dropdown */
   html.layout-top-nav .dropdown-menu {
     background: var(--bg-card);
+    backdrop-filter: blur(20px);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     padding: var(--space-sm);
@@ -724,10 +792,15 @@ html.layout-compact .composer-textarea {
   }
 }
 
-@media (max-width: 900px) and (min-width: 769px) {
-  html.layout-top-nav .nav-carousel-container {
-    max-width: calc(3 * 140px);
-    /* Show less items on intermediate tablet screens */
+@media (max-width: 1080px) and (min-width: 769px) {
+  html.layout-top-nav .nav-link {
+    width: 90px;
+    font-size: 0.75rem;
+  }
+
+  html.layout-top-nav .nav-link span {
+    font-size: 0.72rem;
+    max-width: 80px;
   }
 }
 

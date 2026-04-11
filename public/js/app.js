@@ -1335,16 +1335,15 @@ var App = {
             document.documentElement.classList.add('layout-' + layout);
         }
 
-        // Show/hide carousel buttons based on layout
-        const carouselPrev = document.getElementById('nav-carousel-prev');
-        const carouselNext = document.getElementById('nav-carousel-next');
-        if (layout === 'top-nav') {
-            if (carouselPrev) carouselPrev.style.display = 'flex';
-            if (carouselNext) carouselNext.style.display = 'flex';
-        } else {
-            if (carouselPrev) carouselPrev.style.display = 'none';
-            if (carouselNext) carouselNext.style.display = 'none';
-        }
+        // Boot / tear down the enterprise carousel engine based on layout
+        // Use rAF so the new layout class has applied before measuring
+        requestAnimationFrame(() => {
+            if (layout === 'top-nav') {
+                NavCarousel.init();
+            } else {
+                if (typeof NavCarousel !== 'undefined') NavCarousel.destroy();
+            }
+        });
 
         // 2. Styling (Radius)
         document.documentElement.classList.remove('radius-sharp', 'radius-medium', 'radius-round', 'radius-pill');
@@ -1593,58 +1592,217 @@ var App = {
     },
 
     scrollNavCarousel(dir) {
-        const container = document.getElementById('nav-scroll-area');
-        if (!container) return;
+        NavCarousel.step(dir);
+    },
 
-        const linksWrapper = container.querySelector('.nav-links:not(.ext-nav)');
-        const extWrapper = container.querySelector('.ext-nav');
-        
-        // Flatten geometry permanently to prevent wrapper jumps
-        if (extWrapper && extWrapper.children.length > 0) {
-            while (extWrapper.firstChild) {
-                linksWrapper.appendChild(extWrapper.firstChild);
+    _initNavCarousel() {
+        NavCarousel.init();
+    },
+
+};
+
+/* ========================================================
+   NavCarousel — Enterprise Top-Nav Carousel Engine
+   ======================================================== */
+const NavCarousel = {
+    _track: null,
+    _viewport: null,
+    _items: [],
+    _itemW: 0,
+    _offset: 0,       // current logical offset in px
+    _animating: false,
+    _raf: null,
+    _touchStartX: 0,
+    _enabled: false,
+    _keyBound: false,
+    _resizeObserver: null,
+
+    /* Called every time layout switches to / from top-nav */
+    init() {
+        if (!document.documentElement.classList.contains('layout-top-nav')) {
+            this.destroy();
+            return;
+        }
+
+        const viewport = document.getElementById('nav-scroll-area');
+        if (!viewport) return;
+
+        /* ---- Build a single flat #nav-track if not already done ---- */
+        let track = document.getElementById('nav-track');
+        if (!track) {
+            track = document.createElement('div');
+            track.id = 'nav-track';
+
+            /* Move ALL children (nav-links wrappers + ext-nav) into track */
+            const topChildren = Array.from(viewport.children);
+            topChildren.forEach(c => track.appendChild(c));
+            viewport.appendChild(track);
+        }
+
+        /* Flatten any wrapper divs so items are direct children of track */
+        const wrappers = Array.from(track.querySelectorAll('.nav-links, .ext-nav'));
+        wrappers.forEach(wrap => {
+            Array.from(wrap.children).forEach(child => track.insertBefore(child, wrap));
+            wrap.remove();
+        });
+
+        this._track = track;
+        this._viewport = viewport;
+        this._offset = 0;
+        track.style.transform = 'translateX(0)';
+        track.style.transition = 'none';
+
+        this._refresh();
+        this._bindEvents();
+        this._enabled = true;
+        this._updateButtons();
+    },
+
+    /* Re-measure items — call after DOM changes */
+    _refresh() {
+        const track = this._track;
+        if (!track) return;
+
+        /* Collect unique real items (exclude clones) */
+        const real = Array.from(track.children).filter(el => !el.dataset.clone);
+        this._items = real;
+
+        if (!real.length) return;
+
+        /* Remove old clones */
+        Array.from(track.children)
+            .filter(el => el.dataset.clone)
+            .forEach(el => el.remove());
+
+        /* Measure item width (with margin) */
+        const s = window.getComputedStyle(real[0]);
+        this._itemW = real[0].offsetWidth
+            + parseFloat(s.marginLeft)
+            + parseFloat(s.marginRight);
+
+        this._updateButtons();
+    },
+
+    /* Returns true if there are more items than the viewport can show */
+    _needsCarousel() {
+        if (!this._viewport || !this._items.length) return false;
+        const totalW = this._items.length * this._itemW;
+        return totalW > this._viewport.offsetWidth;
+    },
+
+    /* Show / hide arrow buttons based on need */
+    _updateButtons() {
+        const prev = document.getElementById('nav-carousel-prev');
+        const next = document.getElementById('nav-carousel-next');
+        const needed = this._needsCarousel();
+        [prev, next].forEach(btn => {
+            if (!btn) return;
+            if (needed) {
+                btn.style.display = 'flex';
+                btn.removeAttribute('data-hidden');
+            } else {
+                btn.style.display = 'none';
             }
-            extWrapper.remove();
+        });
+    },
+
+    /* Advance the carousel by one item (dir: 1 = next, -1 = prev) */
+    step(dir) {
+        if (this._animating || !this._enabled) return;
+        if (!this._needsCarousel()) return;
+        if (!this._items.length || this._itemW === 0) this._refresh();
+
+        const dist = dir * this._itemW;
+        const duration = 340; // ms
+        const ease = t => t < 0.5
+            ? 4 * t * t * t
+            : 1 - Math.pow(-2 * t + 2, 3) / 2; // ease-in-out cubic
+
+        const startOffset = this._offset;
+        const endOffset = startOffset - dist;
+        const startTime = performance.now();
+
+        this._animating = true;
+        this._track.style.transition = 'none';
+
+        const animate = (now) => {
+            const elapsed = now - startTime;
+            const t = Math.min(elapsed / duration, 1);
+            const current = startOffset + (endOffset - startOffset) * ease(t);
+            this._track.style.transform = `translateX(${current}px)`;
+
+            if (t < 1) {
+                this._raf = requestAnimationFrame(animate);
+            } else {
+                /* Animation done — do the infinite loop splice */
+                this._offset = 0;
+                this._track.style.transform = 'translateX(0)';
+
+                if (dir === 1) {
+                    /* Move first item to end */
+                    this._track.appendChild(this._track.firstElementChild);
+                } else {
+                    /* Move last item to front */
+                    this._track.insertBefore(
+                        this._track.lastElementChild,
+                        this._track.firstElementChild
+                    );
+                }
+
+                this._animating = false;
+            }
+        };
+
+        this._raf = requestAnimationFrame(animate);
+    },
+
+    /* Bind keyboard + touch + resize */
+    _bindEvents() {
+        if (!this._keyBound) {
+            document.addEventListener('keydown', (e) => {
+                if (!this._enabled) return;
+                /* Only intercept when focus is not in an input */
+                const tag = document.activeElement && document.activeElement.tagName;
+                if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+                if (e.key === 'ArrowRight') this.step(1);
+                if (e.key === 'ArrowLeft') this.step(-1);
+            });
+            this._keyBound = true;
         }
 
-        const allLinks = linksWrapper.children;
-        if (allLinks.length < 2) return;
-
-        // Calculate exact width including margins
-        const style = window.getComputedStyle(allLinks[0]);
-        const itemWidth = allLinks[0].offsetWidth + parseInt(style.marginLeft) + parseInt(style.marginRight);
-
-        // Turn off native scroll jumping entirely to use CSS transitions
-        container.style.scrollBehavior = 'auto';
-        container.scrollLeft = 0; // Lock scroll to 0
-
-        if (dir === 1) { // NEXT
-            linksWrapper.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
-            linksWrapper.style.transform = `translateX(-${itemWidth}px)`;
-            
-            setTimeout(() => {
-                linksWrapper.style.transition = 'none';
-                linksWrapper.appendChild(linksWrapper.firstElementChild);
-                linksWrapper.style.transform = 'translateX(0)';
-            }, 300);
-
-        } else if (dir === -1) { // PREV
-            linksWrapper.insertBefore(linksWrapper.lastElementChild, linksWrapper.firstElementChild);
-            linksWrapper.style.transition = 'none';
-            linksWrapper.style.transform = `translateX(-${itemWidth}px)`;
-            
-            // Force redraw
-            void linksWrapper.offsetWidth;
-            
-            linksWrapper.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
-            linksWrapper.style.transform = 'translateX(0)';
-            
-            setTimeout(() => {
-                linksWrapper.style.transition = 'none';
-            }, 300);
+        /* Touch swipe */
+        const vp = this._viewport;
+        if (vp) {
+            vp.addEventListener('touchstart', (e) => {
+                this._touchStartX = e.touches[0].clientX;
+            }, { passive: true });
+            vp.addEventListener('touchend', (e) => {
+                const dx = e.changedTouches[0].clientX - this._touchStartX;
+                if (Math.abs(dx) > 40) this.step(dx < 0 ? 1 : -1);
+            }, { passive: true });
         }
+
+        /* Resize — re-measure and re-evaluate button visibility */
+        if (!this._resizeObserver && window.ResizeObserver) {
+            this._resizeObserver = new ResizeObserver(() => {
+                if (this._enabled) {
+                    this._refresh();
+                }
+            });
+            if (vp) this._resizeObserver.observe(vp);
+        }
+    },
+
+    destroy() {
+        this._enabled = false;
+        if (this._raf) cancelAnimationFrame(this._raf);
+        if (this._resizeObserver) this._resizeObserver.disconnect();
+        /* Hide buttons */
+        ['nav-carousel-prev', 'nav-carousel-next'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
     }
-
 };
 
 // Initialize when DOM is ready
