@@ -642,41 +642,41 @@ html.layout-compact .composer-textarea {
     overflow: visible;
   }
 
-  /* ─── Scroll Viewport (clips overflow + fade edges) ─── */
+  /* ─── Scroll Viewport: JS animates scrollLeft inside here ─── */
   html.layout-top-nav .nav-scroll-area {
     position: relative;
     flex: 1;
     min-width: 0;
-    overflow: hidden;
+    /* JS writes scrollLeft — must NOT be hidden, must be auto */
+    overflow-x: auto;
+    overflow-y: visible;
     height: 68px;
     display: flex;
     flex-direction: row;
     align-items: center;
-    /* Fade edges for infinite feel */
+    /* Hide native scrollbar */
+    scrollbar-width: none;
+    /* Fade edges for the infinite-scroll feel */
     -webkit-mask-image: linear-gradient(
       to right,
       transparent 0%,
-      black 8%,
-      black 92%,
+      black 6%,
+      black 94%,
       transparent 100%
     );
     mask-image: linear-gradient(
       to right,
       transparent 0%,
-      black 8%,
-      black 92%,
+      black 6%,
+      black 94%,
       transparent 100%
     );
   }
 
-  /* ─── The moving track ─── */
-  html.layout-top-nav #nav-track {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    will-change: transform;
-    /* JS controls transform; CSS transition is toggled by JS */
+  html.layout-top-nav .nav-scroll-area::-webkit-scrollbar {
+    display: none;
   }
+
 
   /* ─── Individual items in Top Nav ─── */
   html.layout-top-nav .nav-link {
@@ -731,17 +731,21 @@ html.layout-compact .composer-textarea {
     flex-shrink: 0;
   }
 
-  /* Hide ext-nav separator styling in top-nav */
-  html.layout-top-nav .ext-nav {
-    border-top: none;
-    border-left: none;
-    margin: 0;
-    padding: 0;
-  }
-
+  /* nav-links and ext-nav become horizontal flex rows in top-nav */
   html.layout-top-nav .nav-links,
   html.layout-top-nav .ext-nav {
-    display: contents; /* Flatten into track flex context */
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide the mobile menu toggle in top-nav - not needed */
+  html.layout-top-nav .mobile-only-nav-btn {
+    display: none !important;
   }
 
   /* ─── Carousel Buttons ─── */

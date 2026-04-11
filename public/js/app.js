@@ -265,6 +265,11 @@ var App = {
         });
 
         navContainer.innerHTML = html;
+
+        // If top-nav, re-init carousel so new items are measured
+        if (document.documentElement.classList.contains('layout-top-nav')) {
+            requestAnimationFrame(() => NavCarousel.init());
+        }
     },
 
     _getNavIcon(iconName) {
@@ -275,7 +280,8 @@ var App = {
             'settings': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
             'shield': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
             'grid': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
-            'heart': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
+            'heart': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+            'server': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>'
         };
         return icons[iconName] || icons['grid'];
     },
@@ -1595,21 +1601,14 @@ var App = {
         NavCarousel.step(dir);
     },
 
-    _initNavCarousel() {
-        NavCarousel.init();
-    },
-
 };
 
 /* ========================================================
-   NavCarousel — Enterprise Top-Nav Carousel Engine
+   NavCarousel — Non-Destructive Top-Nav Scroll Engine
+   Animates scrollLeft on the viewport; never modifies DOM.
    ======================================================== */
 const NavCarousel = {
-    _track: null,
     _viewport: null,
-    _items: [],
-    _itemW: 0,
-    _offset: 0,       // current logical offset in px
     _animating: false,
     _raf: null,
     _touchStartX: 0,
@@ -1617,177 +1616,140 @@ const NavCarousel = {
     _keyBound: false,
     _resizeObserver: null,
 
-    /* Called every time layout switches to / from top-nav */
+    /* Boot or re-boot every time layout switches to top-nav */
     init() {
         if (!document.documentElement.classList.contains('layout-top-nav')) {
             this.destroy();
             return;
         }
 
-        const viewport = document.getElementById('nav-scroll-area');
-        if (!viewport) return;
+        const vp = document.getElementById('nav-scroll-area');
+        if (!vp) return;
 
-        /* ---- Build a single flat #nav-track if not already done ---- */
-        let track = document.getElementById('nav-track');
-        if (!track) {
-            track = document.createElement('div');
-            track.id = 'nav-track';
+        this._viewport  = vp;
+        this._animating = false;
+        this._enabled   = true;
 
-            /* Move ALL children (nav-links wrappers + ext-nav) into track */
-            const topChildren = Array.from(viewport.children);
-            topChildren.forEach(c => track.appendChild(c));
-            viewport.appendChild(track);
+        /* Enforce: viewport shows exactly VISIBLE_COUNT items wide */
+        const VISIBLE = 5;
+        const item = vp.querySelector('.nav-link');
+        if (item) {
+            const s = window.getComputedStyle(item);
+            const itemW = item.offsetWidth + parseFloat(s.marginLeft) + parseFloat(s.marginRight);
+            vp.style.maxWidth = (itemW * VISIBLE) + 'px';
+        } else {
+            vp.style.maxWidth = '';
         }
 
-        /* Flatten any wrapper divs so items are direct children of track */
-        const wrappers = Array.from(track.querySelectorAll('.nav-links, .ext-nav'));
-        wrappers.forEach(wrap => {
-            Array.from(wrap.children).forEach(child => track.insertBefore(child, wrap));
-            wrap.remove();
-        });
+        /* Reset scroll position */
+        vp.scrollLeft = 0;
 
-        this._track = track;
-        this._viewport = viewport;
-        this._offset = 0;
-        track.style.transform = 'translateX(0)';
-        track.style.transition = 'none';
-
-        this._refresh();
         this._bindEvents();
-        this._enabled = true;
         this._updateButtons();
     },
 
-    /* Re-measure items — call after DOM changes */
-    _refresh() {
-        const track = this._track;
-        if (!track) return;
-
-        /* Collect unique real items (exclude clones) */
-        const real = Array.from(track.children).filter(el => !el.dataset.clone);
-        this._items = real;
-
-        if (!real.length) return;
-
-        /* Remove old clones */
-        Array.from(track.children)
-            .filter(el => el.dataset.clone)
-            .forEach(el => el.remove());
-
-        /* Measure item width (with margin) */
-        const s = window.getComputedStyle(real[0]);
-        this._itemW = real[0].offsetWidth
-            + parseFloat(s.marginLeft)
-            + parseFloat(s.marginRight);
-
-        this._updateButtons();
+    /* One item width = first visible nav-link's outerWidth */
+    _itemWidth() {
+        const vp = this._viewport;
+        if (!vp) return 0;
+        const item = vp.querySelector('.nav-link');
+        if (!item) return 0;
+        const s = window.getComputedStyle(item);
+        return item.offsetWidth + parseFloat(s.marginLeft) + parseFloat(s.marginRight);
     },
 
-    /* Returns true if there are more items than the viewport can show */
-    _needsCarousel() {
-        if (!this._viewport || !this._items.length) return false;
-        const totalW = this._items.length * this._itemW;
-        return totalW > this._viewport.offsetWidth;
+    /* Max scrollable distance */
+    _maxScroll() {
+        const vp = this._viewport;
+        if (!vp) return 0;
+        return vp.scrollWidth - vp.clientWidth;
     },
 
-    /* Show / hide arrow buttons based on need */
+    /* Show buttons only when there are more than 5 items */
     _updateButtons() {
+        const vp   = this._viewport;
         const prev = document.getElementById('nav-carousel-prev');
         const next = document.getElementById('nav-carousel-next');
-        const needed = this._needsCarousel();
+        /* Count all visible .nav-link children (not dropdown-items inside menus) */
+        const itemCount = vp ? vp.querySelectorAll('.nav-links > .nav-link, .nav-links > .nav-dropdown-group, .ext-nav > .nav-link, .ext-nav > .nav-dropdown-group').length : 0;
+        const needed = itemCount > 5;
         [prev, next].forEach(btn => {
             if (!btn) return;
-            if (needed) {
-                btn.style.display = 'flex';
-                btn.removeAttribute('data-hidden');
-            } else {
-                btn.style.display = 'none';
-            }
+            btn.style.display = needed ? 'flex' : 'none';
         });
     },
 
-    /* Advance the carousel by one item (dir: 1 = next, -1 = prev) */
+    /* RAF-driven eased scrollLeft animation */
     step(dir) {
         if (this._animating || !this._enabled) return;
-        if (!this._needsCarousel()) return;
-        if (!this._items.length || this._itemW === 0) this._refresh();
+        const vp = this._viewport;
+        if (!vp) return;
 
-        const dist = dir * this._itemW;
-        const duration = 340; // ms
+        const itemW    = this._itemWidth() || 110;
+        const maxScroll = this._maxScroll();
+        if (maxScroll <= 0) return; // nothing to scroll
+
+        const startScroll = vp.scrollLeft;
+        let   endScroll   = startScroll + dir * itemW;
+        /* Wrap-around: if at end scrolling next, jump to start (and vice-versa) */
+        if (endScroll > maxScroll + 2) endScroll = 0;
+        if (endScroll < -2)            endScroll = maxScroll;
+        endScroll = Math.max(0, Math.min(maxScroll, endScroll));
+
+        if (Math.abs(endScroll - startScroll) < 1) return;
+
+        const duration = 320;
         const ease = t => t < 0.5
             ? 4 * t * t * t
-            : 1 - Math.pow(-2 * t + 2, 3) / 2; // ease-in-out cubic
+            : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-        const startOffset = this._offset;
-        const endOffset = startOffset - dist;
         const startTime = performance.now();
-
         this._animating = true;
-        this._track.style.transition = 'none';
 
         const animate = (now) => {
-            const elapsed = now - startTime;
-            const t = Math.min(elapsed / duration, 1);
-            const current = startOffset + (endOffset - startOffset) * ease(t);
-            this._track.style.transform = `translateX(${current}px)`;
-
+            const t       = Math.min((now - startTime) / duration, 1);
+            vp.scrollLeft = startScroll + (endScroll - startScroll) * ease(t);
             if (t < 1) {
                 this._raf = requestAnimationFrame(animate);
             } else {
-                /* Animation done — do the infinite loop splice */
-                this._offset = 0;
-                this._track.style.transform = 'translateX(0)';
-
-                if (dir === 1) {
-                    /* Move first item to end */
-                    this._track.appendChild(this._track.firstElementChild);
-                } else {
-                    /* Move last item to front */
-                    this._track.insertBefore(
-                        this._track.lastElementChild,
-                        this._track.firstElementChild
-                    );
-                }
-
+                vp.scrollLeft   = endScroll;
                 this._animating = false;
+                this._updateButtons();
             }
         };
-
         this._raf = requestAnimationFrame(animate);
     },
 
-    /* Bind keyboard + touch + resize */
     _bindEvents() {
+        /* Keyboard (only once) */
         if (!this._keyBound) {
-            document.addEventListener('keydown', (e) => {
+            document.addEventListener('keydown', e => {
                 if (!this._enabled) return;
-                /* Only intercept when focus is not in an input */
                 const tag = document.activeElement && document.activeElement.tagName;
-                if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-                if (e.key === 'ArrowRight') this.step(1);
-                if (e.key === 'ArrowLeft') this.step(-1);
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+                if (e.key === 'ArrowRight') { e.preventDefault(); this.step(1); }
+                if (e.key === 'ArrowLeft')  { e.preventDefault(); this.step(-1); }
             });
             this._keyBound = true;
         }
 
         /* Touch swipe */
         const vp = this._viewport;
-        if (vp) {
-            vp.addEventListener('touchstart', (e) => {
+        if (vp && !vp._ncBound) {
+            vp.addEventListener('touchstart', e => {
                 this._touchStartX = e.touches[0].clientX;
             }, { passive: true });
-            vp.addEventListener('touchend', (e) => {
+            vp.addEventListener('touchend', e => {
                 const dx = e.changedTouches[0].clientX - this._touchStartX;
                 if (Math.abs(dx) > 40) this.step(dx < 0 ? 1 : -1);
             }, { passive: true });
+            vp._ncBound = true;
         }
 
-        /* Resize — re-measure and re-evaluate button visibility */
+        /* ResizeObserver: re-check button visibility on resize */
         if (!this._resizeObserver && window.ResizeObserver) {
             this._resizeObserver = new ResizeObserver(() => {
-                if (this._enabled) {
-                    this._refresh();
-                }
+                if (this._enabled) this._updateButtons();
             });
             if (vp) this._resizeObserver.observe(vp);
         }
@@ -1796,8 +1758,7 @@ const NavCarousel = {
     destroy() {
         this._enabled = false;
         if (this._raf) cancelAnimationFrame(this._raf);
-        if (this._resizeObserver) this._resizeObserver.disconnect();
-        /* Hide buttons */
+        if (this._resizeObserver) { this._resizeObserver.disconnect(); this._resizeObserver = null; }
         ['nav-carousel-prev', 'nav-carousel-next'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
