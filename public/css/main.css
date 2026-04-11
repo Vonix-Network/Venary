@@ -713,6 +713,16 @@ html.layout-compact .composer-textarea {
   html.layout-top-nav .page-container.full-width {
     padding-top: calc(130px + var(--space-xl));
   }
+
+  /* Portal Dropdown Styling for Top Nav */
+  html.layout-top-nav .dropdown-menu {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
+    box-shadow: var(--shadow-md);
+    margin-top: 0;
+  }
 }
 
 @media (max-width: 900px) and (min-width: 769px) {

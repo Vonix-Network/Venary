@@ -245,7 +245,7 @@ var App = {
 
             if (nav.dropdown && nav.children) {
                 html += '<div class="nav-dropdown-group">';
-                html += '<button class="nav-link dropdown-toggle" onclick="this.parentElement.classList.toggle(\'open\')">' +
+                html += '<button class="nav-link dropdown-toggle" onclick="App.toggleDropdown(this, event)">' +
                     iconSvg + '<span>' + nav.label + '</span>' +
                     '<svg class="dropdown-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
                     '</button>';
@@ -1543,16 +1543,78 @@ var App = {
      * Scroll the top navigation carousel
      * @param {number} dir - Direction (-1 for prev, 1 for next)
      */
+
+    toggleDropdown(btn, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const group = btn.parentElement;
+        const menu = group.querySelector('.dropdown-menu');
+        if (!menu) return;
+
+        const isOpen = group.classList.contains('open');
+
+        // Close all other dropdowns first
+        document.querySelectorAll('.nav-dropdown-group.open').forEach(g => {
+            if (g !== group) {
+                g.classList.remove('open');
+                const m = g.querySelector('.dropdown-menu');
+                if (m) m.style.position = '';
+            }
+        });
+
+        if (isOpen) {
+            group.classList.remove('open');
+            menu.style.position = '';
+            menu.style.top = '';
+            menu.style.left = '';
+            menu.style.zIndex = '';
+        } else {
+            group.classList.add('open');
+            
+            // Portal logic: If in top-nav, we absolutely position it to escape clipping
+            const isTopNav = document.documentElement.classList.contains('layout-top-nav');
+            if (isTopNav) {
+                const rect = btn.getBoundingClientRect();
+                menu.style.position = 'fixed';
+                menu.style.top = (rect.bottom + 10) + 'px';
+                menu.style.left = rect.left + 'px';
+                menu.style.zIndex = '99999';
+                menu.style.minWidth = rect.width + 'px'; // match width of button
+            } else {
+                // In sidebar, standard inline works best
+                menu.style.position = 'relative';
+                menu.style.top = '';
+                menu.style.left = '';
+            }
+        }
+    },
+
     scrollNavCarousel(dir) {
         const container = document.getElementById('nav-scroll-area');
         if (!container) return;
-        // Find visible link width roughly. By default, padding/gap varies. Let's assume ~120px to shift by 1-2 items
-        // Alternatively, get first child width
-        const firstLink = container.querySelector('.nav-link');
-        const shiftAmount = firstLink ? (firstLink.offsetWidth + 16) : 150;
 
-        container.scrollBy({ left: dir * shiftAmount * 2, behavior: 'smooth' });
+        // Infinite Carousel DOM manipulation
+        const linksWrapper = container.querySelector('.nav-links:not(.ext-nav)');
+        const extWrapper = container.querySelector('.ext-nav');
+        
+        const allLinks = Array.from(container.querySelectorAll('.nav-link, .nav-dropdown-group'))
+                              .filter(el => el.parentElement.classList.contains('nav-links'));
+        
+        if (allLinks.length < 2) return;
+
+        if (dir === 1) {
+            const first = allLinks[0];
+            if (extWrapper) extWrapper.appendChild(first);
+            else linksWrapper.appendChild(first);
+        } else if (dir === -1) {
+            const last = allLinks[allLinks.length - 1];
+            linksWrapper.insertBefore(last, linksWrapper.firstChild);
+        }
     }
+
 };
 
 // Initialize when DOM is ready
@@ -1567,5 +1629,15 @@ document.addEventListener('click', function (e) {
             dropdown.classList.add('hidden');
             App.isNotificationsOpen = false;
         }
+    }
+});
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.nav-dropdown-group')) {
+        document.querySelectorAll('.nav-dropdown-group.open').forEach(g => {
+            g.classList.remove('open');
+            const m = g.querySelector('.dropdown-menu');
+            if (m) m.style.position = '';
+        });
     }
 });
