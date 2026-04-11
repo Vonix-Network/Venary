@@ -971,15 +971,23 @@ var App = {
         }
     },
 
+
     async showAppearanceModal() {
         const layoutId = localStorage.getItem('venary_layout') || 'default';
         const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
         const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
         const radiusId = localStorage.getItem('venary_radius') || 'medium';
+        const customObj = JSON.parse(localStorage.getItem('venary_custom_colors')) || {
+            bgPrimary: '#05060a',
+            bgCard: '#0a0c14',
+            textPrimary: '#f0f2f5',
+            neon1: '#29b6f6',
+            neon2: '#ab47bc'
+        };
 
         let modalHtml = `
             <div class="modal-overlay" id="themes-modal">
-                <div class="modal" style="width:650px; max-width:95vw;">
+                <div class="modal" style="width:700px; max-width:95vw;">
                     <div class="modal-header">
                         <div class="modal-title">🎨 Personalization</div>
                         <button class="btn btn-ghost modal-close" onclick="App.cancelAppearance()">✕</button>
@@ -994,21 +1002,51 @@ var App = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
         try {
-            const themes = await API.get('/api/themes'); // CSS files acting as colors
+            const themes = await API.get('/api/themes');
             
             // Build Tabs
             let tabsHtml = `
                 <div class="appearance-tabs">
-                    <button class="appearance-tab active" onclick="App.switchAppearanceTab('layout', this)">Layout</button>
+                    <button class="appearance-tab active" onclick="App.switchAppearanceTab('presets', this)">Presets</button>
+                    <button class="appearance-tab" onclick="App.switchAppearanceTab('layout', this)">Layout</button>
                     <button class="appearance-tab" onclick="App.switchAppearanceTab('colors', this)">Colors</button>
                     <button class="appearance-tab" onclick="App.switchAppearanceTab('background', this)">Background</button>
                     <button class="appearance-tab" onclick="App.switchAppearanceTab('style', this)">Style</button>
                 </div>
             `;
 
+            // Presets Pane
+            let presetsHtml = `
+                <div id="pane-presets" class="appearance-pane active">
+                    <p style="color:var(--text-secondary); margin-bottom:15px;">One-click templates that completely overhaul the layout and colors.</p>
+                    <div class="appearance-grid">
+                        <div class="appearance-card" onclick="App.applyPreset('default')">
+                            <div class="card-preview" style="background:#05060A; border-left:15px solid #29b6f6;"></div>
+                            <span>Venary Original</span>
+                        </div>
+                        <div class="appearance-card" onclick="App.applyPreset('bame')">
+                            <div class="card-preview" style="background:#090E11; border-left:15px solid #00F260;"></div>
+                            <span>Bame (Esports)</span>
+                        </div>
+                        <div class="appearance-card" onclick="App.applyPreset('gamon')">
+                            <div class="card-preview" style="background:#070914; overflow:hidden;"><div style="width:100%;height:100%;margin:5px;background:#00E5FF"></div></div>
+                            <span>Gamon (Broadcast)</span>
+                        </div>
+                        <div class="appearance-card" onclick="App.applyPreset('gio')">
+                            <div class="card-preview" style="background:#121212; border-left:15px solid #FF6B00;"></div>
+                            <span>GIO (Zombie)</span>
+                        </div>
+                        <div class="appearance-card" onclick="App.applyPreset('mykd')">
+                            <div class="card-preview" style="background:#050505; border-top:15px solid #39FF14; border-radius:0;"></div>
+                            <span>MYKD (NFT)</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
             // Layouts Pane
             let layoutsHtml = `
-                <div id="pane-layout" class="appearance-pane active">
+                <div id="pane-layout" class="appearance-pane">
                     <div class="appearance-grid">
                         <div class="appearance-card ${layoutId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'default', this)">
                             <div class="card-preview" style="background:#1a1a24; border-left:30px solid #2a2a35"></div>
@@ -1034,6 +1072,11 @@ var App = {
             let colorsHtml = `
                 <div id="pane-colors" class="appearance-pane">
                     <div class="swatch-grid">
+                        <!-- Custom Theme Option -->
+                        <div class="color-swatch-wrapper ${colorId === 'custom' ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', 'custom', this)">
+                            <div class="color-swatch" style="background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red)"></div>
+                            <span style="font-size:0.75rem;margin-top:4px">Custom</span>
+                        </div>
                         <div class="color-swatch-wrapper ${colorId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', 'default', this)">
                             <div class="color-swatch" style="background: linear-gradient(135deg, #00f0ff, #ff0055)"></div>
                             <span style="font-size:0.75rem;margin-top:4px">Neon Default</span>
@@ -1059,7 +1102,37 @@ var App = {
                     </div>
                 `;
             });
-            colorsHtml += `</div></div>`;
+            colorsHtml += `</div>`;
+
+            // Custom Colors Builder
+            colorsHtml += `
+                    <div id="custom-color-builder" style="display:${colorId === 'custom' ? 'block' : 'none'}; margin-top:20px; padding:15px; border:1px solid var(--border-light); border-radius:var(--radius-md); background:var(--bg-secondary)">
+                        <h4 style="margin-bottom:15px; color:var(--text-primary)">Build Custom Theme</h4>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                            <div class="input-group">
+                                <label>Background Primary</label>
+                                <input type="color" id="cf_bgPrimary" class="input-field" style="padding:0; height:40px" value="${customObj.bgPrimary}" onchange="App.previewAppearance()">
+                            </div>
+                            <div class="input-group">
+                                <label>Interface Card</label>
+                                <input type="color" id="cf_bgCard" class="input-field" style="padding:0; height:40px" value="${customObj.bgCard}" onchange="App.previewAppearance()">
+                            </div>
+                            <div class="input-group">
+                                <label>Text Primary</label>
+                                <input type="color" id="cf_textPrimary" class="input-field" style="padding:0; height:40px" value="${customObj.textPrimary}" onchange="App.previewAppearance()">
+                            </div>
+                            <div class="input-group">
+                                <label>Neon Accent 1</label>
+                                <input type="color" id="cf_neon1" class="input-field" style="padding:0; height:40px" value="${customObj.neon1}" onchange="App.previewAppearance()">
+                            </div>
+                            <div class="input-group">
+                                <label>Neon Accent 2</label>
+                                <input type="color" id="cf_neon2" class="input-field" style="padding:0; height:40px" value="${customObj.neon2}" onchange="App.previewAppearance()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
 
             // Backgrounds Pane
             let bgsHtml = `
@@ -1119,7 +1192,7 @@ var App = {
                 </div>
             `;
 
-            // Hidden states to track config
+            // Hidden states
             let stateHtml = `
                 <input type="hidden" id="sel-layout" value="${layoutId}">
                 <input type="hidden" id="sel-color" value="${colorId}">
@@ -1134,10 +1207,43 @@ var App = {
                 </div>
             `;
 
-            document.getElementById('appearance-modal-body').innerHTML = stateHtml + tabsHtml + layoutsHtml + colorsHtml + bgsHtml + styleHtml + footerHtml;
+            document.getElementById('appearance-modal-body').innerHTML = stateHtml + tabsHtml + presetsHtml + layoutsHtml + colorsHtml + bgsHtml + styleHtml + footerHtml;
         } catch (err) {
+            console.error(err);
             document.getElementById('appearance-modal-body').innerHTML = '<div class="error-state">Failed to load appearance settings.</div>';
         }
+    },
+
+    applyPreset(presetId) {
+        let layout, color, bg, radius;
+        if (presetId === 'default') {
+            layout = 'default'; color = 'default'; bg = 'default'; radius = 'medium';
+        } else if (presetId === 'bame') {
+            layout = 'default'; color = 'bame'; bg = 'default'; radius = 'medium';
+        } else if (presetId === 'gamon') {
+            layout = 'wide'; color = 'gamon'; bg = 'none'; radius = 'round';
+        } else if (presetId === 'gio') {
+            layout = 'compact'; color = 'gio'; bg = 'none'; radius = 'sharp';
+        } else if (presetId === 'mykd') {
+            layout = 'top-nav'; color = 'mykd'; bg = 'webgl-matrix'; radius = 'sharp';
+        }
+
+        document.getElementById('sel-layout').value = layout;
+        document.getElementById('sel-color').value = color;
+        document.getElementById('sel-bg').value = bg;
+        document.getElementById('sel-radius').value = radius;
+
+        // Auto-update DOM to reflect preset changes
+        this.selectAppearanceObj('layout', layout, document.querySelector('#pane-layout .appearance-card:nth-child(' + (layout==='default'?1:layout==='compact'?2:layout==='wide'?3:4) + ')'));
+        this.selectAppearanceObj('color', color, document.querySelector('.color-swatch-wrapper[onclick*="'+color+'"]'));
+        let bgChild = 1;
+        if(bg==='none') bgChild=1; else if(bg==='default') bgChild=2; else if(bg==='webgl-matrix') bgChild=2;
+        if(bg==='webgl-matrix') {
+             this.selectAppearanceObj('bg', bg, document.querySelectorAll('#pane-background .appearance-grid')[1].children[1]);
+        } else {
+             this.selectAppearanceObj('bg', bg, document.querySelectorAll('#pane-background .appearance-grid')[0].children[bgChild-1]);
+        }
+        this.selectAppearanceObj('radius', radius, document.querySelector('#pane-style .appearance-card:nth-child(' + (radius==='sharp'?1:radius==='medium'?2:radius==='round'?3:4) + ')'));
     },
 
     switchAppearanceTab(paneId, btnElem) {
@@ -1148,13 +1254,18 @@ var App = {
     },
 
     selectAppearanceObj(type, value, cardElem) {
-        // Update hidden input
         document.getElementById('sel-' + type).value = value;
-        // Update styling
-        const siblings = cardElem.parentElement.querySelectorAll(type === 'color' ? '.color-swatch-wrapper' : '.appearance-card');
-        siblings.forEach(el => el.classList.remove('selected'));
-        cardElem.classList.add('selected');
-        // Preview instantly
+        if (cardElem) {
+            const siblings = cardElem.parentElement.querySelectorAll(type === 'color' ? '.color-swatch-wrapper' : '.appearance-card');
+            siblings.forEach(el => el.classList.remove('selected'));
+            cardElem.classList.add('selected');
+        }
+        
+        // Show/hide custom builder
+        if (type === 'color') {
+            document.getElementById('custom-color-builder').style.display = (value === 'custom') ? 'block' : 'none';
+        }
+
         this.previewAppearance();
     },
 
@@ -1173,7 +1284,19 @@ var App = {
         const color = document.getElementById('sel-color').value;
         const bg = document.getElementById('sel-bg').value;
         const radius = document.getElementById('sel-radius').value;
-        this.applyAppearance(layout, color, bg, radius);
+        
+        let customObj = null;
+        if (color === 'custom') {
+            customObj = {
+                bgPrimary: document.getElementById('cf_bgPrimary') ? document.getElementById('cf_bgPrimary').value : '#05060a',
+                bgCard: document.getElementById('cf_bgCard') ? document.getElementById('cf_bgCard').value : '#0a0c14',
+                textPrimary: document.getElementById('cf_textPrimary') ? document.getElementById('cf_textPrimary').value : '#fff',
+                neon1: document.getElementById('cf_neon1') ? document.getElementById('cf_neon1').value : '#00E5FF',
+                neon2: document.getElementById('cf_neon2') ? document.getElementById('cf_neon2').value : '#7C4DFF',
+            };
+        }
+        
+        this.applyAppearance(layout, color, bg, radius, customObj);
     },
 
     saveAppearance() {
@@ -1187,14 +1310,25 @@ var App = {
         localStorage.setItem('venary_bg', bg);
         localStorage.setItem('venary_radius', radius);
         
-        // Ensure immediate application
-        this.applyAppearance(layout, color, bg, radius);
+        let customObj = null;
+        if (color === 'custom') {
+            customObj = {
+                bgPrimary: document.getElementById('cf_bgPrimary').value,
+                bgCard: document.getElementById('cf_bgCard').value,
+                textPrimary: document.getElementById('cf_textPrimary').value,
+                neon1: document.getElementById('cf_neon1').value,
+                neon2: document.getElementById('cf_neon2').value
+            };
+            localStorage.setItem('venary_custom_colors', JSON.stringify(customObj));
+        }
+
+        this.applyAppearance(layout, color, bg, radius, customObj);
 
         document.getElementById('themes-modal').remove();
         this.showToast('Appearance settings saved!', 'success');
     },
 
-    applyAppearance(layout, color, bg) {
+    applyAppearance(layout, color, bg, radius, customObj = null) {
         // 1. Layout
         document.documentElement.classList.remove('layout-default', 'layout-compact', 'layout-wide', 'layout-top-nav');
         if (layout !== 'default') {
@@ -1212,11 +1346,49 @@ var App = {
             if (carouselNext) carouselNext.style.display = 'none';
         }
 
-        // 2. Color Scheme
+        // 2. Styling (Radius)
+        document.documentElement.classList.remove('radius-sharp', 'radius-medium', 'radius-round', 'radius-pill');
+        if (radius !== 'medium') {
+            document.documentElement.classList.add('radius-' + radius);
+        }
+
+        // 3. Color Scheme
         document.documentElement.setAttribute('data-theme', color);
         const existing = document.getElementById('theme-stylesheet');
+        const existingCustom = document.getElementById('theme-custom');
         if (existing) existing.remove();
-        if (color !== 'default') {
+        if (existingCustom) existingCustom.remove();
+
+        if (color === 'custom') {
+             if (!customObj) customObj = JSON.parse(localStorage.getItem('venary_custom_colors')) || {
+                 bgPrimary: '#05060A', bgCard: '#0A0C14', textPrimary: '#FFF', neon1: '#29b6f6', neon2: '#ab47bc'
+             };
+             
+             const customCss = `
+                 :root {
+                     --bg-primary: ${customObj.bgPrimary};
+                     --bg-secondary: ${customObj.bgPrimary}dd;
+                     --bg-tertiary: ${customObj.bgPrimary}aa;
+                     --bg-card: ${customObj.bgCard};
+                     --bg-card-hover: ${customObj.bgCard}ee;
+                     --bg-input: ${customObj.bgCard}cc;
+                     --text-primary: ${customObj.textPrimary};
+                     --neon-cyan: ${customObj.neon1};
+                     --neon-magenta: ${customObj.neon2};
+                     --text-highlight: ${customObj.neon1};
+                     --border-subtle: ${customObj.neon1}22;
+                     --border-light: ${customObj.neon1}44;
+                     --border-accent: ${customObj.neon1}99;
+                     --gradient-primary: linear-gradient(135deg, ${customObj.neon1} 0%, ${customObj.neon2} 100%);
+                     --gradient-accent: linear-gradient(135deg, ${customObj.neon2} 0%, ${customObj.neon1} 100%);
+                     --shadow-neon: 0 0 20px ${customObj.neon1}33;
+                 }
+             `;
+             const style = document.createElement('style');
+             style.id = 'theme-custom';
+             style.textContent = customCss;
+             document.head.appendChild(style);
+        } else if (color !== 'default') {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.id = 'theme-stylesheet';
@@ -1224,7 +1396,7 @@ var App = {
             document.head.appendChild(link);
         }
 
-        // 3. Background Engine Map
+        // 4. Background Engine Map
         const webGLThemes = ['webgl-cyber', 'webgl-matrix', 'webgl-stars', 'webgl-geometry', 'webgl-fluid', 'webgl-aurora', 'webgl-particles'];
         const isWebGL = webGLThemes.includes(bg);
 
@@ -1248,7 +1420,6 @@ var App = {
             if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme(bg);
         }
     },
-
     setTheme(themeId) {
         // Legacy setter wrapper
         this.applyAppearance('default', themeId, themeId);
