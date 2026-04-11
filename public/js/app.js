@@ -977,7 +977,7 @@ var App = {
         const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
         const radiusId = localStorage.getItem('venary_radius') || 'medium';
 
-        let modalHtml = \`
+        let modalHtml = `
             <div class="modal-overlay" id="themes-modal">
                 <div class="modal" style="width:650px; max-width:95vw;">
                     <div class="modal-header">
@@ -989,7 +989,7 @@ var App = {
                     </div>
                 </div>
             </div>
-        \`;
+        `;
 
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
@@ -997,17 +997,17 @@ var App = {
             const themes = await API.get('/api/themes'); // CSS files acting as colors
             
             // Build Tabs
-            let tabsHtml = \`
+            let tabsHtml = `
                 <div class="appearance-tabs">
                     <button class="appearance-tab active" onclick="App.switchAppearanceTab('layout', this)">Layout</button>
                     <button class="appearance-tab" onclick="App.switchAppearanceTab('colors', this)">Colors</button>
                     <button class="appearance-tab" onclick="App.switchAppearanceTab('background', this)">Background</button>
                     <button class="appearance-tab" onclick="App.switchAppearanceTab('style', this)">Style</button>
                 </div>
-            \`;
+            `;
 
             // Layouts Pane
-            let layoutsHtml = \`
+            let layoutsHtml = `
                 <div id="pane-layout" class="appearance-pane active">
                     <div class="appearance-grid">
                         <div class="appearance-card \${layoutId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'default', this)">
@@ -1028,17 +1028,17 @@ var App = {
                         </div>
                     </div>
                 </div>
-            \`;
+            `;
 
             // Colors Pane
-            let colorsHtml = \`
+            let colorsHtml = `
                 <div id="pane-colors" class="appearance-pane">
                     <div class="swatch-grid">
                         <div class="color-swatch-wrapper \${colorId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', 'default', this)">
                             <div class="color-swatch" style="background: linear-gradient(135deg, #00f0ff, #ff0055)"></div>
                             <span style="font-size:0.75rem;margin-top:4px">Neon Default</span>
                         </div>
-            \`;
+            `;
             themes.forEach(t => {
                 if (t.id === 'default') return;
                 // Generate a pseudo gradient or solid background based on ID for the swatch
@@ -1049,17 +1049,17 @@ var App = {
                 else if(t.id === 'purple') bgStyle = 'background: linear-gradient(135deg, #9d4edd, #5a189a)';
                 else if(t.id === 'pink') bgStyle = 'background: linear-gradient(135deg, #ff70a6, #ff9770)';
                 
-                colorsHtml += \`
+                colorsHtml += `
                     <div class="color-swatch-wrapper \${colorId === t.id ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', '\${t.id}', this)">
                         <div class="color-swatch" style="\${bgStyle}"></div>
                         <span style="font-size:0.75rem;margin-top:4px">\${this.escapeHtml(t.name)}</span>
                     </div>
-                \`;
+                `;
             });
-            colorsHtml += \`</div></div>\`;
+            colorsHtml += `</div></div>`;
 
             // Backgrounds Pane
-            let bgsHtml = \`
+            let bgsHtml = `
                 <div id="pane-background" class="appearance-pane">
                     <h4 style="margin-bottom:10px; color:var(--text-secondary)">Static & 2D Environments</h4>
                     <div class="appearance-grid" style="margin-bottom:20px">
@@ -1093,10 +1093,10 @@ var App = {
                         </div>
                     </div>
                 </div>
-            \`;
+            `;
 
             // Style Pane
-            let styleHtml = \`
+            let styleHtml = `
                 <div id="pane-style" class="appearance-pane">
                     <h4 style="margin-bottom:10px; color:var(--text-secondary)">UI Corner Radius</h4>
                     <div class="appearance-grid">
@@ -1114,22 +1114,22 @@ var App = {
                         </div>
                     </div>
                 </div>
-            \`;
+            `;
 
             // Hidden states to track config
-            let stateHtml = \`
+            let stateHtml = `
                 <input type="hidden" id="sel-layout" value="\${layoutId}">
                 <input type="hidden" id="sel-color" value="\${colorId}">
                 <input type="hidden" id="sel-bg" value="\${bgId}">
                 <input type="hidden" id="sel-radius" value="\${radiusId}">
-            \`;
+            `;
 
-            let footerHtml = \`
+            let footerHtml = `
                 <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid var(--border-subtle); padding-top:16px;">
                     <button class="btn btn-secondary" onclick="App.cancelAppearance()">Cancel</button>
                     <button class="btn btn-primary" onclick="App.saveAppearance()">Save & Apply</button>
                 </div>
-            \`;
+            `;
 
             document.getElementById('appearance-modal-body').innerHTML = stateHtml + tabsHtml + layoutsHtml + colorsHtml + bgsHtml + styleHtml + footerHtml;
         } catch (err) {
