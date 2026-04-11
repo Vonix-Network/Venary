@@ -685,13 +685,25 @@ html.layout-compact .composer-textarea {
   }
 
   html.layout-top-nav .nav-link {
-    width: 140px;
-    /* Fixed width to ensure 5 fit nicely */
+    width: 100px;
     flex-shrink: 0;
     justify-content: center;
     flex-direction: column;
-    gap: 4px;
-    padding: var(--space-sm);
+    gap: 6px;
+    padding: var(--space-sm) 0;
+    margin: 0 var(--space-xs);
+    border-radius: var(--radius-md);
+  }
+
+  html.layout-top-nav .nav-link.active {
+    background: linear-gradient(180deg, transparent 0%, rgba(41, 182, 246, 0.2) 100%);
+    border-bottom: 3px solid var(--neon-cyan);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  html.layout-top-nav .nav-link.active::before {
+    display: none;
   }
 
   html.layout-top-nav .nav-link span {
