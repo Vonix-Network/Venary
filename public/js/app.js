@@ -1010,19 +1010,19 @@ var App = {
             let layoutsHtml = `
                 <div id="pane-layout" class="appearance-pane active">
                     <div class="appearance-grid">
-                        <div class="appearance-card \${layoutId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'default', this)">
+                        <div class="appearance-card ${layoutId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'default', this)">
                             <div class="card-preview" style="background:#1a1a24; border-left:30px solid #2a2a35"></div>
                             <span>Sidebar (Default)</span>
                         </div>
-                        <div class="appearance-card \${layoutId === 'compact' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'compact', this)">
+                        <div class="appearance-card ${layoutId === 'compact' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'compact', this)">
                             <div class="card-preview" style="background:#1a1a24; border-left:15px solid #2a2a35"></div>
                             <span>Compact Sidebar</span>
                         </div>
-                        <div class="appearance-card \${layoutId === 'wide' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'wide', this)">
+                        <div class="appearance-card ${layoutId === 'wide' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'wide', this)">
                             <div class="card-preview" style="background:#1a1a24; overflow:hidden;"><div style="width:100%;height:100%;margin:5px;background:#2a2a35"></div></div>
                             <span>Wide View</span>
                         </div>
-                        <div class="appearance-card \${layoutId === 'top-nav' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'top-nav', this)">
+                        <div class="appearance-card ${layoutId === 'top-nav' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'top-nav', this)">
                             <div class="card-preview" style="background:#1a1a24; border-top:15px solid #2a2a35"></div>
                             <span>Top Navbar</span>
                         </div>
@@ -1034,7 +1034,7 @@ var App = {
             let colorsHtml = `
                 <div id="pane-colors" class="appearance-pane">
                     <div class="swatch-grid">
-                        <div class="color-swatch-wrapper \${colorId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', 'default', this)">
+                        <div class="color-swatch-wrapper ${colorId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', 'default', this)">
                             <div class="color-swatch" style="background: linear-gradient(135deg, #00f0ff, #ff0055)"></div>
                             <span style="font-size:0.75rem;margin-top:4px">Neon Default</span>
                         </div>
@@ -1050,9 +1050,9 @@ var App = {
                 else if(t.id === 'pink') bgStyle = 'background: linear-gradient(135deg, #ff70a6, #ff9770)';
                 
                 colorsHtml += `
-                    <div class="color-swatch-wrapper \${colorId === t.id ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', '\${t.id}', this)">
-                        <div class="color-swatch" style="\${bgStyle}"></div>
-                        <span style="font-size:0.75rem;margin-top:4px">\${this.escapeHtml(t.name)}</span>
+                    <div class="color-swatch-wrapper ${colorId === t.id ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', '${t.id}', this)">
+                        <div class="color-swatch" style="${bgStyle}"></div>
+                        <span style="font-size:0.75rem;margin-top:4px">${this.escapeHtml(t.name)}</span>
                     </div>
                 `;
             });
@@ -1063,32 +1063,32 @@ var App = {
                 <div id="pane-background" class="appearance-pane">
                     <h4 style="margin-bottom:10px; color:var(--text-secondary)">Static & 2D Environments</h4>
                     <div class="appearance-grid" style="margin-bottom:20px">
-                        <div class="appearance-card \${bgId === 'none' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'none', this)">
+                        <div class="appearance-card ${bgId === 'none' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'none', this)">
                             <div class="card-preview"></div><span>Solid Dark</span>
                         </div>
-                        <div class="appearance-card \${bgId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'default', this)">
+                        <div class="appearance-card ${bgId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'default', this)">
                             <div class="card-preview" style="background:#111; position:relative"><div style="position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;top:50%;left:50%;box-shadow: 10px 10px #fff, -10px -5px #fff"></div></div>
                             <span>Classic Dust</span>
                         </div>
-                        <div class="appearance-card \${bgId === 'pink' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'pink', this)">
+                        <div class="appearance-card ${bgId === 'pink' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'pink', this)">
                             <div class="card-preview" style="background:linear-gradient(45deg, #2a0a18, #110008)"></div><span>Pink Bubbles</span>
                         </div>
-                        <div class="appearance-card \${bgId === 'lavalamp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'lavalamp', this)">
+                        <div class="appearance-card ${bgId === 'lavalamp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'lavalamp', this)">
                             <div class="card-preview" style="background:linear-gradient(180deg, #330000, #000)"></div><span>Lava Lamp</span>
                         </div>
                     </div>
                     <h4 style="margin-bottom:10px; color:var(--neon-cyan)">3D WebGL Experiences</h4>
                     <div class="appearance-grid">
-                        <div class="appearance-card \${bgId === 'webgl-cyber' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-cyber', this)">
+                        <div class="appearance-card ${bgId === 'webgl-cyber' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-cyber', this)">
                             <div class="card-preview" style="background:linear-gradient(180deg, #001122, #003344)"></div><span>Cyber Grid</span>
                         </div>
-                        <div class="appearance-card \${bgId === 'webgl-matrix' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-matrix', this)">
+                        <div class="appearance-card ${bgId === 'webgl-matrix' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-matrix', this)">
                             <div class="card-preview" style="background:#001100"></div><span>Matrix Rain</span>
                         </div>
-                        <div class="appearance-card \${bgId === 'webgl-stars' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-stars', this)">
+                        <div class="appearance-card ${bgId === 'webgl-stars' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-stars', this)">
                             <div class="card-preview" style="background:#000"></div><span>Hyperjump</span>
                         </div>
-                        <div class="appearance-card \${bgId === 'webgl-fluid' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-fluid', this)">
+                        <div class="appearance-card ${bgId === 'webgl-fluid' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-fluid', this)">
                             <div class="card-preview" style="background:linear-gradient(45deg, #002233, #000)"></div><span>Fluid Waves</span>
                         </div>
                     </div>
@@ -1100,16 +1100,16 @@ var App = {
                 <div id="pane-style" class="appearance-pane">
                     <h4 style="margin-bottom:10px; color:var(--text-secondary)">UI Corner Radius</h4>
                     <div class="appearance-grid">
-                        <div class="appearance-card \${radiusId === 'sharp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'sharp', this)">
+                        <div class="appearance-card ${radiusId === 'sharp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'sharp', this)">
                             <div class="card-preview" style="border-radius:0; border:2px solid #fff"></div><span>Sharp (0px)</span>
                         </div>
-                        <div class="appearance-card \${radiusId === 'medium' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'medium', this)">
+                        <div class="appearance-card ${radiusId === 'medium' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'medium', this)">
                             <div class="card-preview" style="border-radius:6px; border:2px solid #fff"></div><span>Modern (6px)</span>
                         </div>
-                        <div class="appearance-card \${radiusId === 'round' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'round', this)">
+                        <div class="appearance-card ${radiusId === 'round' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'round', this)">
                             <div class="card-preview" style="border-radius:16px; border:2px solid #fff"></div><span>Soft (16px)</span>
                         </div>
-                        <div class="appearance-card \${radiusId === 'pill' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'pill', this)">
+                        <div class="appearance-card ${radiusId === 'pill' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'pill', this)">
                             <div class="card-preview" style="border-radius:30px; border:2px solid #fff"></div><span>Pill (Max)</span>
                         </div>
                     </div>
@@ -1118,10 +1118,10 @@ var App = {
 
             // Hidden states to track config
             let stateHtml = `
-                <input type="hidden" id="sel-layout" value="\${layoutId}">
-                <input type="hidden" id="sel-color" value="\${colorId}">
-                <input type="hidden" id="sel-bg" value="\${bgId}">
-                <input type="hidden" id="sel-radius" value="\${radiusId}">
+                <input type="hidden" id="sel-layout" value="${layoutId}">
+                <input type="hidden" id="sel-color" value="${colorId}">
+                <input type="hidden" id="sel-bg" value="${bgId}">
+                <input type="hidden" id="sel-radius" value="${radiusId}">
             `;
 
             let footerHtml = `
