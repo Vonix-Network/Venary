@@ -554,9 +554,7 @@ html.layout-compact .composer-textarea {
   }
 
   html.layout-top-nav .nav-links {
-    display: flex;
-    flex-direction: row;
-    height: 100%;
+    display: contents;
   }
 
   html.layout-top-nav .ext-nav {
@@ -577,6 +575,8 @@ html.layout-compact .composer-textarea {
   html.layout-top-nav .nav-link {
     width: 140px; /* Fixed width to ensure 5 fit nicely */
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
     justify-content: center;
     flex-direction: column;
     gap: 4px;

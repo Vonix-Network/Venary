@@ -20,8 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Themes & UI** — `WebGLEngine.getCssColor()` now catches exceptions and strips `rgba()` alpha channels before passing to `THREE.Color` to prevent parse errors.
 - **Themes & UI** — Division-by-zero guards added to particle mouse repulsion and camera ray projection calculations.
 - **Themes & UI** — `App.init()` now restores all three saved appearance settings (layout, color, background) on every page load, preventing resets on refresh.
-- **Navigation** â€” Fixed an issue where the profile picture dropdown menu was transparent by restoring the missing `.notifications-dropdown` CSS selector.
-- **Donations Extension** â€” Fixed an issue in the public donations history list where users without an avatar or Minecraft username were loading a broken image link. Now gracefully falls back to a dynamically generated initial/letter avatar.
+- **Themes & UI** — Fixed side-nav layout bottom user bar positioning after DOM restructuring for the new Top Navbar layout.
+- **Themes & UI** — Implemented true infinite loop DOM rotation and animation for Top Navbar layout navigation carousel arrows.
+- **Navigation** — Fixed an issue where the profile picture dropdown menu was transparent by restoring the missing `.notifications-dropdown` CSS selector.
+- **Donations Extension** — Fixed an issue in the public donations history list where users without an avatar or Minecraft username were loading a broken image link. Now gracefully falls back to a dynamically generated initial/letter avatar.
 
 ### Changed
 - **Admin Dashboard** â€” Full redesign of the Extensions management dashboard, replacing the basic list with a modern glassmorphic grid layout, active count stats, and enhanced visual hierarchy.

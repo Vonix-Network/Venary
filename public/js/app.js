@@ -1198,14 +1198,28 @@ var App = {
      * @param {number} dir - Direction (-1 for prev, 1 for next)
      */
     scrollNavCarousel(dir) {
-        const container = document.getElementById('nav-scroll-area');
-        if (!container) return;
-        // Find visible link width roughly. By default, padding/gap varies. Let's assume ~120px to shift by 1-2 items
-        // Alternatively, get first child width
-        const firstLink = container.querySelector('.nav-link');
-        const shiftAmount = firstLink ? (firstLink.offsetWidth + 16) : 150; 
-        
-        container.scrollBy({ left: dir * shiftAmount * 2, behavior: 'smooth' });
+        const area = document.getElementById('nav-scroll-area');
+        if (!area) return;
+        const allLinks = Array.from(area.querySelectorAll('.nav-link:not(.hidden)'));
+        if (allLinks.length <= 1) return;
+
+        if (dir === 1) {
+            // Rotate first item to the end
+            const first = allLinks[0];
+            const targetContainer = area.querySelector('.ext-nav') || area.querySelector('.nav-links');
+            targetContainer.appendChild(first);
+            first.style.animation = 'none';
+            first.offsetHeight; // trigger reflow
+            first.style.animation = 'slideInRight 0.3s ease-out';
+        } else {
+            // Rotate last item to the front
+            const last = allLinks[allLinks.length - 1];
+            const targetContainer = area.querySelector('.nav-links');
+            targetContainer.insertBefore(last, targetContainer.firstChild);
+            last.style.animation = 'none';
+            last.offsetHeight;
+            last.style.animation = 'fadeInLeft 0.3s ease-out';
+        }
     }
 };
 
