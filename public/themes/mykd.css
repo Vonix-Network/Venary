@@ -1,0 +1,42 @@
+/* Name: MYKD
+ * Description: eSports & NFT
+ * Author: Custom
+ * Version: 1.0.0 */
+:root {
+  /* Pitch black backgrounds */
+  --bg-primary: #050505;
+  --bg-secondary: #0A0A0A;
+  --bg-tertiary: #111111;
+  
+  --bg-card: rgba(10, 10, 10, 0.85);
+  --bg-card-hover: rgba(17, 17, 17, 0.95);
+  --bg-input: rgba(15, 15, 15, 0.9);
+
+  /* Toxic Lime & Purple Accents */
+  --neon-cyan: #39FF14;
+  --neon-magenta: #7B1FA2;
+  --neon-pink: #9C27B0;
+  --neon-green: #32CD32;
+  --neon-blue: #00E676;
+  
+  /* Text */
+  --text-primary: #F0F0F0;
+  --text-secondary: #9E9E9E;
+  --text-highlight: #39FF14;
+
+  /* Borders -> Sharp, rigid Web3 aesthetics */
+  --border-subtle: rgba(57, 255, 20, 0.15);
+  --border-light: rgba(57, 255, 20, 0.3);
+  --border-accent: rgba(57, 255, 20, 0.7);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #39FF14 0%, #7B1FA2 100%);
+  --gradient-secondary: linear-gradient(135deg, #7B1FA2 0%, #4A148C 100%);
+  --gradient-accent: linear-gradient(135deg, #00E676 0%, #39FF14 100%);
+  --gradient-warm: linear-gradient(135deg, #32CD32 0%, #9C27B0 100%);
+  --gradient-dark: linear-gradient(135deg, #050505 0%, #111111 100%);
+
+  /* Neon Toxic Shadows */
+  --shadow-neon: 0 0 20px rgba(57, 255, 20, 0.25);
+  --shadow-neon-strong: 0 0 32px rgba(57, 255, 20, 0.5);
+}

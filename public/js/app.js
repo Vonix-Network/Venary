@@ -1041,13 +1041,16 @@ var App = {
             `;
             themes.forEach(t => {
                 if (t.id === 'default') return;
-                // Generate a pseudo gradient or solid background based on ID for the swatch
                 let bgStyle = 'background: #555';
                 if(t.id === 'dracula') bgStyle = 'background: linear-gradient(135deg, #ff79c6, #bd93f9)';
                 else if(t.id === 'monokai') bgStyle = 'background: linear-gradient(135deg, #a6e22e, #f92672)';
                 else if(t.id === 'solarized') bgStyle = 'background: linear-gradient(135deg, #268bd2, #2aa198)';
                 else if(t.id === 'purple') bgStyle = 'background: linear-gradient(135deg, #9d4edd, #5a189a)';
                 else if(t.id === 'pink') bgStyle = 'background: linear-gradient(135deg, #ff70a6, #ff9770)';
+                else if(t.id === 'bame') bgStyle = 'background: linear-gradient(135deg, #090E11, #00F260)';
+                else if(t.id === 'gamon') bgStyle = 'background: linear-gradient(135deg, #00E5FF, #1A237E)';
+                else if(t.id === 'gio') bgStyle = 'background: linear-gradient(135deg, #1A1A1A, #FF6B00)';
+                else if(t.id === 'mykd') bgStyle = 'background: linear-gradient(135deg, #39FF14, #7B1FA2)';
                 
                 colorsHtml += `
                     <div class="color-swatch-wrapper ${colorId === t.id ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', '${t.id}', this)">

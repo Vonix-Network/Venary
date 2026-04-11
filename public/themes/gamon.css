@@ -1,0 +1,42 @@
+/* Name: Gamon
+ * Description: eSports & Match Broadcast
+ * Author: Custom
+ * Version: 1.0.0 */
+:root {
+  /* Rich navy-blue backgrounds */
+  --bg-primary: #070914;
+  --bg-secondary: #0A0E23;
+  --bg-tertiary: #11183B;
+  
+  --bg-card: rgba(10, 14, 35, 0.85);
+  --bg-card-hover: rgba(17, 24, 59, 0.95);
+  --bg-input: rgba(15, 20, 48, 0.9);
+
+  /* Cyan & Sapphire Accents */
+  --neon-cyan: #00E5FF;
+  --neon-magenta: #536DFE;
+  --neon-pink: #7C4DFF;
+  --neon-green: #1DE9B6;
+  --neon-blue: #2979FF;
+  
+  /* Text */
+  --text-primary: #E3F2FD;
+  --text-secondary: #90CAF9;
+  --text-highlight: #00E5FF;
+
+  /* Borders -> Crisp interface */
+  --border-subtle: rgba(0, 229, 255, 0.1);
+  --border-light: rgba(0, 229, 255, 0.2);
+  --border-accent: rgba(0, 229, 255, 0.5);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #00E5FF 0%, #1A237E 100%);
+  --gradient-secondary: linear-gradient(135deg, #1A237E 0%, #536DFE 100%);
+  --gradient-accent: linear-gradient(135deg, #00E5FF 0%, #2979FF 100%);
+  --gradient-warm: linear-gradient(135deg, #2979FF 0%, #7C4DFF 100%);
+  --gradient-dark: linear-gradient(135deg, #070914 0%, #11183B 100%);
+
+  /* Cool Blue Shadows */
+  --shadow-neon: 0 0 20px rgba(0, 229, 255, 0.2);
+  --shadow-neon-strong: 0 0 32px rgba(0, 229, 255, 0.45);
+}

@@ -1,0 +1,47 @@
+/* Name: Bame
+ * Description: Esports & Gaming Theme
+ * Author: Custom
+ * Version: 1.0.0 */
+:root {
+  /* Deep void background with electric emerald green */
+  --bg-primary: #090E11;
+  --bg-secondary: #0D1418;
+  --bg-tertiary: #121A1E;
+  
+  --bg-card: rgba(13, 20, 24, 0.85);
+  --bg-card-hover: rgba(18, 26, 30, 0.95);
+  --bg-input: rgba(18, 26, 30, 0.9);
+
+  /* Neon Green Accents */
+  --neon-cyan: #00F260; 
+  --neon-magenta: #00A650;
+  --neon-pink: #00E454;
+  --neon-green: #39FF14;
+  --neon-blue: #00F260;
+  
+  /* Text */
+  --text-primary: #E0E6ED;
+  --text-secondary: #90A4AE;
+  --text-highlight: #00F260;
+
+  /* Borders -> Sharp, action-oriented */
+  --border-subtle: rgba(0, 242, 96, 0.1);
+  --border-light: rgba(0, 242, 96, 0.2);
+  --border-accent: rgba(0, 242, 96, 0.5);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #00F260 0%, #00A650 100%);
+  --gradient-secondary: linear-gradient(135deg, #00A650 0%, #006030 100%);
+  --gradient-accent: linear-gradient(135deg, #39FF14 0%, #00F260 100%);
+  --gradient-warm: linear-gradient(135deg, #00F260 0%, #00E454 100%);
+  --gradient-dark: linear-gradient(135deg, #090E11 0%, #121A1E 100%);
+
+  /* Stronger Green Shadows */
+  --shadow-neon: 0 0 20px rgba(0, 242, 96, 0.2);
+  --shadow-neon-strong: 0 0 32px rgba(0, 242, 96, 0.4);
+}
+
+/* Optional Custom Structural Modifiers mapping to this theme optionally */
+body {
+  font-family: 'Inter', sans-serif;
+}
