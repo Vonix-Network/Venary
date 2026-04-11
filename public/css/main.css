@@ -498,9 +498,9 @@ html.layout-compact .composer-textarea {
 
   html.layout-top-nav .nav-user {
     position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    right: var(--space-xl);
+    top: var(--space-md);
+    transform: none;
     margin-top: 0;
     border-top: none;
     border-left: none;
