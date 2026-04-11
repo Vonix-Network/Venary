@@ -41,7 +41,10 @@ var App = {
                 this.onLogin();
             } catch (e) {
                 API.setToken(null);
+                this.onGuest();
             }
+        } else {
+            this.onGuest();
         }
 
         // Load extensions before initializing router
@@ -286,6 +289,21 @@ var App = {
         if (nav) nav.classList.remove('hidden');
         if (page) page.classList.remove('full-width');
 
+        var userSection = document.getElementById('nav-user-info');
+        if (userSection) userSection.classList.remove('hidden');
+        var notifBtn = document.getElementById('notifications-btn');
+        if (notifBtn) notifBtn.classList.remove('hidden');
+        var logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+
+        if (document.getElementById('guest-actions')) document.getElementById('guest-actions').classList.add('hidden');
+        if (document.getElementById('mbn-login')) document.getElementById('mbn-login').classList.add('hidden');
+
+        ['mbn-friends', 'mbn-chat', 'mbn-profile'].forEach(id => {
+            var el = document.getElementById(id);
+            if (el) el.classList.remove('hidden');
+        });
+
         // Update nav avatar
         var navAvatar = document.getElementById('nav-avatar');
         if (navAvatar && this.currentUser) {
@@ -463,19 +481,70 @@ var App = {
         }
     },
 
+    onGuest() {
+        var nav = document.getElementById('main-nav');
+        var page = document.getElementById('page-container');
+        if (nav) nav.classList.remove('hidden');
+        if (page) page.classList.remove('full-width');
+
+        var userSection = document.getElementById('nav-user-info');
+        if (userSection) userSection.classList.add('hidden');
+        var notifBtn = document.getElementById('notifications-btn');
+        if (notifBtn) notifBtn.classList.add('hidden');
+        var logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) logoutBtn.classList.add('hidden');
+        var modShield = document.getElementById('mod-shield-btn');
+        if (modShield) modShield.classList.add('hidden');
+
+        var navUser = document.querySelector('.nav-user');
+        if (navUser && !document.getElementById('guest-actions')) {
+            var actions = document.createElement('div');
+            actions.id = 'guest-actions';
+            actions.style.display = 'flex';
+            actions.style.gap = '10px';
+            actions.style.marginRight = '10px';
+            actions.innerHTML = `
+                <button class="btn btn-ghost" onclick="window.location.hash='#/login'">Login</button>
+                <button class="btn btn-primary" onclick="window.location.hash='#/register'">Register</button>
+            `;
+            var themeBtn = document.getElementById('theme-btn');
+            if (themeBtn) navUser.insertBefore(actions, themeBtn);
+            else navUser.appendChild(actions);
+        } else if (document.getElementById('guest-actions')) {
+            document.getElementById('guest-actions').classList.remove('hidden');
+        }
+
+        var mobileHeader = document.getElementById('mobile-header');
+        if (mobileHeader) mobileHeader.classList.remove('hidden');
+        var mobileAvatar = document.getElementById('mobile-avatar');
+        if (mobileAvatar) mobileAvatar.classList.add('hidden');
+
+        var mobileBottomNav = document.getElementById('mobile-bottom-nav');
+        if (mobileBottomNav) {
+            mobileBottomNav.classList.remove('hidden');
+            ['mbn-friends', 'mbn-chat', 'mbn-profile'].forEach(id => {
+                var el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            if (!document.getElementById('mbn-login')) {
+                var loginTab = document.createElement('a');
+                loginTab.href = '#/login';
+                loginTab.className = 'mbn-tab';
+                loginTab.id = 'mbn-login';
+                loginTab.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg><span>Login</span>';
+                mobileBottomNav.appendChild(loginTab);
+            } else {
+                document.getElementById('mbn-login').classList.remove('hidden');
+            }
+        }
+    },
+
     logout() {
         API.setToken(null);
         this.currentUser = null;
         SocketClient.disconnect();
 
-        var nav = document.getElementById('main-nav');
-        var page = document.getElementById('page-container');
-        var mobileHeader = document.getElementById('mobile-header');
-        var mobileBottomNav = document.getElementById('mobile-bottom-nav');
-        if (nav) nav.classList.add('hidden');
-        if (page) page.classList.add('full-width');
-        if (mobileHeader) mobileHeader.classList.add('hidden');
-        if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
+        this.onGuest();
         this.closeMobileDrawer();
 
         window.location.hash = '#/login';
@@ -906,88 +975,184 @@ var App = {
         const layoutId = localStorage.getItem('venary_layout') || 'default';
         const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
         const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
+        const radiusId = localStorage.getItem('venary_radius') || 'medium';
 
-        let modalHtml = '<div class="modal-overlay" id="themes-modal">' +
-            '<div class="modal" style="width:500px; max-width:95vw;">' +
-            '<div class="modal-header">' +
-            '<div class="modal-title">🎨 Appearance Settings</div>' +
-            '<button class="btn btn-ghost modal-close" onclick="document.getElementById(\'themes-modal\').remove()">✕</button>' +
-            '</div>' +
-            '<div class="modal-body" id="appearance-modal-body" style="display:flex; flex-direction:column; gap:20px">' +
-            '<div class="loading-spinner"></div>' +
-            '</div>' +
-            '</div></div>';
+        let modalHtml = \`
+            <div class="modal-overlay" id="themes-modal">
+                <div class="modal" style="width:650px; max-width:95vw;">
+                    <div class="modal-header">
+                        <div class="modal-title">🎨 Personalization</div>
+                        <button class="btn btn-ghost modal-close" onclick="App.cancelAppearance()">✕</button>
+                    </div>
+                    <div class="modal-body" id="appearance-modal-body" style="padding-top:10px;">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+        \`;
 
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
         try {
             const themes = await API.get('/api/themes'); // CSS files acting as colors
-
-            let layoutsHtml = `
-                <div>
-                    <h3 style="margin-bottom:8px">Layout Style</h3>
-                    <select id="sel-layout" class="input-field" onchange="App.previewAppearance()">
-                        <option value="default" ${layoutId === 'default' ? 'selected' : ''}>Default</option>
-                        <option value="compact" ${layoutId === 'compact' ? 'selected' : ''}>Compact</option>
-                        <option value="wide" ${layoutId === 'wide' ? 'selected' : ''}>Wide</option>
-                        <option value="top-nav" ${layoutId === 'top-nav' ? 'selected' : ''}>Top Navbar (Carousel)</option>
-                    </select>
+            
+            // Build Tabs
+            let tabsHtml = \`
+                <div class="appearance-tabs">
+                    <button class="appearance-tab active" onclick="App.switchAppearanceTab('layout', this)">Layout</button>
+                    <button class="appearance-tab" onclick="App.switchAppearanceTab('colors', this)">Colors</button>
+                    <button class="appearance-tab" onclick="App.switchAppearanceTab('background', this)">Background</button>
+                    <button class="appearance-tab" onclick="App.switchAppearanceTab('style', this)">Style</button>
                 </div>
-            `;
+            \`;
 
-            let colorsHtml = `
-                <div>
-                    <h3 style="margin-bottom:8px">Color Palette</h3>
-                    <select id="sel-color" class="input-field" onchange="App.previewAppearance()">
-                        <option value="default" ${colorId === 'default' ? 'selected' : ''}>Venary Default</option>
-            `;
+            // Layouts Pane
+            let layoutsHtml = \`
+                <div id="pane-layout" class="appearance-pane active">
+                    <div class="appearance-grid">
+                        <div class="appearance-card \${layoutId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'default', this)">
+                            <div class="card-preview" style="background:#1a1a24; border-left:30px solid #2a2a35"></div>
+                            <span>Sidebar (Default)</span>
+                        </div>
+                        <div class="appearance-card \${layoutId === 'compact' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'compact', this)">
+                            <div class="card-preview" style="background:#1a1a24; border-left:15px solid #2a2a35"></div>
+                            <span>Compact Sidebar</span>
+                        </div>
+                        <div class="appearance-card \${layoutId === 'wide' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'wide', this)">
+                            <div class="card-preview" style="background:#1a1a24; overflow:hidden;"><div style="width:100%;height:100%;margin:5px;background:#2a2a35"></div></div>
+                            <span>Wide View</span>
+                        </div>
+                        <div class="appearance-card \${layoutId === 'top-nav' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'top-nav', this)">
+                            <div class="card-preview" style="background:#1a1a24; border-top:15px solid #2a2a35"></div>
+                            <span>Top Navbar</span>
+                        </div>
+                    </div>
+                </div>
+            \`;
+
+            // Colors Pane
+            let colorsHtml = \`
+                <div id="pane-colors" class="appearance-pane">
+                    <div class="swatch-grid">
+                        <div class="color-swatch-wrapper \${colorId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', 'default', this)">
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #00f0ff, #ff0055)"></div>
+                            <span style="font-size:0.75rem;margin-top:4px">Neon Default</span>
+                        </div>
+            \`;
             themes.forEach(t => {
-                if (t.id === 'default') return; // skip since we hardcoded
-                colorsHtml += `<option value="${t.id}" ${colorId === t.id ? 'selected' : ''}>${this.escapeHtml(t.name)}</option>`;
+                if (t.id === 'default') return;
+                // Generate a pseudo gradient or solid background based on ID for the swatch
+                let bgStyle = 'background: #555';
+                if(t.id === 'dracula') bgStyle = 'background: linear-gradient(135deg, #ff79c6, #bd93f9)';
+                else if(t.id === 'monokai') bgStyle = 'background: linear-gradient(135deg, #a6e22e, #f92672)';
+                else if(t.id === 'solarized') bgStyle = 'background: linear-gradient(135deg, #268bd2, #2aa198)';
+                else if(t.id === 'purple') bgStyle = 'background: linear-gradient(135deg, #9d4edd, #5a189a)';
+                else if(t.id === 'pink') bgStyle = 'background: linear-gradient(135deg, #ff70a6, #ff9770)';
+                
+                colorsHtml += \`
+                    <div class="color-swatch-wrapper \${colorId === t.id ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', '\${t.id}', this)">
+                        <div class="color-swatch" style="\${bgStyle}"></div>
+                        <span style="font-size:0.75rem;margin-top:4px">\${this.escapeHtml(t.name)}</span>
+                    </div>
+                \`;
             });
-            colorsHtml += `</select></div>`;
+            colorsHtml += \`</div></div>\`;
 
-            let bgsHtml = `
-                <div>
-                    <h3 style="margin-bottom:8px">Animated Background</h3>
-                    <select id="sel-bg" class="input-field" onchange="App.previewAppearance()">
-                        <optgroup label="Static & Basic">
-                            <option value="none" ${bgId === 'none' ? 'selected' : ''}>None (Solid Color)</option>
-                            <option value="default" ${bgId === 'default' ? 'selected' : ''}>Classic Particles (2D)</option>
-                        </optgroup>
-                        <optgroup label="2D Canvas Experiences">
-                            <option value="pink" ${bgId === 'pink' ? 'selected' : ''}>Pink Bubbles</option>
-                            <option value="lavalamp" ${bgId === 'lavalamp' ? 'selected' : ''}>Lava Lamp</option>
-                            <option value="ocean" ${bgId === 'ocean' ? 'selected' : ''}>Ocean Waves</option>
-                            <option value="galaxy" ${bgId === 'galaxy' ? 'selected' : ''}>Galaxy</option>
-                            <option value="purple" ${bgId === 'purple' ? 'selected' : ''}>Purple Void</option>
-                            <option value="warp" ${bgId === 'warp' ? 'selected' : ''}>Warp Speed</option>
-                            <option value="prism" ${bgId === 'prism' ? 'selected' : ''}>Prism</option>
-                        </optgroup>
-                        <optgroup label="3D WebGL Experiences">
-                            <option value="webgl-cyber" ${bgId === 'webgl-cyber' ? 'selected' : ''}>Cyberpunk Grid</option>
-                            <option value="webgl-matrix" ${bgId === 'webgl-matrix' ? 'selected' : ''}>Matrix Rain</option>
-                            <option value="webgl-stars" ${bgId === 'webgl-stars' ? 'selected' : ''}>Hyperjump Stars</option>
-                            <option value="webgl-geometry" ${bgId === 'webgl-geometry' ? 'selected' : ''}>Platonic Solids</option>
-                            <option value="webgl-fluid" ${bgId === 'webgl-fluid' ? 'selected' : ''}>Fluid Waves</option>
-                            <option value="webgl-aurora" ${bgId === 'webgl-aurora' ? 'selected' : ''}>Aurora Light</option>
-                            <option value="webgl-particles" ${bgId === 'webgl-particles' ? 'selected' : ''}>Interactive Swarm</option>
-                        </optgroup>
-                    </select>
+            // Backgrounds Pane
+            let bgsHtml = \`
+                <div id="pane-background" class="appearance-pane">
+                    <h4 style="margin-bottom:10px; color:var(--text-secondary)">Static & 2D Environments</h4>
+                    <div class="appearance-grid" style="margin-bottom:20px">
+                        <div class="appearance-card \${bgId === 'none' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'none', this)">
+                            <div class="card-preview"></div><span>Solid Dark</span>
+                        </div>
+                        <div class="appearance-card \${bgId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'default', this)">
+                            <div class="card-preview" style="background:#111; position:relative"><div style="position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;top:50%;left:50%;box-shadow: 10px 10px #fff, -10px -5px #fff"></div></div>
+                            <span>Classic Dust</span>
+                        </div>
+                        <div class="appearance-card \${bgId === 'pink' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'pink', this)">
+                            <div class="card-preview" style="background:linear-gradient(45deg, #2a0a18, #110008)"></div><span>Pink Bubbles</span>
+                        </div>
+                        <div class="appearance-card \${bgId === 'lavalamp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'lavalamp', this)">
+                            <div class="card-preview" style="background:linear-gradient(180deg, #330000, #000)"></div><span>Lava Lamp</span>
+                        </div>
+                    </div>
+                    <h4 style="margin-bottom:10px; color:var(--neon-cyan)">3D WebGL Experiences</h4>
+                    <div class="appearance-grid">
+                        <div class="appearance-card \${bgId === 'webgl-cyber' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-cyber', this)">
+                            <div class="card-preview" style="background:linear-gradient(180deg, #001122, #003344)"></div><span>Cyber Grid</span>
+                        </div>
+                        <div class="appearance-card \${bgId === 'webgl-matrix' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-matrix', this)">
+                            <div class="card-preview" style="background:#001100"></div><span>Matrix Rain</span>
+                        </div>
+                        <div class="appearance-card \${bgId === 'webgl-stars' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-stars', this)">
+                            <div class="card-preview" style="background:#000"></div><span>Hyperjump</span>
+                        </div>
+                        <div class="appearance-card \${bgId === 'webgl-fluid' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-fluid', this)">
+                            <div class="card-preview" style="background:linear-gradient(45deg, #002233, #000)"></div><span>Fluid Waves</span>
+                        </div>
+                    </div>
                 </div>
-            `;
+            \`;
 
-            let footerHtml = `
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; border-top:1px solid var(--border-subtle); padding-top:16px;">
+            // Style Pane
+            let styleHtml = \`
+                <div id="pane-style" class="appearance-pane">
+                    <h4 style="margin-bottom:10px; color:var(--text-secondary)">UI Corner Radius</h4>
+                    <div class="appearance-grid">
+                        <div class="appearance-card \${radiusId === 'sharp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'sharp', this)">
+                            <div class="card-preview" style="border-radius:0; border:2px solid #fff"></div><span>Sharp (0px)</span>
+                        </div>
+                        <div class="appearance-card \${radiusId === 'medium' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'medium', this)">
+                            <div class="card-preview" style="border-radius:6px; border:2px solid #fff"></div><span>Modern (6px)</span>
+                        </div>
+                        <div class="appearance-card \${radiusId === 'round' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'round', this)">
+                            <div class="card-preview" style="border-radius:16px; border:2px solid #fff"></div><span>Soft (16px)</span>
+                        </div>
+                        <div class="appearance-card \${radiusId === 'pill' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'pill', this)">
+                            <div class="card-preview" style="border-radius:30px; border:2px solid #fff"></div><span>Pill (Max)</span>
+                        </div>
+                    </div>
+                </div>
+            \`;
+
+            // Hidden states to track config
+            let stateHtml = \`
+                <input type="hidden" id="sel-layout" value="\${layoutId}">
+                <input type="hidden" id="sel-color" value="\${colorId}">
+                <input type="hidden" id="sel-bg" value="\${bgId}">
+                <input type="hidden" id="sel-radius" value="\${radiusId}">
+            \`;
+
+            let footerHtml = \`
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid var(--border-subtle); padding-top:16px;">
                     <button class="btn btn-secondary" onclick="App.cancelAppearance()">Cancel</button>
                     <button class="btn btn-primary" onclick="App.saveAppearance()">Save & Apply</button>
                 </div>
-            `;
+            \`;
 
-            document.getElementById('appearance-modal-body').innerHTML = layoutsHtml + colorsHtml + bgsHtml + footerHtml;
+            document.getElementById('appearance-modal-body').innerHTML = stateHtml + tabsHtml + layoutsHtml + colorsHtml + bgsHtml + styleHtml + footerHtml;
         } catch (err) {
             document.getElementById('appearance-modal-body').innerHTML = '<div class="error-state">Failed to load appearance settings.</div>';
         }
+    },
+
+    switchAppearanceTab(paneId, btnElem) {
+        document.querySelectorAll('.appearance-tab').forEach(b => b.classList.remove('active'));
+        btnElem.classList.add('active');
+        document.querySelectorAll('.appearance-pane').forEach(p => p.classList.remove('active'));
+        document.getElementById('pane-' + paneId).classList.add('active');
+    },
+
+    selectAppearanceObj(type, value, cardElem) {
+        // Update hidden input
+        document.getElementById('sel-' + type).value = value;
+        // Update styling
+        const siblings = cardElem.parentElement.querySelectorAll(type === 'color' ? '.color-swatch-wrapper' : '.appearance-card');
+        siblings.forEach(el => el.classList.remove('selected'));
+        cardElem.classList.add('selected');
+        // Preview instantly
+        this.previewAppearance();
     },
 
     cancelAppearance() {
@@ -995,7 +1160,8 @@ var App = {
         const layoutId = localStorage.getItem('venary_layout') || 'default';
         const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
         const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
-        this.applyAppearance(layoutId, colorId, bgId);
+        const radiusId = localStorage.getItem('venary_radius') || 'medium';
+        this.applyAppearance(layoutId, colorId, bgId, radiusId);
         document.getElementById('themes-modal').remove();
     },
 
@@ -1003,17 +1169,23 @@ var App = {
         const layout = document.getElementById('sel-layout').value;
         const color = document.getElementById('sel-color').value;
         const bg = document.getElementById('sel-bg').value;
-        this.applyAppearance(layout, color, bg);
+        const radius = document.getElementById('sel-radius').value;
+        this.applyAppearance(layout, color, bg, radius);
     },
 
     saveAppearance() {
         const layout = document.getElementById('sel-layout').value;
         const color = document.getElementById('sel-color').value;
         const bg = document.getElementById('sel-bg').value;
+        const radius = document.getElementById('sel-radius').value;
 
         localStorage.setItem('venary_layout', layout);
         localStorage.setItem('venary_color', color);
         localStorage.setItem('venary_bg', bg);
+        localStorage.setItem('venary_radius', radius);
+        
+        // Ensure immediate application
+        this.applyAppearance(layout, color, bg, radius);
 
         document.getElementById('themes-modal').remove();
         this.showToast('Appearance settings saved!', 'success');
