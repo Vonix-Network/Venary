@@ -583,42 +583,41 @@ html.layout-compact .composer-textarea {
     top: 0;
     left: 0;
     width: 100vw;
-    height: auto;
-    flex-direction: column;
+    height: 75px; 
+    flex-direction: row; /* Single row */
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
-    padding: var(--space-md) var(--space-xl);
+    padding: 0 var(--space-xl);
     z-index: var(--z-nav);
   }
 
   html.layout-top-nav .nav-brand {
-    margin-bottom: var(--space-md);
+    margin-bottom: 0;
     padding: 0;
-    margin-right: 0;
-    width: 100%;
-    justify-content: center;
+    margin-right: auto;
+    width: auto;
+    justify-content: flex-start;
     position: relative;
     display: flex;
   }
 
   html.layout-top-nav .nav-user {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    position: relative;
+    top: auto;
+    transform: none;
     margin-top: 0;
     border-top: none;
     border-left: none;
     padding: 0;
-    margin-left: 0;
+    margin-left: auto;
     display: flex;
   }
 
   html.layout-top-nav .page-container {
     margin-left: 0;
-    padding-top: calc(130px + var(--space-xl));
+    padding-top: calc(85px + var(--space-xl));
   }
 
   html.layout-top-nav .nav-carousel-container {

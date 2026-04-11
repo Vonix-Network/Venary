@@ -1596,7 +1596,11 @@ var App = {
         const container = document.getElementById('nav-scroll-area');
         if (!container) return;
 
-        // Infinite Carousel DOM manipulation
+        // Simplify by treating all items essentially identically and grouping them
+        // To prevent layout jumps between 'nav-links' and 'ext-nav', we move nodes
+        // BUT we also use smooth scrolling if possible. 
+        // 1 item width typically is nav-link width + margin.
+        
         const linksWrapper = container.querySelector('.nav-links:not(.ext-nav)');
         const extWrapper = container.querySelector('.ext-nav');
         
@@ -1605,13 +1609,42 @@ var App = {
         
         if (allLinks.length < 2) return;
 
-        if (dir === 1) {
-            const first = allLinks[0];
-            if (extWrapper) extWrapper.appendChild(first);
-            else linksWrapper.appendChild(first);
-        } else if (dir === -1) {
-            const last = allLinks[allLinks.length - 1];
+        // Determine item width (e.g. 100px width + 16px margin)
+        const itemWidth = allLinks[0].offsetWidth + parseInt(window.getComputedStyle(allLinks[0]).marginLeft) * 2 || 116;
+
+        if (dir === 1) { // NEXT
+            // Visual Smooth Scroll
+            container.scrollBy({ left: itemWidth, behavior: 'smooth' });
+
+            // After smooth scroll finishes, shift DOM silently
+            setTimeout(() => {
+                const first = container.querySelector('.nav-links:not(.ext-nav) > :first-child');
+                if (first) {
+                    // Temporarily disable smooth scroll behavior to reset scrollLeft silently
+                    container.style.scrollBehavior = 'auto';
+                    if (extWrapper) extWrapper.appendChild(first);
+                    else linksWrapper.appendChild(first);
+                    
+                    container.scrollBy({ left: -itemWidth, behavior: 'instant' });
+                    // restore smooth scroll native
+                    setTimeout(() => container.style.scrollBehavior = '', 50);
+                }
+            }, 300); // 300ms matches native smooth scroll
+
+        } else if (dir === -1) { // PREV
+            // For Prev, we prepend the DOM organically FIRST, offsetting the scroll left, then smoothly scroll to 0
+            container.style.scrollBehavior = 'auto';
+            const last = allLinks[allLinks.length - 1]; // get the very last element globally
+            
             linksWrapper.insertBefore(last, linksWrapper.firstChild);
+            container.scrollBy({ left: itemWidth, behavior: 'instant' });
+            
+            // Now smoothly scroll back visually
+            setTimeout(() => {
+                container.style.scrollBehavior = 'smooth';
+                container.scrollBy({ left: -itemWidth, behavior: 'smooth' });
+                setTimeout(() => container.style.scrollBehavior = '', 300);
+            }, 50);
         }
     }
 
