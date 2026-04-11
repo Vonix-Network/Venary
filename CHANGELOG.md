@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Donations Extension** — Added a "Ranked Users" tab in the admin panel to view users with active ranks.
 
 ### Fixed
+- **Navigation** — Fixed the user section (avatar + action buttons) in the Sidebar layout not sticking to the bottom of the nav. Changed `.nav-user` `margin-top` from a fixed spacing value to `auto`, which correctly pushes it to the bottom of the sidebar flex column.
 - **Themes & UI** — All `this.theme` references in `ParticleEngine` that controlled background *behavior* (not color) have been corrected to use `this.bgStyle`, fully decoupling color from geometry.
 - **Themes & UI** — `WebGLEngine.clearScene()` now null-guards `this.scene` to prevent crash if engine was never initialized before a theme switch.
 - **Themes & UI** — `WebGLEngine.getCssColor()` now catches exceptions and strips `rgba()` alpha channels before passing to `THREE.Color` to prevent parse errors.
