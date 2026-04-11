@@ -1596,50 +1596,52 @@ var App = {
         const container = document.getElementById('nav-scroll-area');
         if (!container) return;
 
-        // Flatten all nav items into the first .nav-links container so looping is perfectly smooth
-        // The split ext-nav container is what causes the 5-turn snap. 
         const linksWrapper = container.querySelector('.nav-links:not(.ext-nav)');
         const extWrapper = container.querySelector('.ext-nav');
+        
+        // Flatten geometry permanently to prevent wrapper jumps
         if (extWrapper && extWrapper.children.length > 0) {
             while (extWrapper.firstChild) {
                 linksWrapper.appendChild(extWrapper.firstChild);
             }
-            extWrapper.remove(); // Remove the extra container completely to fix mapping
+            extWrapper.remove();
         }
 
-        const allLinks = Array.from(linksWrapper.children);
+        const allLinks = linksWrapper.children;
         if (allLinks.length < 2) return;
 
-        const itemWidth = allLinks[0].offsetWidth + parseInt(window.getComputedStyle(allLinks[0]).marginLeft) * 2 || 116;
+        // Calculate exact width including margins
+        const style = window.getComputedStyle(allLinks[0]);
+        const itemWidth = allLinks[0].offsetWidth + parseInt(style.marginLeft) + parseInt(style.marginRight);
+
+        // Turn off native scroll jumping entirely to use CSS transitions
+        container.style.scrollBehavior = 'auto';
+        container.scrollLeft = 0; // Lock scroll to 0
 
         if (dir === 1) { // NEXT
-            // Smooth Scroll Visual
-            container.scrollBy({ left: itemWidth, behavior: 'smooth' });
-
-            // After smooth scroll, organically pop the first node to the end
+            linksWrapper.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+            linksWrapper.style.transform = `translateX(-${itemWidth}px)`;
+            
             setTimeout(() => {
-                container.style.scrollBehavior = 'auto'; // Temporarily disable css smooth scroll
-                
-                const first = linksWrapper.firstElementChild;
-                linksWrapper.appendChild(first); // Move DOM silently
-                
-                container.scrollBy({ left: -itemWidth, behavior: 'instant' }); // Reset pixel offset
-                setTimeout(() => container.style.scrollBehavior = '', 50); // Re-enable smooth
+                linksWrapper.style.transition = 'none';
+                linksWrapper.appendChild(linksWrapper.firstElementChild);
+                linksWrapper.style.transform = 'translateX(0)';
             }, 300);
 
         } else if (dir === -1) { // PREV
-            // Prepend node instantly, offset scroll, then smooth scroll natively
-            container.style.scrollBehavior = 'auto';
-            const last = linksWrapper.lastElementChild;
+            linksWrapper.insertBefore(linksWrapper.lastElementChild, linksWrapper.firstElementChild);
+            linksWrapper.style.transition = 'none';
+            linksWrapper.style.transform = `translateX(-${itemWidth}px)`;
             
-            linksWrapper.insertBefore(last, linksWrapper.firstElementChild);
-            container.scrollBy({ left: itemWidth, behavior: 'instant' });
+            // Force redraw
+            void linksWrapper.offsetWidth;
+            
+            linksWrapper.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+            linksWrapper.style.transform = 'translateX(0)';
             
             setTimeout(() => {
-                container.style.scrollBehavior = 'smooth';
-                container.scrollBy({ left: -itemWidth, behavior: 'smooth' });
-                setTimeout(() => container.style.scrollBehavior = '', 300);
-            }, 20); // Small 20ms frame buffer for browser redraw
+                linksWrapper.style.transition = 'none';
+            }, 300);
         }
     }
 
