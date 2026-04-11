@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Themes & UI** — Decoupled Layout, Color Palette, and Backgrounds into independent options inside the new Appearance Settings modal. Users can now freely mix-and-match CSS colors with any 2D canvas or 3D WebGL background engine.
 - **Themes & UI** — Added two new responsive layout options: "Compact" and "Wide".
 - **Themes & UI** — Added a brand new "Top Navbar (Carousel)" layout option providing an enterprise-grade top navigation layout that horizontally aligns navigation items in a controllable window beneath the application logo.
-- **Donations Extension** — Added a "Ranked Users" tab in the admin panel to view users with active ranks.
+- **Navigation** — Added **Top Navbar (Carousel)** layout option providing a top navigation layout. Carousel now uses a dedicated `NavCarousel` singleton engine with: RAF-driven easing animation (cubic ease-in-out), true infinite-loop rotation via DOM reorder, smart overflow detection (arrows only appear when items overflow the viewport), ResizeObserver re-measurement on window resize, keyboard `←`/`→` arrow key support, and touch swipe support. CSS overhauled with clip-masked viewport, gradient fade edges for an infinite feel, polished glow arrow buttons, and a proper `::after` underline indicator bar for active items.
 
 ### Fixed
 - **Navigation** — Fixed the user section (avatar + action buttons) in the Sidebar layout not sticking to the bottom of the nav. Changed `.nav-user` `margin-top` from a fixed spacing value to `auto`, which correctly pushes it to the bottom of the sidebar flex column.
