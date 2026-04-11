@@ -649,6 +649,167 @@ html.layout-compact .composer-textarea {
 @media (max-width: 900px) and (min-width: 769px) {
   html.layout-top-nav .nav-carousel-container {
     max-width: calc(3 * 140px); /* Show less items on intermediate tablet screens */
-  }
 }
 
+/* ========== Appearance Dashboard UI ========== */
+.appearance-tabs {
+  display: flex;
+  gap: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-md);
+  overflow-x: auto;
+  padding-bottom: var(--space-sm);
+}
+
+.appearance-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.appearance-tab.active {
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.1);
+}
+
+.appearance-pane {
+  display: none;
+  animation: fadeIn 0.3s ease;
+  min-height: 250px;
+}
+
+.appearance-pane.active {
+  display: block;
+}
+
+/* Card Grid for Layouts & Backgrounds */
+.appearance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-md);
+}
+
+.appearance-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-sm);
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.appearance-card:hover {
+  border-color: var(--border-primary);
+  transform: translateY(-2px);
+}
+
+.appearance-card.selected {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.appearance-card.selected::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(0, 240, 255, 0.1) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.appearance-card .card-preview {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: rgba(255,255,255,0.05);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.appearance-card span {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.appearance-card.selected span {
+  color: var(--neon-cyan);
+}
+
+/* Swatches for Colors */
+.swatch-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.color-swatch-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
+}
+
+.color-swatch {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.color-swatch-wrapper:hover .color-swatch {
+  transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.color-swatch-wrapper.selected .color-swatch {
+  border-color: #fff;
+  transform: scale(1.1);
+}
+
+.color-swatch-wrapper span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 60px;
+  line-height: 1.2;
+}
+
+.color-swatch-wrapper.selected span {
+  color: var(--text-primary);
+}
+
+/* Base Radius Styles toggled by JS */
+html.style-radius-sharp {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-full: 0px; /* except maybe real circles */
+}
+
+html.style-radius-pill {
+  --radius-sm: 12px;
+  --radius-md: 24px;
+  --radius-lg: 32px;
+}

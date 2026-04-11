@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Themes & UI** — Built a high-end, premium Personalization Dashboard for Appearance Settings. It completely replaces standard dropdowns with a rich, interactive tabbed menu featuring layout cards, glowing color swatches, background preview tiles, and live previews.
+- **Themes & UI** — Added a brand new "Style" tab in Appearance Settings that allows globally toggling UI Corner Radius (Sharp, Modern, Pill-shaped) via CSS variable swaps.
 - **Themes & UI** â€” Integrated Three.js to support WebGL animated backgrounds. Added 7 new interactive 3D themes (Cyberpunk, Matrix, Stars, Geometry, Fluid, Aurora, Particles) to the Themes Store.
 - **Themes & UI** — Decoupled Layout, Color Palette, and Backgrounds into independent options inside the new Appearance Settings modal. Users can now freely mix-and-match CSS colors with any 2D canvas or 3D WebGL background engine.
 - **Themes & UI** — Added two new responsive layout options: "Compact" and "Wide".
@@ -15,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Donations Extension** — Added a "Ranked Users" tab in the admin panel to view users with active ranks.
 
 ### Fixed
+- **Themes & UI** — Fixed a bug where saving Appearance Settings required a page refresh for animated backgrounds (Particle/WebGL engines) by properly calling the hot-swap functionality after `localStorage` writes.
 - **Themes & UI** — All `this.theme` references in `ParticleEngine` that controlled background *behavior* (not color) have been corrected to use `this.bgStyle`, fully decoupling color from geometry.
 - **Themes & UI** — `WebGLEngine.clearScene()` now null-guards `this.scene` to prevent crash if engine was never initialized before a theme switch.
 - **Themes & UI** — `WebGLEngine.getCssColor()` now catches exceptions and strips `rgba()` alpha channels before passing to `THREE.Color` to prevent parse errors.

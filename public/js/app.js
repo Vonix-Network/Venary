@@ -19,7 +19,8 @@ var App = {
             const savedLayout = localStorage.getItem('venary_layout') || 'default';
             const savedColor  = localStorage.getItem('venary_color')  || localStorage.getItem('venary_theme') || 'default';
             const savedBg     = localStorage.getItem('venary_bg')     || localStorage.getItem('venary_theme') || 'default';
-            this.applyAppearance(savedLayout, savedColor, savedBg);
+            const savedRadius = localStorage.getItem('venary_radius') || 'default';
+            this.applyAppearance(savedLayout, savedColor, savedBg, savedRadius);
         }
 
         // Register core routes
@@ -906,14 +907,15 @@ var App = {
         const layoutId = localStorage.getItem('venary_layout') || 'default';
         const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
         const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
+        const radiusId = localStorage.getItem('venary_radius') || 'default';
 
         let modalHtml = '<div class="modal-overlay" id="themes-modal">' +
-            '<div class="modal" style="width:500px; max-width:95vw;">' +
-            '<div class="modal-header">' +
+            '<div class="modal" style="width:700px; max-width:95vw; display:flex; flex-direction:column; padding:0;">' +
+            '<div class="modal-header" style="border-bottom:1px solid var(--border-subtle); padding:var(--space-md) var(--space-xl);">' +
             '<div class="modal-title">🎨 Appearance Settings</div>' +
-            '<button class="btn btn-ghost modal-close" onclick="document.getElementById(\'themes-modal\').remove()">✕</button>' +
+            '<button class="btn btn-ghost modal-close" onclick="App.cancelAppearance()">✕</button>' +
             '</div>' +
-            '<div class="modal-body" id="appearance-modal-body" style="display:flex; flex-direction:column; gap:20px">' +
+            '<div class="modal-body" id="appearance-modal-body" style="padding:var(--space-md) var(--space-xl) var(--space-xl) var(--space-xl); flex:1; overflow-y:auto;">' +
             '<div class="loading-spinner"></div>' +
             '</div>' +
             '</div></div>';
@@ -923,71 +925,124 @@ var App = {
         try {
             const themes = await API.get('/api/themes'); // CSS files acting as colors
             
-            let layoutsHtml = `
-                <div>
-                    <h3 style="margin-bottom:8px">Layout Style</h3>
-                    <select id="sel-layout" class="input-field" onchange="App.previewAppearance()">
-                        <option value="default" ${layoutId==='default'?'selected':''}>Default</option>
-                        <option value="compact" ${layoutId==='compact'?'selected':''}>Compact</option>
-                        <option value="wide" ${layoutId==='wide'?'selected':''}>Wide</option>
-                        <option value="top-nav" ${layoutId==='top-nav'?'selected':''}>Top Navbar (Carousel)</option>
-                    </select>
+            // Build Tabs Header
+            let html = `
+                <div class="appearance-tabs">
+                    <button class="appearance-tab active" onclick="App.switchAppearanceTab('layout')">Layout</button>
+                    <button class="appearance-tab" onclick="App.switchAppearanceTab('colors')">Colors</button>
+                    <button class="appearance-tab" onclick="App.switchAppearanceTab('background')">Background</button>
+                    <button class="appearance-tab" onclick="App.switchAppearanceTab('style')">Style</button>
                 </div>
             `;
 
-            let colorsHtml = `
-                <div>
-                    <h3 style="margin-bottom:8px">Color Palette</h3>
-                    <select id="sel-color" class="input-field" onchange="App.previewAppearance()">
-                        <option value="default" ${colorId==='default'?'selected':''}>Venary Default</option>
-            `;
-            themes.forEach(t => {
-                if (t.id === 'default') return; // skip since we hardcoded
-                colorsHtml += `<option value="${t.id}" ${colorId===t.id?'selected':''}>${this.escapeHtml(t.name)}</option>`;
+            // State Storage Inputs (Hidden)
+            html += `<input type="hidden" id="app-sel-layout" value="${layoutId}">`;
+            html += `<input type="hidden" id="app-sel-color" value="${colorId}">`;
+            html += `<input type="hidden" id="app-sel-bg" value="${bgId}">`;
+            html += `<input type="hidden" id="app-sel-radius" value="${radiusId}">`;
+
+            // Pane 1: Layouts
+            const layouts = [
+                {id: 'default', name: 'Standard Navbar'},
+                {id: 'compact', name: 'Compact Navbar'},
+                {id: 'wide', name: 'Wide Expand'},
+                {id: 'top-nav', name: 'Top Carousel'}
+            ];
+            html += `<div class="appearance-pane active" id="pane-layout"><div class="appearance-grid">`;
+            layouts.forEach(l => {
+                const sel = layoutId === l.id ? 'selected' : '';
+                html += `<div class="appearance-card ${sel}" onclick="App.selectAppearanceOption('layout', '${l.id}', this)">
+                    <div class="card-preview">
+                       <svg width="60" height="40" viewBox="0 0 60 40"><rect x="5" y="5" width="${l.id==='top-nav'?'50':'15'}" height="${l.id==='top-nav'?'10':'30'}" rx="2" fill="var(--text-secondary)" opacity="0.5"/><rect x="${l.id==='top-nav'?'5':'25'}" y="${l.id==='top-nav'?'20':'5'}" width="${l.id==='top-nav'?'50':'30'}" height="${l.id==='top-nav'?'15':'30'}" rx="2" fill="var(--border-light)"/></svg>
+                    </div>
+                    <span>${l.name}</span>
+                </div>`;
             });
-            colorsHtml += `</select></div>`;
+            html += `</div></div>`;
 
-            let bgsHtml = `
-                <div>
-                    <h3 style="margin-bottom:8px">Animated Background</h3>
-                    <select id="sel-bg" class="input-field" onchange="App.previewAppearance()">
-                        <optgroup label="Static & Basic">
-                            <option value="none" ${bgId==='none'?'selected':''}>None (Solid Color)</option>
-                            <option value="default" ${bgId==='default'?'selected':''}>Classic Particles (2D)</option>
-                        </optgroup>
-                        <optgroup label="2D Canvas Experiences">
-                            <option value="pink" ${bgId==='pink'?'selected':''}>Pink Bubbles</option>
-                            <option value="lavalamp" ${bgId==='lavalamp'?'selected':''}>Lava Lamp</option>
-                            <option value="ocean" ${bgId==='ocean'?'selected':''}>Ocean Waves</option>
-                            <option value="galaxy" ${bgId==='galaxy'?'selected':''}>Galaxy</option>
-                            <option value="purple" ${bgId==='purple'?'selected':''}>Purple Void</option>
-                            <option value="warp" ${bgId==='warp'?'selected':''}>Warp Speed</option>
-                            <option value="prism" ${bgId==='prism'?'selected':''}>Prism</option>
-                        </optgroup>
-                        <optgroup label="3D WebGL Experiences">
-                            <option value="webgl-cyber" ${bgId==='webgl-cyber'?'selected':''}>Cyberpunk Grid</option>
-                            <option value="webgl-matrix" ${bgId==='webgl-matrix'?'selected':''}>Matrix Rain</option>
-                            <option value="webgl-stars" ${bgId==='webgl-stars'?'selected':''}>Hyperjump Stars</option>
-                            <option value="webgl-geometry" ${bgId==='webgl-geometry'?'selected':''}>Platonic Solids</option>
-                            <option value="webgl-fluid" ${bgId==='webgl-fluid'?'selected':''}>Fluid Waves</option>
-                            <option value="webgl-aurora" ${bgId==='webgl-aurora'?'selected':''}>Aurora Light</option>
-                            <option value="webgl-particles" ${bgId==='webgl-particles'?'selected':''}>Interactive Swarm</option>
-                        </optgroup>
-                    </select>
-                </div>
-            `;
+            // Pane 2: Colors
+            html += `<div class="appearance-pane" id="pane-colors"><div class="swatch-grid">`;
+            const colorOpts = [{id: 'default', name: 'Venary Default', hex: '#29b6f6'}];
+            themes.forEach(t => { if(t.id !== 'default') colorOpts.push({id: t.id, name: t.name, hex: t.primaryColor || '#bd93f9'}); });
+            colorOpts.forEach(c => {
+                const sel = colorId === c.id ? 'selected' : '';
+                // Since our themes API doesn't return real hexes currently, simulate colors or fallback purely on ID logic for styling the bubble
+                let bgHex = c.hex;
+                if(c.id === 'pink') bgHex = '#ff70a6'; if(c.id === 'purple') bgHex = '#b28dff'; 
+                if(c.id === 'lavalamp') bgHex = '#ff3300'; if(c.id === 'ocean') bgHex = '#00e5ff';
+                if(c.id === 'galaxy') bgHex = '#4a00e0'; if(c.id === 'prism') bgHex = '#00ffcc';
+                if(c.id === 'matrix' || c.id === 'webgl-matrix') bgHex = '#0f0';
+
+                html += `<div class="color-swatch-wrapper ${sel}" onclick="App.selectAppearanceOption('color', '${c.id}', this)">
+                    <div class="color-swatch" style="background:${bgHex}"></div>
+                    <span>${c.name}</span>
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            // Pane 3: Backgrounds
+            const backgrounds = [
+                {id: 'none', label: 'Solid Color'}, {id: 'default', label: 'Classic Particles'},
+                {id: 'pink', label: 'Pink Bubbles'}, {id: 'lavalamp', label: 'Lava Lamp'},
+                {id: 'ocean', label: 'Ocean Waves'}, {id: 'galaxy', label: 'Galaxy'},
+                {id: 'purple', label: 'Purple Void'}, {id: 'warp', label: 'Warp Speed'},
+                {id: 'prism', label: 'Prism'}, {id: 'webgl-cyber', label: 'Cyber Grid'},
+                {id: 'webgl-matrix', label: 'Matrix Rain'}, {id: 'webgl-stars', label: 'Hyperjump'},
+                {id: 'webgl-geometry', label: 'Platonic Solids'}, {id: 'webgl-fluid', label: 'Fluid Waves'},
+                {id: 'webgl-aurora', label: 'Aurora Light'}, {id: 'webgl-particles', label: 'Interactive Swarm'}
+            ];
+            html += `<div class="appearance-pane" id="pane-background"><div class="appearance-grid">`;
+            backgrounds.forEach(b => {
+                const sel = bgId === b.id ? 'selected' : '';
+                html += `<div class="appearance-card ${sel}" onclick="App.selectAppearanceOption('bg', '${b.id}', this)">
+                    <span>${b.label}</span>
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            // Pane 4: Style
+            const radiuses = [
+                {id: 'sharp', name: 'Sharp (0px)'},
+                {id: 'default', name: 'Modern (Standard)'},
+                {id: 'pill', name: 'Pill (Rounded)'}
+            ];
+            html += `<div class="appearance-pane" id="pane-style">
+                <h3 style="margin-bottom:8px">UI Corner Radius</h3>
+                <div class="appearance-grid">`;
+            radiuses.forEach(r => {
+                const sel = radiusId === r.id ? 'selected' : '';
+                html += `<div class="appearance-card ${sel}" onclick="App.selectAppearanceOption('radius', '${r.id}', this)">
+                    <span>${r.name}</span>
+                </div>`;
+            });
+            html += `</div></div>`;
 
             let footerHtml = `
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; border-top:1px solid var(--border-subtle); padding-top:16px;">
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid var(--border-subtle); padding-top:16px;">
                     <button class="btn btn-secondary" onclick="App.cancelAppearance()">Cancel</button>
                     <button class="btn btn-primary" onclick="App.saveAppearance()">Save & Apply</button>
                 </div>
             `;
 
-            document.getElementById('appearance-modal-body').innerHTML = layoutsHtml + colorsHtml + bgsHtml + footerHtml;
+            document.getElementById('appearance-modal-body').innerHTML = html + footerHtml;
         } catch (err) {
             document.getElementById('appearance-modal-body').innerHTML = '<div class="error-state">Failed to load appearance settings.</div>';
         }
+    },
+
+    switchAppearanceTab(tab) {
+        document.querySelectorAll('.appearance-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.appearance-pane').forEach(p => p.classList.remove('active'));
+        document.querySelector(`.appearance-tab[onclick*="${tab}"]`).classList.add('active');
+        document.getElementById('pane-' + tab).classList.add('active');
+    },
+
+    selectAppearanceOption(type, value, element) {
+        // Find existing selected in same pane and remove
+        element.parentElement.querySelectorAll('.selected').forEach(c => c.classList.remove('selected'));
+        element.classList.add('selected');
+        document.getElementById('app-sel-' + type).value = value;
+        this.previewAppearance();
     },
 
     cancelAppearance() {
@@ -995,31 +1050,36 @@ var App = {
         const layoutId = localStorage.getItem('venary_layout') || 'default';
         const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
         const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
-        this.applyAppearance(layoutId, colorId, bgId);
+        const radiusId = localStorage.getItem('venary_radius') || 'default';
+        this.applyAppearance(layoutId, colorId, bgId, radiusId);
         document.getElementById('themes-modal').remove();
     },
 
     previewAppearance() {
-        const layout = document.getElementById('sel-layout').value;
-        const color = document.getElementById('sel-color').value;
-        const bg = document.getElementById('sel-bg').value;
-        this.applyAppearance(layout, color, bg);
+        const layout = document.getElementById('app-sel-layout').value;
+        const color = document.getElementById('app-sel-color').value;
+        const bg = document.getElementById('app-sel-bg').value;
+        const radius = document.getElementById('app-sel-radius').value;
+        this.applyAppearance(layout, color, bg, radius);
     },
 
     saveAppearance() {
-        const layout = document.getElementById('sel-layout').value;
-        const color = document.getElementById('sel-color').value;
-        const bg = document.getElementById('sel-bg').value;
+        const layout = document.getElementById('app-sel-layout').value;
+        const color = document.getElementById('app-sel-color').value;
+        const bg = document.getElementById('app-sel-bg').value;
+        const radius = document.getElementById('app-sel-radius').value;
         
         localStorage.setItem('venary_layout', layout);
         localStorage.setItem('venary_color', color);
         localStorage.setItem('venary_bg', bg);
+        localStorage.setItem('venary_radius', radius);
         
+        this.applyAppearance(layout, color, bg, radius); // FIX BUG: Live Swap on Save
         document.getElementById('themes-modal').remove();
         this.showToast('Appearance settings saved!', 'success');
     },
 
-    applyAppearance(layout, color, bg) {
+    applyAppearance(layout, color, bg, radius = 'default') {
         // 1. Layout
         document.documentElement.classList.remove('layout-default', 'layout-compact', 'layout-wide', 'layout-top-nav');
         if (layout !== 'default') {
@@ -1037,7 +1097,13 @@ var App = {
             if (carouselNext) carouselNext.style.display = 'none';
         }
 
-        // 2. Color Scheme
+        // 2. Corner Radius Style
+        document.documentElement.classList.remove('style-radius-sharp', 'style-radius-pill');
+        if (radius !== 'default') {
+            document.documentElement.classList.add('style-radius-' + radius);
+        }
+
+        // 3. Color Scheme
         document.documentElement.setAttribute('data-theme', color);
         const existing = document.getElementById('theme-stylesheet');
         if (existing) existing.remove();
