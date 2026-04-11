@@ -1596,55 +1596,50 @@ var App = {
         const container = document.getElementById('nav-scroll-area');
         if (!container) return;
 
-        // Simplify by treating all items essentially identically and grouping them
-        // To prevent layout jumps between 'nav-links' and 'ext-nav', we move nodes
-        // BUT we also use smooth scrolling if possible. 
-        // 1 item width typically is nav-link width + margin.
-        
+        // Flatten all nav items into the first .nav-links container so looping is perfectly smooth
+        // The split ext-nav container is what causes the 5-turn snap. 
         const linksWrapper = container.querySelector('.nav-links:not(.ext-nav)');
         const extWrapper = container.querySelector('.ext-nav');
-        
-        const allLinks = Array.from(container.querySelectorAll('.nav-link, .nav-dropdown-group'))
-                              .filter(el => el.parentElement.classList.contains('nav-links'));
-        
+        if (extWrapper && extWrapper.children.length > 0) {
+            while (extWrapper.firstChild) {
+                linksWrapper.appendChild(extWrapper.firstChild);
+            }
+            extWrapper.remove(); // Remove the extra container completely to fix mapping
+        }
+
+        const allLinks = Array.from(linksWrapper.children);
         if (allLinks.length < 2) return;
 
-        // Determine item width (e.g. 100px width + 16px margin)
         const itemWidth = allLinks[0].offsetWidth + parseInt(window.getComputedStyle(allLinks[0]).marginLeft) * 2 || 116;
 
         if (dir === 1) { // NEXT
-            // Visual Smooth Scroll
+            // Smooth Scroll Visual
             container.scrollBy({ left: itemWidth, behavior: 'smooth' });
 
-            // After smooth scroll finishes, shift DOM silently
+            // After smooth scroll, organically pop the first node to the end
             setTimeout(() => {
-                const first = container.querySelector('.nav-links:not(.ext-nav) > :first-child');
-                if (first) {
-                    // Temporarily disable smooth scroll behavior to reset scrollLeft silently
-                    container.style.scrollBehavior = 'auto';
-                    if (extWrapper) extWrapper.appendChild(first);
-                    else linksWrapper.appendChild(first);
-                    
-                    container.scrollBy({ left: -itemWidth, behavior: 'instant' });
-                    // restore smooth scroll native
-                    setTimeout(() => container.style.scrollBehavior = '', 50);
-                }
-            }, 300); // 300ms matches native smooth scroll
+                container.style.scrollBehavior = 'auto'; // Temporarily disable css smooth scroll
+                
+                const first = linksWrapper.firstElementChild;
+                linksWrapper.appendChild(first); // Move DOM silently
+                
+                container.scrollBy({ left: -itemWidth, behavior: 'instant' }); // Reset pixel offset
+                setTimeout(() => container.style.scrollBehavior = '', 50); // Re-enable smooth
+            }, 300);
 
         } else if (dir === -1) { // PREV
-            // For Prev, we prepend the DOM organically FIRST, offsetting the scroll left, then smoothly scroll to 0
+            // Prepend node instantly, offset scroll, then smooth scroll natively
             container.style.scrollBehavior = 'auto';
-            const last = allLinks[allLinks.length - 1]; // get the very last element globally
+            const last = linksWrapper.lastElementChild;
             
-            linksWrapper.insertBefore(last, linksWrapper.firstChild);
+            linksWrapper.insertBefore(last, linksWrapper.firstElementChild);
             container.scrollBy({ left: itemWidth, behavior: 'instant' });
             
-            // Now smoothly scroll back visually
             setTimeout(() => {
                 container.style.scrollBehavior = 'smooth';
                 container.scrollBy({ left: -itemWidth, behavior: 'smooth' });
                 setTimeout(() => container.style.scrollBehavior = '', 300);
-            }, 50);
+            }, 20); // Small 20ms frame buffer for browser redraw
         }
     }
 
