@@ -100,10 +100,11 @@ module.exports = function attachMessengerNamespace(io, db) {
 
                 ns.to(`channel:${channelId}`).emit('channel:message', enriched);
 
-                // Update read state for sender
+                // Update read state for sender (upsert — works in SQLite 3.24+ and PostgreSQL)
                 await db.run(
-                    `INSERT OR REPLACE INTO read_states (user_id, channel_id, last_read_message_id)
-                     VALUES (?, ?, ?)`,
+                    `INSERT INTO read_states (user_id, channel_id, last_read_message_id)
+                     VALUES (?, ?, ?)
+                     ON CONFLICT(user_id, channel_id) DO UPDATE SET last_read_message_id = EXCLUDED.last_read_message_id`,
                     [userId, channelId, msgId]
                 );
             } catch (err) {
@@ -157,8 +158,9 @@ module.exports = function attachMessengerNamespace(io, db) {
             try {
                 const { channelId, lastMessageId } = data;
                 await db.run(
-                    `INSERT OR REPLACE INTO read_states (user_id, channel_id, last_read_message_id, mention_count)
-                     VALUES (?, ?, ?, 0)`,
+                    `INSERT INTO read_states (user_id, channel_id, last_read_message_id, mention_count)
+                     VALUES (?, ?, ?, 0)
+                     ON CONFLICT(user_id, channel_id) DO UPDATE SET last_read_message_id = EXCLUDED.last_read_message_id, mention_count = 0`,
                     [userId, channelId, lastMessageId]
                 );
             } catch (err) {

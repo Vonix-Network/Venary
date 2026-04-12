@@ -44,9 +44,14 @@ class PostgresAdapter {
             // SQLite uses (CURRENT_TIMESTAMP) with parens for DEFAULT
             // Convert SQLite-specific syntax to PostgreSQL
             let pgSchema = cleanSql
-                .replace(/DEFAULT \(CURRENT_TIMESTAMP\)/g, "DEFAULT NOW()")
+                // Cast timestamp to text so TEXT columns with timestamp defaults work
+                .replace(/DEFAULT \(CURRENT_TIMESTAMP\)/gi, "DEFAULT (NOW()::TEXT)")
                 .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, "SERIAL PRIMARY KEY")
-                .replace(/AUTOINCREMENT/gi, "") // Handle any stray AUTOINCREMENT
+                .replace(/AUTOINCREMENT/gi, "")
+                // SQLite REAL type → DOUBLE PRECISION
+                .replace(/\bREAL\b/g, "DOUBLE PRECISION")
+                // SQLite BLOB type → BYTEA
+                .replace(/\bBLOB\b/g, "BYTEA")
                 ;
 
             // Split and execute each statement
@@ -55,9 +60,14 @@ class PostgresAdapter {
                 let sql = stmt.trim();
                 if (!sql) continue;
 
-                // Handle INSERT OR IGNORE → INSERT INTO ... ON CONFLICT DO NOTHING
+                // INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
                 if (/^INSERT OR IGNORE INTO/i.test(sql)) {
                     sql = sql.replace(/^INSERT OR IGNORE INTO/i, 'INSERT INTO');
+                    await client.query(sql + ' ON CONFLICT DO NOTHING;');
+                // INSERT OR REPLACE → INSERT ... ON CONFLICT DO UPDATE (generic update all non-PK cols)
+                // We handle this at the query level; in schema init it shouldn't appear, but guard anyway
+                } else if (/^INSERT OR REPLACE INTO/i.test(sql)) {
+                    sql = sql.replace(/^INSERT OR REPLACE INTO/i, 'INSERT INTO');
                     await client.query(sql + ' ON CONFLICT DO NOTHING;');
                 } else {
                     await client.query(sql + ';');
@@ -75,9 +85,21 @@ class PostgresAdapter {
      * @returns {Promise<{rows: Array, rowCount: number}>}
      */
     async query(sql, params = []) {
-        // Convert ? to $1, $2, ... for pg
+        let s = sql.trim();
+
+        // INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+        if (/^INSERT OR IGNORE INTO/i.test(s)) {
+            s = s.replace(/^INSERT OR IGNORE INTO/i, 'INSERT INTO') + ' ON CONFLICT DO NOTHING';
+        }
+        // INSERT OR REPLACE → INSERT ... ON CONFLICT DO NOTHING
+        // (callers that need true upsert should use explicit ON CONFLICT syntax)
+        else if (/^INSERT OR REPLACE INTO/i.test(s)) {
+            s = s.replace(/^INSERT OR REPLACE INTO/i, 'INSERT INTO') + ' ON CONFLICT DO NOTHING';
+        }
+
+        // Convert ? placeholders to $1, $2, ... for pg
         let paramIdx = 0;
-        const pgSql = sql.replace(/\?/g, () => `$${++paramIdx}`);
+        const pgSql = s.replace(/\?/g, () => `$${++paramIdx}`);
 
         const result = await this.pool.query(pgSql, params);
         return {

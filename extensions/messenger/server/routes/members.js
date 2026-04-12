@@ -11,30 +11,26 @@ module.exports = function (db, ns) {
     // GET /spaces/:spaceId/members — List members with roles
     router.get('/spaces/:spaceId/members', authenticateToken, async (req, res) => {
         try {
+            // Avoid GROUP_CONCAT (SQLite-only) — fetch members, then roles separately
             const members = await db.all(
-                `SELECT m.*, GROUP_CONCAT(r.id) as role_ids, GROUP_CONCAT(r.name) as role_names,
-                 GROUP_CONCAT(r.color) as role_colors
-                 FROM members m
-                 LEFT JOIN member_roles mr ON mr.member_id = m.id
-                 LEFT JOIN roles r ON r.id = mr.role_id
-                 WHERE m.space_id = ?
-                 GROUP BY m.id`,
+                `SELECT m.* FROM members m WHERE m.space_id = ?`,
                 [req.params.spaceId]
             );
 
-            const formatted = members.map(m => ({
-                ...m,
-                roles: m.role_ids
-                    ? m.role_ids.split(',').map((id, i) => ({
-                        id,
-                        name: m.role_names ? m.role_names.split(',')[i] : null,
-                        color: m.role_colors ? m.role_colors.split(',')[i] : null
-                    }))
-                    : []
+            const formatted = await Promise.all(members.map(async m => {
+                const roleRows = await db.all(
+                    `SELECT r.id, r.name, r.color
+                     FROM roles r
+                     JOIN member_roles mr ON mr.role_id = r.id
+                     WHERE mr.member_id = ?`,
+                    [m.id]
+                );
+                return { ...m, roles: roleRows };
             }));
 
             res.json(formatted);
         } catch (err) {
+            console.error('[Messenger] fetch members error:', err);
             res.status(500).json({ error: 'Failed to fetch members' });
         }
     });
@@ -123,8 +119,9 @@ module.exports = function (db, ns) {
             const now = new Date().toISOString();
 
             await db.run(
-                `INSERT OR REPLACE INTO space_bans (space_id, user_id, reason, banned_by, banned_at)
-                 VALUES (?, ?, ?, ?, ?)`,
+                `INSERT INTO space_bans (space_id, user_id, reason, banned_by, banned_at)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON CONFLICT(space_id, user_id) DO UPDATE SET reason = EXCLUDED.reason, banned_by = EXCLUDED.banned_by, banned_at = EXCLUDED.banned_at`,
                 [req.params.spaceId, req.params.userId, reason || null, req.user.id, now]
             );
 

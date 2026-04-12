@@ -154,20 +154,24 @@ module.exports = function (db, ns) {
     // GET /dm — List all DM channels for the current user, enriched with partner info
     router.get('/dm', authenticateToken, async (req, res) => {
         try {
+            // Avoid GROUP_CONCAT (SQLite-only) — fetch channels then members separately
             const dms = await db.all(
-                `SELECT dc.*, GROUP_CONCAT(dm.user_id) as member_ids
+                `SELECT dc.*
                  FROM dm_channels dc
-                 JOIN dm_members dm ON dm.dm_channel_id = dc.id
                  WHERE dc.id IN (
                      SELECT dm_channel_id FROM dm_members WHERE user_id = ?
                  )
-                 GROUP BY dc.id
                  ORDER BY COALESCE(dc.last_message_at, dc.created_at) DESC`,
                 [req.user.id]
             );
 
             const enriched = await Promise.all(dms.map(async dm => {
-                const memberIds = dm.member_ids ? dm.member_ids.split(',') : [];
+                // Fetch member IDs for this channel (works in both SQLite and PostgreSQL)
+                const memberRows = await db.all(
+                    'SELECT user_id FROM dm_members WHERE dm_channel_id = ?',
+                    [dm.id]
+                );
+                const memberIds = memberRows.map(r => r.user_id);
                 const result = { ...dm, member_ids: memberIds };
 
                 if (dm.type === 'dm') {

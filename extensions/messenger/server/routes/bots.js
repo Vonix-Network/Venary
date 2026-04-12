@@ -117,8 +117,9 @@ module.exports = function (db, ns) {
 
             const now = new Date().toISOString();
             await db.run(
-                `INSERT OR REPLACE INTO bot_installations (bot_id, space_id, installed_by, installed_at)
-                 VALUES (?, ?, ?, ?)`,
+                `INSERT INTO bot_installations (bot_id, space_id, installed_by, installed_at)
+                 VALUES (?, ?, ?, ?)
+                 ON CONFLICT(bot_id, space_id) DO UPDATE SET installed_by = EXCLUDED.installed_by, installed_at = EXCLUDED.installed_at`,
                 [req.params.botId, req.params.spaceId, req.user.id, now]
             );
 
