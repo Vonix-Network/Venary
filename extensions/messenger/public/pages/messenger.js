@@ -80,7 +80,7 @@ var MessengerPage = {
 
     // ── Socket ──────────────────────────────────────────────────
     _connectSocket() {
-        var token = localStorage.getItem('token');
+        var token = localStorage.getItem('venary_token');
         if (!token || typeof io === 'undefined') return;
 
         this.socket = io('/messenger', {
@@ -116,7 +116,7 @@ var MessengerPage = {
     _api(method, path, body) {
         var opts = {
             method: method,
-            headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
+            headers: { Authorization: 'Bearer ' + (localStorage.getItem('venary_token') || '') }
         };
         if (body) {
             opts.headers['Content-Type'] = 'application/json';
@@ -128,7 +128,7 @@ var MessengerPage = {
     _coreApi(method, path, body) {
         var opts = {
             method: method,
-            headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
+            headers: { Authorization: 'Bearer ' + (localStorage.getItem('venary_token') || '') }
         };
         if (body) {
             opts.headers['Content-Type'] = 'application/json';
