@@ -1,0 +1,39 @@
+/*
+ * Name: Bubblegum
+ * Description: Dark magenta with soft pink.
+ * Author: Venary
+ * Version: 2.0.0
+ */
+
+:root {
+  --bg-primary: #120A10;
+  --bg-secondary: #1A0F18;
+  --bg-tertiary: #20131D;
+  
+  --bg-card: rgba(26, 15, 24, 0.85);
+  --bg-card-hover: rgba(32, 19, 29, 0.95);
+  --bg-input: rgba(32, 19, 29, 0.9);
+
+  --neon-cyan: #FF70A6; 
+  --neon-magenta: #FF9770;
+  --neon-pink: #FF70A6;
+  --neon-green: #FF9770;
+  --neon-blue: #FF70A6;
+  
+  --text-primary: #FFF0F5;
+  --text-secondary: rgba(255, 240, 245, 0.7);
+  --text-highlight: #FF70A6;
+
+  --border-subtle: rgba(255, 112, 166, 0.1);
+  --border-light: rgba(255, 112, 166, 0.2);
+  --border-accent: rgba(255, 112, 166, 0.5);
+
+  --gradient-primary: linear-gradient(135deg, #FF70A6 0%, #FF9770 100%);
+  --gradient-secondary: linear-gradient(135deg, #FF9770 0%, #FF70A6 100%);
+  --gradient-accent: linear-gradient(135deg, #FF70A6 0%, #FF9770 100%);
+  --gradient-warm: linear-gradient(135deg, #FF70A6 0%, #FF70A6 100%);
+  --gradient-dark: linear-gradient(135deg, #120A10 0%, #20131D 100%);
+
+  --shadow-neon: 0 0 20px rgba(255, 112, 166, 0.2);
+  --shadow-neon-strong: 0 0 32px rgba(255, 112, 166, 0.4);
+}

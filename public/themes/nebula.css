@@ -1,0 +1,39 @@
+/*
+ * Name: Nebula
+ * Description: Deep space purple with cyan.
+ * Author: Venary
+ * Version: 2.0.0
+ */
+
+:root {
+  --bg-primary: #0D0814;
+  --bg-secondary: #120B1C;
+  --bg-tertiary: #170E24;
+  
+  --bg-card: rgba(18, 11, 28, 0.85);
+  --bg-card-hover: rgba(23, 14, 36, 0.95);
+  --bg-input: rgba(23, 14, 36, 0.9);
+
+  --neon-cyan: #00FFFF; 
+  --neon-magenta: #FF00FF;
+  --neon-pink: #00FFFF;
+  --neon-green: #FF00FF;
+  --neon-blue: #00FFFF;
+  
+  --text-primary: #E0E6ED;
+  --text-secondary: rgba(224, 230, 237, 0.7);
+  --text-highlight: #00FFFF;
+
+  --border-subtle: rgba(0, 255, 255, 0.1);
+  --border-light: rgba(0, 255, 255, 0.2);
+  --border-accent: rgba(0, 255, 255, 0.5);
+
+  --gradient-primary: linear-gradient(135deg, #00FFFF 0%, #FF00FF 100%);
+  --gradient-secondary: linear-gradient(135deg, #FF00FF 0%, #00FFFF 100%);
+  --gradient-accent: linear-gradient(135deg, #00FFFF 0%, #FF00FF 100%);
+  --gradient-warm: linear-gradient(135deg, #00FFFF 0%, #00FFFF 100%);
+  --gradient-dark: linear-gradient(135deg, #0D0814 0%, #170E24 100%);
+
+  --shadow-neon: 0 0 20px rgba(0, 255, 255, 0.2);
+  --shadow-neon-strong: 0 0 32px rgba(0, 255, 255, 0.4);
+}

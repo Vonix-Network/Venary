@@ -1,0 +1,39 @@
+/*
+ * Name: Toxic
+ * Description: Charcoal with neon lime.
+ * Author: Venary
+ * Version: 2.0.0
+ */
+
+:root {
+  --bg-primary: #101210;
+  --bg-secondary: #151815;
+  --bg-tertiary: #1A1E1A;
+  
+  --bg-card: rgba(21, 24, 21, 0.85);
+  --bg-card-hover: rgba(26, 30, 26, 0.95);
+  --bg-input: rgba(26, 30, 26, 0.9);
+
+  --neon-cyan: #39FF14; 
+  --neon-magenta: #00B800;
+  --neon-pink: #39FF14;
+  --neon-green: #00B800;
+  --neon-blue: #39FF14;
+  
+  --text-primary: #E0E6ED;
+  --text-secondary: rgba(224, 230, 237, 0.7);
+  --text-highlight: #39FF14;
+
+  --border-subtle: rgba(57, 255, 20, 0.1);
+  --border-light: rgba(57, 255, 20, 0.2);
+  --border-accent: rgba(57, 255, 20, 0.5);
+
+  --gradient-primary: linear-gradient(135deg, #39FF14 0%, #00B800 100%);
+  --gradient-secondary: linear-gradient(135deg, #00B800 0%, #39FF14 100%);
+  --gradient-accent: linear-gradient(135deg, #39FF14 0%, #00B800 100%);
+  --gradient-warm: linear-gradient(135deg, #39FF14 0%, #39FF14 100%);
+  --gradient-dark: linear-gradient(135deg, #101210 0%, #1A1E1A 100%);
+
+  --shadow-neon: 0 0 20px rgba(57, 255, 20, 0.2);
+  --shadow-neon-strong: 0 0 32px rgba(57, 255, 20, 0.4);
+}

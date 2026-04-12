@@ -1032,21 +1032,21 @@ var App = {
                             <div class="card-preview" style="background:#05060A; border-left:15px solid #29b6f6;"></div>
                             <span>Venary Original</span>
                         </div>
-                        <div class="appearance-card" onclick="App.applyPreset('bame')">
-                            <div class="card-preview" style="background:#090E11; border-left:15px solid #00F260;"></div>
-                            <span>Bame (Esports)</span>
+                        <div class="appearance-card" onclick="App.applyPreset('obsidian')">
+                            <div class="card-preview" style="background:#0F0F11; border-left:15px solid #FF0033;"></div>
+                            <span>Obsidian (Esports)</span>
                         </div>
-                        <div class="appearance-card" onclick="App.applyPreset('gamon')">
-                            <div class="card-preview" style="background:#070914; overflow:hidden;"><div style="width:100%;height:100%;margin:5px;background:#00E5FF"></div></div>
-                            <span>Gamon (Broadcast)</span>
+                        <div class="appearance-card" onclick="App.applyPreset('synthwave')">
+                            <div class="card-preview" style="background:#0B0C10; overflow:hidden;"><div style="width:100%;height:100%;margin:5px;background:#FF007F"></div></div>
+                            <span>Synthwave (Broadcast)</span>
                         </div>
-                        <div class="appearance-card" onclick="App.applyPreset('gio')">
-                            <div class="card-preview" style="background:#121212; border-left:15px solid #FF6B00;"></div>
-                            <span>GIO (Zombie)</span>
+                        <div class="appearance-card" onclick="App.applyPreset('toxic')">
+                            <div class="card-preview" style="background:#101210; border-left:15px solid #39FF14;"></div>
+                            <span>Toxic (Zombie)</span>
                         </div>
-                        <div class="appearance-card" onclick="App.applyPreset('mykd')">
-                            <div class="card-preview" style="background:#050505; border-top:15px solid #39FF14; border-radius:0;"></div>
-                            <span>MYKD (NFT)</span>
+                        <div class="appearance-card" onclick="App.applyPreset('cyberpunk')">
+                            <div class="card-preview" style="background:#010A0B; border-top:15px solid #FCE205; border-radius:0;"></div>
+                            <span>Cyberpunk (NFT)</span>
                         </div>
                     </div>
                 </div>
@@ -1093,15 +1093,7 @@ var App = {
             themes.forEach(t => {
                 if (t.id === 'default') return;
                 let bgStyle = 'background: #555';
-                if(t.id === 'dracula') bgStyle = 'background: linear-gradient(135deg, #ff79c6, #bd93f9)';
-                else if(t.id === 'monokai') bgStyle = 'background: linear-gradient(135deg, #a6e22e, #f92672)';
-                else if(t.id === 'solarized') bgStyle = 'background: linear-gradient(135deg, #268bd2, #2aa198)';
-                else if(t.id === 'purple') bgStyle = 'background: linear-gradient(135deg, #9d4edd, #5a189a)';
-                else if(t.id === 'pink') bgStyle = 'background: linear-gradient(135deg, #ff70a6, #ff9770)';
-                else if(t.id === 'bame') bgStyle = 'background: linear-gradient(135deg, #090E11, #00F260)';
-                else if(t.id === 'gamon') bgStyle = 'background: linear-gradient(135deg, #00E5FF, #1A237E)';
-                else if(t.id === 'gio') bgStyle = 'background: linear-gradient(135deg, #1A1A1A, #FF6B00)';
-                else if(t.id === 'mykd') bgStyle = 'background: linear-gradient(135deg, #39FF14, #7B1FA2)';
+                if(t.id === 'obsidian') bgStyle = 'background: linear-gradient(135deg, #FF0033, #99001F)';\n                else if(t.id === 'nebula') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #FF00FF)';\n                else if(t.id === 'synthwave') bgStyle = 'background: linear-gradient(135deg, #FF007F, #00F0FF)';\n                else if(t.id === 'toxic') bgStyle = 'background: linear-gradient(135deg, #39FF14, #00B800)';\n                else if(t.id === 'magma') bgStyle = 'background: linear-gradient(135deg, #FF4500, #FFD700)';\n                else if(t.id === 'solarflare') bgStyle = 'background: linear-gradient(135deg, #FFCC00, #FF6600)';\n                else if(t.id === 'glacier') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #88FFFF)';\n                else if(t.id === 'bubblegum') bgStyle = 'background: linear-gradient(135deg, #FF70A6, #FF9770)';\n                else if(t.id === 'hologram') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #BF00FF)';\n                else if(t.id === 'stealth') bgStyle = 'background: linear-gradient(135deg, #AAAAAA, #445588)';\n                else if(t.id === 'cyberpunk') bgStyle = 'background: linear-gradient(135deg, #FCE205, #FF0055)';
                 
                 colorsHtml += `
                     <div class="color-swatch-wrapper ${colorId === t.id ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', '${t.id}', this)">
@@ -1226,14 +1218,14 @@ var App = {
         let layout, color, bg, radius;
         if (presetId === 'default') {
             layout = 'default'; color = 'default'; bg = 'default'; radius = 'medium';
-        } else if (presetId === 'bame') {
-            layout = 'default'; color = 'bame'; bg = 'default'; radius = 'medium';
-        } else if (presetId === 'gamon') {
-            layout = 'wide'; color = 'gamon'; bg = 'none'; radius = 'round';
-        } else if (presetId === 'gio') {
-            layout = 'compact'; color = 'gio'; bg = 'none'; radius = 'sharp';
-        } else if (presetId === 'mykd') {
-            layout = 'top-nav'; color = 'mykd'; bg = 'webgl-matrix'; radius = 'sharp';
+        } else if (presetId === 'obsidian') {
+            layout = 'default'; color = 'obsidian'; bg = 'default'; radius = 'medium';
+        } else if (presetId === 'synthwave') {
+            layout = 'wide'; color = 'synthwave'; bg = 'none'; radius = 'round';
+        } else if (presetId === 'toxic') {
+            layout = 'compact'; color = 'toxic'; bg = 'none'; radius = 'sharp';
+        } else if (presetId === 'cyberpunk') {
+            layout = 'top-nav'; color = 'cyberpunk'; bg = 'webgl-matrix'; radius = 'sharp';
         }
 
         document.getElementById('sel-layout').value = layout;

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Themes & UI** — Rebuilt all color schemes from scratch, replacing the old legacy names (bame, mykd, gamon, gio, etc.) with 11 brand new beautifully crafted, unique themes (Obsidian, Nebula, Synthwave, Toxic, Magma, Solarflare, Glacier, Bubblegum, Hologram, Stealth, Cyberpunk).
 - **Themes & UI** — Built a new WebGL-powered Lava Lamp background using custom shaders.
 - **Themes & UI** — Restored theme customization options (Settings icons) for dynamic backgrounds like Pink Bubbles and Lava Lamp in the Personalization modal.
 - **Navigation** — Built a Minecraft creeper SVG and replaced the generic grid navigation icon for the Minecraft extension.

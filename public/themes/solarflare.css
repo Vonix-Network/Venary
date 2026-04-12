@@ -1,0 +1,39 @@
+/*
+ * Name: Solarflare
+ * Description: Black with solar yellow and orange.
+ * Author: Venary
+ * Version: 2.0.0
+ */
+
+:root {
+  --bg-primary: #050505;
+  --bg-secondary: #0A0A0A;
+  --bg-tertiary: #0F0F0F;
+  
+  --bg-card: rgba(10, 10, 10, 0.85);
+  --bg-card-hover: rgba(15, 15, 15, 0.95);
+  --bg-input: rgba(15, 15, 15, 0.9);
+
+  --neon-cyan: #FFCC00; 
+  --neon-magenta: #FF6600;
+  --neon-pink: #FFCC00;
+  --neon-green: #FF6600;
+  --neon-blue: #FFCC00;
+  
+  --text-primary: #E0E6ED;
+  --text-secondary: rgba(224, 230, 237, 0.7);
+  --text-highlight: #FFCC00;
+
+  --border-subtle: rgba(255, 204, 0, 0.1);
+  --border-light: rgba(255, 204, 0, 0.2);
+  --border-accent: rgba(255, 204, 0, 0.5);
+
+  --gradient-primary: linear-gradient(135deg, #FFCC00 0%, #FF6600 100%);
+  --gradient-secondary: linear-gradient(135deg, #FF6600 0%, #FFCC00 100%);
+  --gradient-accent: linear-gradient(135deg, #FFCC00 0%, #FF6600 100%);
+  --gradient-warm: linear-gradient(135deg, #FFCC00 0%, #FFCC00 100%);
+  --gradient-dark: linear-gradient(135deg, #050505 0%, #0F0F0F 100%);
+
+  --shadow-neon: 0 0 20px rgba(255, 204, 0, 0.2);
+  --shadow-neon-strong: 0 0 32px rgba(255, 204, 0, 0.4);
+}

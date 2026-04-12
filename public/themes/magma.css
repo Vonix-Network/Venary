@@ -1,0 +1,39 @@
+/*
+ * Name: Magma
+ * Description: Deep dark red with blazing orange.
+ * Author: Venary
+ * Version: 2.0.0
+ */
+
+:root {
+  --bg-primary: #140600;
+  --bg-secondary: #1C0800;
+  --bg-tertiary: #240B00;
+  
+  --bg-card: rgba(28, 8, 0, 0.85);
+  --bg-card-hover: rgba(36, 11, 0, 0.95);
+  --bg-input: rgba(36, 11, 0, 0.9);
+
+  --neon-cyan: #FF4500; 
+  --neon-magenta: #FFD700;
+  --neon-pink: #FF4500;
+  --neon-green: #FFD700;
+  --neon-blue: #FF4500;
+  
+  --text-primary: #E0E6ED;
+  --text-secondary: rgba(224, 230, 237, 0.7);
+  --text-highlight: #FF4500;
+
+  --border-subtle: rgba(255, 69, 0, 0.1);
+  --border-light: rgba(255, 69, 0, 0.2);
+  --border-accent: rgba(255, 69, 0, 0.5);
+
+  --gradient-primary: linear-gradient(135deg, #FF4500 0%, #FFD700 100%);
+  --gradient-secondary: linear-gradient(135deg, #FFD700 0%, #FF4500 100%);
+  --gradient-accent: linear-gradient(135deg, #FF4500 0%, #FFD700 100%);
+  --gradient-warm: linear-gradient(135deg, #FF4500 0%, #FF4500 100%);
+  --gradient-dark: linear-gradient(135deg, #140600 0%, #240B00 100%);
+
+  --shadow-neon: 0 0 20px rgba(255, 69, 0, 0.2);
+  --shadow-neon-strong: 0 0 32px rgba(255, 69, 0, 0.4);
+}

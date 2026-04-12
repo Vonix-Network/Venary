@@ -1,0 +1,39 @@
+/*
+ * Name: Cyberpunk
+ * Description: Dark cyan with electric yellow.
+ * Author: Venary
+ * Version: 2.0.0
+ */
+
+:root {
+  --bg-primary: #010A0B;
+  --bg-secondary: #011516;
+  --bg-tertiary: #022021;
+  
+  --bg-card: rgba(1, 21, 22, 0.85);
+  --bg-card-hover: rgba(2, 32, 33, 0.95);
+  --bg-input: rgba(2, 32, 33, 0.9);
+
+  --neon-cyan: #FCE205; 
+  --neon-magenta: #FF0055;
+  --neon-pink: #FCE205;
+  --neon-green: #FF0055;
+  --neon-blue: #FCE205;
+  
+  --text-primary: #E0E6ED;
+  --text-secondary: rgba(224, 230, 237, 0.7);
+  --text-highlight: #FCE205;
+
+  --border-subtle: rgba(252, 226, 5, 0.1);
+  --border-light: rgba(252, 226, 5, 0.2);
+  --border-accent: rgba(252, 226, 5, 0.5);
+
+  --gradient-primary: linear-gradient(135deg, #FCE205 0%, #FF0055 100%);
+  --gradient-secondary: linear-gradient(135deg, #FF0055 0%, #FCE205 100%);
+  --gradient-accent: linear-gradient(135deg, #FCE205 0%, #FF0055 100%);
+  --gradient-warm: linear-gradient(135deg, #FCE205 0%, #FCE205 100%);
+  --gradient-dark: linear-gradient(135deg, #010A0B 0%, #022021 100%);
+
+  --shadow-neon: 0 0 20px rgba(252, 226, 5, 0.2);
+  --shadow-neon-strong: 0 0 32px rgba(252, 226, 5, 0.4);
+}
