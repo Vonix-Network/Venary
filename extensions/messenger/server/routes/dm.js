@@ -118,9 +118,15 @@ module.exports = function (db, ns) {
 
             const limit = Math.min(parseInt(req.query.limit) || 50, 100);
             const before = req.query.before;
+            const search = req.query.search ? req.query.search.trim() : null;
 
             let query = `SELECT * FROM dm_messages WHERE dm_channel_id = ? AND deleted = 0`;
             const params = [req.params.channelId];
+
+            if (search) {
+                query += ` AND content LIKE ?`;
+                params.push(`%${search}%`);
+            }
 
             if (before) {
                 query += ` AND created_at < (SELECT created_at FROM dm_messages WHERE id = ?)`;

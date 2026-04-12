@@ -33,7 +33,7 @@ var App = {
         Router.register('/feed', function (c) { FeedPage.render(c); });
         Router.register('/profile', function (c, p) { ProfilePage.render(c, p); });
         Router.register('/friends', function (c) { FriendsPage.render(c); });
-        Router.register('/chat', function (c, p) { ChatPage.render(c, p); });
+        Router.register('/chat', function () { window.location.hash = '#/messenger'; });
         Router.register('/admin', function (c) { AdminPage.render(c); });
         Router.register('/mod', function (c) { ModPage.render(c); });
 

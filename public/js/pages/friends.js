@@ -106,7 +106,7 @@ const FriendsPage = {
             '  <div class="friend-row-status ' + (isOnline ? 'online' : '') + '">' + statusText + '</div>' +
             '</div>' +
             '<div class="friend-row-actions">' +
-            '  <button class="friend-action-btn" onclick="window.location.hash=\'#/chat/' + f.id + '\'" title="Message">' +
+            '  <button class="friend-action-btn" onclick="window.location.hash=\'#/messenger?dm=' + f.id + '\'" title="Message">' +
             '    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
             '  </button>' +
             '  <button class="friend-action-btn friend-action-remove" onclick="FriendsPage.removeFriend(\'' + f.id + '\')" title="Remove">' +
