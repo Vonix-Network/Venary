@@ -1368,6 +1368,7 @@ var App = {
         if (existing) existing.remove();
         if (existingCustom) existingCustom.remove();
 
+        let themeLink = null;
         if (color === 'custom') {
              if (!customObj) customObj = JSON.parse(localStorage.getItem('venary_custom_colors')) || {
                  bgPrimary: '#05060A', bgCard: '#0A0C14', textPrimary: '#FFF', neon1: '#29b6f6', neon2: '#ab47bc'
@@ -1403,30 +1404,42 @@ var App = {
             link.id = 'theme-stylesheet';
             link.href = '/themes/' + color + '.css';
             document.head.appendChild(link);
+            themeLink = link;
         }
 
-        // 4. Background Engine Map
-        const webGLThemes = ['webgl-cyber', 'webgl-matrix', 'webgl-stars', 'webgl-geometry', 'webgl-fluid', 'webgl-aurora', 'webgl-particles', 'webgl-lavalamp'];
-        const isWebGL = webGLThemes.includes(bg);
+        // 4. Background Engine Map (Deferred to allow CSS variables to load)
+        const updateEngines = () => {
+            const webGLThemes = ['webgl-cyber', 'webgl-matrix', 'webgl-stars', 'webgl-geometry', 'webgl-fluid', 'webgl-aurora', 'webgl-particles', 'webgl-lavalamp'];
+            const isWebGL = webGLThemes.includes(bg);
 
-        const particleCanvas = document.getElementById('particle-canvas');
-        const webglCanvas = document.getElementById('webgl-canvas');
+            const particleCanvas = document.getElementById('particle-canvas');
+            const webglCanvas = document.getElementById('webgl-canvas');
 
-        if (bg === 'none') {
-            if (particleCanvas) particleCanvas.classList.add('hidden');
-            if (webglCanvas) webglCanvas.classList.add('hidden');
-            if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy();
-            if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
-        } else if (isWebGL) {
-            if (particleCanvas) particleCanvas.classList.add('hidden');
-            if (webglCanvas) webglCanvas.classList.remove('hidden');
-            if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy();
-            if (typeof WebGLEngine !== 'undefined') WebGLEngine.refreshTheme(bg);
+            if (bg === 'none') {
+                if (particleCanvas) particleCanvas.classList.add('hidden');
+                if (webglCanvas) webglCanvas.classList.add('hidden');
+                if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy();
+                if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
+            } else if (isWebGL) {
+                if (particleCanvas) particleCanvas.classList.add('hidden');
+                if (webglCanvas) webglCanvas.classList.remove('hidden');
+                if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy();
+                if (typeof WebGLEngine !== 'undefined') WebGLEngine.refreshTheme(bg);
+            } else {
+                if (particleCanvas) particleCanvas.classList.remove('hidden');
+                if (webglCanvas) webglCanvas.classList.add('hidden');
+                if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
+                if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme(bg);
+            }
+        };
+
+        if (themeLink) {
+            themeLink.onload = updateEngines;
+            // Fallback in case onload fails to fire or is cached
+            setTimeout(updateEngines, 150);
         } else {
-            if (particleCanvas) particleCanvas.classList.remove('hidden');
-            if (webglCanvas) webglCanvas.classList.add('hidden');
-            if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
-            if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme(bg);
+            // Need a slight tick for style tag to apply
+            setTimeout(updateEngines, 10);
         }
     },
     setTheme(themeId) {
