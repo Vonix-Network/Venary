@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Messenger — Settings System** — Full Discord-style per-user settings modal accessible from the gear button in the messenger sidebar footer. Organised into four tabs:
+  - *Privacy & Safety*: Who can DM you (Everyone / Friends Only / Nobody), Message Requests toggle, Auto-Accept Requests, Show Online Status, Show Read Receipts, Allow Friend Requests via DM.
+  - *Notifications*: DM notification level (All / Mentions / Nothing), Notification Sounds, Message Preview in Notifications.
+  - *Text & Appearance*: Compact Mode, Emoji Size (Small / Medium / Large), Link Previews.
+  - *Advanced*: Developer Mode (Copy ID context menu items), clear local DM cache.
+- **Messenger — Message Requests** — Non-friend DM attempts now route through an approval queue when the recipient has message requests enabled. A badge on the settings button shows the pending count. Senders receive a "request sent" toast; recipients can accept or decline from the Message Requests inbox. Accepting opens the conversation immediately. Real-time socket events notify both parties on accept/decline.
+- **Messenger — DM Policy Enforcement** — `POST /dm` now checks the target user's privacy settings before creating a channel: `allow_dms = 'nobody'` blocks all attempts; `allow_dms = 'friends'` rejects non-friends with a clear error message.
+- **Messenger — Schema** — Added `messenger_settings` and `message_requests` tables with full indices.
+
+### Fixed
+- **Messenger — User Search** — User search in the New DM modal now correctly returns all non-banned users site-wide (not just friends). Minimum query length reduced to 1 character. Exact username/display-name matches are ranked first. Server error messages are surfaced in the UI instead of showing a generic "No users found."
+
 - **Themes & UI** — Introduced extensive new personalization options for "Glassmorphism & Opacity" (Solid, Light Glass, Heavy Glass) and "Card Borders" (Hidden, Subtle, Neon Glow), allowing users to completely customize the aesthetic of panels, cards, and dropdowns.
 - **Layouts & Navigation** — Initiated Phase 1 of the Enterprise Layouts overhaul. Added 2 brand new highly animated, enterprise-grade navigational layouts: "Cyber-Float" (a glassmorphic floating sidebar) and "Neon-Bar" (an animated, edge-to-edge top navigation bar).
 - **Themes & UI** — Rebuilt all color schemes from scratch, replacing the old legacy names (bame, mykd, gamon, gio, etc.) with 11 brand new beautifully crafted, unique themes (Obsidian, Nebula, Synthwave, Toxic, Magma, Solarflare, Glacier, Bubblegum, Hologram, Stealth, Cyberpunk).
