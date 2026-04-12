@@ -988,6 +988,8 @@ var App = {
         const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
         const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
         const radiusId = localStorage.getItem('venary_radius') || 'medium';
+        const glassId = localStorage.getItem('venary_glass') || 'light';
+        const borderId = localStorage.getItem('venary_border') || 'subtle';
         const customObj = JSON.parse(localStorage.getItem('venary_custom_colors')) || {
             bgPrimary: '#05060a',
             bgCard: '#0a0c14',
