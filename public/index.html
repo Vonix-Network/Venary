@@ -92,11 +92,8 @@
         </div>
         <span class="brand-text">VENARY</span>
       </div>
-      <div class="nav-carousel-container">
-        <button class="nav-carousel-btn" id="nav-carousel-prev" onclick="App.scrollNavCarousel(-1)" style="display: none;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <div class="nav-scroll-area" id="nav-scroll-area">
+      <!-- Top Nav: flat link row + overflow trigger -->
+      <div class="nav-center-links" id="nav-center-links">
         <div class="nav-links">
           <a href="#/feed" class="nav-link" data-page="feed" id="nav-feed">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -116,7 +113,7 @@
             <span class="nav-badge hidden" id="friend-request-badge">0</span>
           </a>
 
-          <!-- Mobile Center Menu Button -->
+          <!-- Mobile Center Menu Button (hidden in top-nav desktop) -->
           <button class="nav-link mobile-only-nav-btn center-menu-btn"
             onclick="document.getElementById('main-nav').classList.toggle('mobile-expanded')" id="mobile-menu-toggle">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="menu-icon" stroke="currentColor"
@@ -139,10 +136,16 @@
         <div class="nav-links ext-nav" id="ext-nav-links">
           <!-- Extension nav links injected here dynamically -->
         </div>
-      </div>
-      <button class="nav-carousel-btn" id="nav-carousel-next" onclick="App.scrollNavCarousel(1)" style="display: none;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
+
+        <!-- Shown only when nav items > 5 -->
+        <button class="nav-more-btn hidden" id="nav-more-btn" onclick="OverflowNav.open()" title="More navigation">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>More</span>
+        </button>
       </div>
       <div class="nav-user">
         <div class="nav-user-info" id="nav-user-info">
@@ -287,6 +290,20 @@
   <!-- Scripts -->
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
   <!-- Three.js for WebGL Themes -->
+  <!-- ===== Nav Overflow Side Panel (Top Nav, >5 items) ===== -->
+  <div id="nav-overflow-panel" class="nav-overflow-panel" aria-hidden="true">
+    <div class="nav-overflow-backdrop" onclick="OverflowNav.close()"></div>
+    <div class="nav-overflow-drawer" id="nav-overflow-drawer">
+      <div class="nav-overflow-header">
+        <span class="nav-overflow-title">Navigation</span>
+        <button class="btn btn-ghost nav-overflow-close" onclick="OverflowNav.close()" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="nav-overflow-list" id="nav-overflow-list"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/particles.js"></script>

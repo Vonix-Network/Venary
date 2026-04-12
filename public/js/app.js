@@ -266,10 +266,11 @@ var App = {
 
         navContainer.innerHTML = html;
 
-        // If top-nav, re-init carousel so new items are measured
+        // If top-nav, re-run OverflowNav so new extension items are counted
         if (document.documentElement.classList.contains('layout-top-nav')) {
-            requestAnimationFrame(() => NavCarousel.init());
+            requestAnimationFrame(() => OverflowNav.init());
         }
+
     },
 
     _getNavIcon(iconName) {
@@ -1341,13 +1342,13 @@ var App = {
             document.documentElement.classList.add('layout-' + layout);
         }
 
-        // Boot / tear down the enterprise carousel engine based on layout
+        // Boot / tear down the overflow nav engine based on layout
         // Use rAF so the new layout class has applied before measuring
         requestAnimationFrame(() => {
             if (layout === 'top-nav') {
-                NavCarousel.init();
+                if (typeof OverflowNav !== 'undefined') OverflowNav.init();
             } else {
-                if (typeof NavCarousel !== 'undefined') NavCarousel.destroy();
+                if (typeof OverflowNav !== 'undefined') OverflowNav.destroy();
             }
         });
 
@@ -1597,172 +1598,121 @@ var App = {
         }
     },
 
-    scrollNavCarousel(dir) {
-        NavCarousel.step(dir);
-    },
+    scrollNavCarousel() { /* no-op: carousel replaced by OverflowNav */ },
 
 };
 
 /* ========================================================
-   NavCarousel — Non-Destructive Top-Nav Scroll Engine
-   Animates scrollLeft on the viewport; never modifies DOM.
+   OverflowNav — Top Nav overflow drawer
+   Shows first 5 nav items in the bar; hides the rest and
+   reveals a slide-in panel via the "More" button.
    ======================================================== */
-const NavCarousel = {
-    _viewport: null,
-    _animating: false,
-    _raf: null,
-    _touchStartX: 0,
+const OverflowNav = {
+    VISIBLE: 5,
     _enabled: false,
-    _keyBound: false,
     _resizeObserver: null,
 
-    /* Boot or re-boot every time layout switches to top-nav */
+    /* Called by applyAppearance() and after _injectNavLinks() */
     init() {
         if (!document.documentElement.classList.contains('layout-top-nav')) {
             this.destroy();
             return;
         }
+        this._enabled = true;
+        this.close(true); // ensure panel is closed, no animation
+        this._update();
+        this._bindResize();
+    },
 
-        const vp = document.getElementById('nav-scroll-area');
-        if (!vp) return;
+    /* Count top-level nav items (not dropdown children, not mobile btn) */
+    _getItems() {
+        const container = document.getElementById('nav-center-links');
+        if (!container) return [];
+        return Array.from(container.querySelectorAll(
+            '.nav-links > a.nav-link, .nav-links > .nav-dropdown-group, ' +
+            '.ext-nav > a.nav-link, .ext-nav > .nav-dropdown-group'
+        ));
+    },
 
-        this._viewport  = vp;
-        this._animating = false;
-        this._enabled   = true;
+    _update() {
+        const items   = this._getItems();
+        const moreBtn = document.getElementById('nav-more-btn');
+        const hasOverflow = items.length > this.VISIBLE;
 
-        /* Enforce: viewport shows exactly VISIBLE_COUNT items wide */
-        const VISIBLE = 5;
-        const item = vp.querySelector('.nav-link');
-        if (item) {
-            const s = window.getComputedStyle(item);
-            const itemW = item.offsetWidth + parseFloat(s.marginLeft) + parseFloat(s.marginRight);
-            vp.style.maxWidth = (itemW * VISIBLE) + 'px';
-        } else {
-            vp.style.maxWidth = '';
+        /* Show first VISIBLE, hide the rest */
+        items.forEach((item, i) => {
+            item.style.display = (i < this.VISIBLE) ? '' : 'none';
+        });
+
+        /* More button visibility */
+        if (moreBtn) {
+            if (hasOverflow) {
+                moreBtn.classList.remove('hidden');
+                moreBtn.style.display = 'flex';
+            } else {
+                moreBtn.classList.add('hidden');
+                moreBtn.style.display = 'none';
+            }
         }
 
-        /* Reset scroll position */
-        vp.scrollLeft = 0;
-
-        this._bindEvents();
-        this._updateButtons();
+        /* Populate overflow panel with hidden items */
+        this._populatePanel(items.slice(this.VISIBLE));
     },
 
-    /* One item width = first visible nav-link's outerWidth */
-    _itemWidth() {
-        const vp = this._viewport;
-        if (!vp) return 0;
-        const item = vp.querySelector('.nav-link');
-        if (!item) return 0;
-        const s = window.getComputedStyle(item);
-        return item.offsetWidth + parseFloat(s.marginLeft) + parseFloat(s.marginRight);
-    },
+    _populatePanel(hiddenItems) {
+        const list = document.getElementById('nav-overflow-list');
+        if (!list) return;
+        list.innerHTML = '';
 
-    /* Max scrollable distance */
-    _maxScroll() {
-        const vp = this._viewport;
-        if (!vp) return 0;
-        return vp.scrollWidth - vp.clientWidth;
-    },
+        if (!hiddenItems.length) return;
 
-    /* Show buttons only when there are more than 5 items */
-    _updateButtons() {
-        const vp   = this._viewport;
-        const prev = document.getElementById('nav-carousel-prev');
-        const next = document.getElementById('nav-carousel-next');
-        /* Count all visible .nav-link children (not dropdown-items inside menus) */
-        const itemCount = vp ? vp.querySelectorAll('.nav-links > .nav-link, .nav-links > .nav-dropdown-group, .ext-nav > .nav-link, .ext-nav > .nav-dropdown-group').length : 0;
-        const needed = itemCount > 5;
-        [prev, next].forEach(btn => {
-            if (!btn) return;
-            btn.style.display = needed ? 'flex' : 'none';
+        hiddenItems.forEach(item => {
+            const clone = item.cloneNode(true);
+            clone.style.display = ''; // unhide clone
+            /* Close panel on any link click */
+            clone.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', () => this.close());
+            });
+            if (clone.tagName === 'A') {
+                clone.addEventListener('click', () => this.close());
+            }
+            list.appendChild(clone);
         });
     },
 
-    /* RAF-driven eased scrollLeft animation */
-    step(dir) {
-        if (this._animating || !this._enabled) return;
-        const vp = this._viewport;
-        if (!vp) return;
-
-        const itemW    = this._itemWidth() || 110;
-        const maxScroll = this._maxScroll();
-        if (maxScroll <= 0) return; // nothing to scroll
-
-        const startScroll = vp.scrollLeft;
-        let   endScroll   = startScroll + dir * itemW;
-        /* Wrap-around: if at end scrolling next, jump to start (and vice-versa) */
-        if (endScroll > maxScroll + 2) endScroll = 0;
-        if (endScroll < -2)            endScroll = maxScroll;
-        endScroll = Math.max(0, Math.min(maxScroll, endScroll));
-
-        if (Math.abs(endScroll - startScroll) < 1) return;
-
-        const duration = 320;
-        const ease = t => t < 0.5
-            ? 4 * t * t * t
-            : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-        const startTime = performance.now();
-        this._animating = true;
-
-        const animate = (now) => {
-            const t       = Math.min((now - startTime) / duration, 1);
-            vp.scrollLeft = startScroll + (endScroll - startScroll) * ease(t);
-            if (t < 1) {
-                this._raf = requestAnimationFrame(animate);
-            } else {
-                vp.scrollLeft   = endScroll;
-                this._animating = false;
-                this._updateButtons();
-            }
-        };
-        this._raf = requestAnimationFrame(animate);
+    open() {
+        const panel = document.getElementById('nav-overflow-panel');
+        if (!panel) return;
+        panel.setAttribute('aria-hidden', 'false');
+        /* rAF ensures visibility:visible is applied before transform transition */
+        requestAnimationFrame(() => panel.classList.add('open'));
     },
 
-    _bindEvents() {
-        /* Keyboard (only once) */
-        if (!this._keyBound) {
-            document.addEventListener('keydown', e => {
-                if (!this._enabled) return;
-                const tag = document.activeElement && document.activeElement.tagName;
-                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-                if (e.key === 'ArrowRight') { e.preventDefault(); this.step(1); }
-                if (e.key === 'ArrowLeft')  { e.preventDefault(); this.step(-1); }
-            });
-            this._keyBound = true;
-        }
+    close(instant = false) {
+        const panel = document.getElementById('nav-overflow-panel');
+        if (!panel) return;
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+    },
 
-        /* Touch swipe */
-        const vp = this._viewport;
-        if (vp && !vp._ncBound) {
-            vp.addEventListener('touchstart', e => {
-                this._touchStartX = e.touches[0].clientX;
-            }, { passive: true });
-            vp.addEventListener('touchend', e => {
-                const dx = e.changedTouches[0].clientX - this._touchStartX;
-                if (Math.abs(dx) > 40) this.step(dx < 0 ? 1 : -1);
-            }, { passive: true });
-            vp._ncBound = true;
-        }
-
-        /* ResizeObserver: re-check button visibility on resize */
-        if (!this._resizeObserver && window.ResizeObserver) {
-            this._resizeObserver = new ResizeObserver(() => {
-                if (this._enabled) this._updateButtons();
-            });
-            if (vp) this._resizeObserver.observe(vp);
-        }
+    _bindResize() {
+        if (this._resizeObserver) return;
+        const container = document.getElementById('nav-center-links');
+        if (!container || !window.ResizeObserver) return;
+        this._resizeObserver = new ResizeObserver(() => {
+            if (this._enabled) this._update();
+        });
+        this._resizeObserver.observe(container);
     },
 
     destroy() {
         this._enabled = false;
-        if (this._raf) cancelAnimationFrame(this._raf);
+        this.close(true);
         if (this._resizeObserver) { this._resizeObserver.disconnect(); this._resizeObserver = null; }
-        ['nav-carousel-prev', 'nav-carousel-next'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
+        /* Re-show all items */
+        this._getItems().forEach(item => item.style.display = '');
+        const moreBtn = document.getElementById('nav-more-btn');
+        if (moreBtn) { moreBtn.classList.add('hidden'); moreBtn.style.display = 'none'; }
     }
 };
 
@@ -1788,5 +1738,14 @@ document.addEventListener('click', function(e) {
             const m = g.querySelector('.dropdown-menu');
             if (m) m.style.position = '';
         });
+    }
+    /* Close overflow panel on outside click */
+    const panel = document.getElementById('nav-overflow-panel');
+    if (panel && panel.classList.contains('open')) {
+        const drawer = document.getElementById('nav-overflow-drawer');
+        const moreBtn = document.getElementById('nav-more-btn');
+        if (drawer && !drawer.contains(e.target) && moreBtn && !moreBtn.contains(e.target)) {
+            OverflowNav.close();
+        }
     }
 });

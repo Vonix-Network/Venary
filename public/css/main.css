@@ -576,13 +576,11 @@ html.layout-compact .composer-textarea {
   min-height: 40px;
 }
 
-/* ========== Top Navbar Layout (Carousel) ========== */
+/* ========== Top Navbar Layout ========== */
 @media (min-width: 769px) {
-  /* ─── Nav Shell ─── */
   html.layout-top-nav .main-nav {
     position: fixed;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     width: 100vw;
     height: 68px;
     flex-direction: row;
@@ -596,22 +594,6 @@ html.layout-compact .composer-textarea {
     overflow: visible;
   }
 
-  /* Keep sidebar nav-user override clean in top-nav */
-  html.layout-top-nav .nav-user {
-    position: relative;
-    top: auto;
-    transform: none;
-    margin-top: 0;
-    border-top: none;
-    border-left: none;
-    padding: 0;
-    margin-left: 0;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-  }
-
   html.layout-top-nav .nav-brand {
     margin-bottom: 0;
     padding: 0;
@@ -622,63 +604,46 @@ html.layout-compact .composer-textarea {
     gap: var(--space-md);
   }
 
-  html.layout-top-nav .page-container {
-    margin-left: 0;
-    padding-top: calc(68px + var(--space-xl));
+  html.layout-top-nav .nav-user {
+    position: relative;
+    top: auto; transform: none;
+    margin-top: 0; border-top: none; border-left: none; padding: 0;
+    margin-left: 0; flex-shrink: 0;
+    display: flex; align-items: center; gap: var(--space-sm);
   }
 
+  html.layout-top-nav .page-container,
   html.layout-top-nav .page-container.full-width {
     margin-left: 0;
     padding-top: calc(68px + var(--space-xl));
   }
 
-  /* ─── Carousel Container ─── */
-  html.layout-top-nav .nav-carousel-container {
-    display: flex !important;
-    align-items: center;
-    gap: var(--space-sm);
+  /* ─── Center link row ─── */
+  html.layout-top-nav .nav-center-links {
     flex: 1;
     min-width: 0;
-    overflow: visible;
-  }
-
-  /* ─── Scroll Viewport: JS animates scrollLeft inside here ─── */
-  html.layout-top-nav .nav-scroll-area {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    /* JS writes scrollLeft — must NOT be hidden, must be auto */
-    overflow-x: auto;
-    overflow-y: visible;
-    height: 68px;
     display: flex;
     flex-direction: row;
     align-items: center;
-    /* Hide native scrollbar */
-    scrollbar-width: none;
-    /* Fade edges for the infinite-scroll feel */
-    -webkit-mask-image: linear-gradient(
-      to right,
-      transparent 0%,
-      black 6%,
-      black 94%,
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      to right,
-      transparent 0%,
-      black 6%,
-      black 94%,
-      transparent 100%
-    );
+    justify-content: center;
+    gap: 0;
   }
 
-  html.layout-top-nav .nav-scroll-area::-webkit-scrollbar {
-    display: none;
+  html.layout-top-nav .nav-links,
+  html.layout-top-nav .ext-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
+  /* Hide mobile button */
+  html.layout-top-nav .mobile-only-nav-btn { display: none !important; }
 
-  /* ─── Individual items in Top Nav ─── */
+  /* ─── Individual Nav Items ─── */
   html.layout-top-nav .nav-link {
     flex-shrink: 0;
     width: 108px;
@@ -707,81 +672,47 @@ html.layout-compact .composer-textarea {
 
   html.layout-top-nav .nav-link.active {
     color: var(--neon-cyan);
-    background: linear-gradient(180deg, transparent 0%, rgba(41, 182, 246, 0.12) 100%);
+    background: linear-gradient(180deg, transparent 0%, rgba(41,182,246,0.12) 100%);
   }
 
-  /* Active underline bar */
   html.layout-top-nav .nav-link.active::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 12%;
-    width: 76%;
-    height: 2.5px;
+    bottom: 0; left: 12%;
+    width: 76%; height: 2.5px;
     border-radius: 99px 99px 0 0;
     background: var(--gradient-primary);
     box-shadow: 0 0 10px var(--neon-cyan);
   }
 
-  html.layout-top-nav .nav-link.active::before {
-    display: none;
-  }
+  html.layout-top-nav .nav-link.active::before { display: none; }
 
-  html.layout-top-nav .nav-link svg {
-    flex-shrink: 0;
-  }
-
-  /* nav-links and ext-nav become horizontal flex rows in top-nav */
-  html.layout-top-nav .nav-links,
-  html.layout-top-nav .ext-nav {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    flex-shrink: 0;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  /* Hide the mobile menu toggle in top-nav - not needed */
-  html.layout-top-nav .mobile-only-nav-btn {
-    display: none !important;
-  }
-
-  /* ─── Carousel Buttons ─── */
-  html.layout-top-nav .nav-carousel-btn {
-    display: flex !important;
+  /* ─── "More" overflow trigger ─── */
+  html.layout-top-nav .nav-more-btn {
+    display: none; /* JS shows this when items > 5 */
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-full);
-    border: 1px solid var(--border-light);
-    background: rgba(255, 255, 255, 0.04);
+    gap: 5px;
+    width: 80px;
+    height: 60px;
+    padding: 6px 4px;
+    margin: 0 2px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    transition: background 0.2s, border-color 0.2s, color 0.2s,
-                box-shadow 0.2s, transform 0.15s;
-    outline: none;
-    z-index: 2;
+    font-size: 0.79rem;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
   }
 
-  html.layout-top-nav .nav-carousel-btn:hover {
-    background: rgba(41, 182, 246, 0.12);
-    border-color: var(--neon-cyan);
-    color: var(--neon-cyan);
-    box-shadow: 0 0 14px rgba(41, 182, 246, 0.25);
-  }
+  html.layout-top-nav .nav-more-btn:not(.hidden) { display: flex; }
 
-  html.layout-top-nav .nav-carousel-btn:active {
-    transform: scale(0.92);
-  }
-
-  html.layout-top-nav .nav-carousel-btn:disabled,
-  html.layout-top-nav .nav-carousel-btn[data-hidden] {
-    opacity: 0;
-    pointer-events: none;
+  html.layout-top-nav .nav-more-btn:hover {
+    background: rgba(41,182,246,0.08);
+    color: var(--text-primary);
   }
 
   /* Portal Dropdown */
@@ -797,16 +728,123 @@ html.layout-compact .composer-textarea {
 }
 
 @media (max-width: 1080px) and (min-width: 769px) {
-  html.layout-top-nav .nav-link {
-    width: 90px;
-    font-size: 0.75rem;
-  }
-
-  html.layout-top-nav .nav-link span {
-    font-size: 0.72rem;
-    max-width: 80px;
-  }
+  html.layout-top-nav .nav-link { width: 88px; font-size: 0.75rem; }
+  html.layout-top-nav .nav-link span { font-size: 0.72rem; max-width: 76px; }
 }
+
+/* ========== Nav Overflow Side Panel ========== */
+.nav-overflow-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.nav-overflow-panel.open {
+  pointer-events: all;
+  visibility: visible;
+}
+
+.nav-overflow-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.25s ease;
+}
+
+.nav-overflow-panel.open .nav-overflow-backdrop {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.nav-overflow-drawer {
+  position: absolute;
+  top: 68px;
+  right: 0;
+  bottom: 0;
+  width: 240px;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-md) var(--space-sm);
+  gap: var(--space-xs);
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -8px 0 32px rgba(0,0,0,0.4);
+}
+
+.nav-overflow-panel.open .nav-overflow-drawer {
+  transform: translateX(0);
+}
+
+.nav-overflow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-sm);
+}
+
+.nav-overflow-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+.nav-overflow-close {
+  padding: 4px;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.nav-overflow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Nav links inside the overflow panel render as sidebar-style rows */
+.nav-overflow-list .nav-link,
+.nav-overflow-list .nav-dropdown-group .nav-link {
+  width: 100% !important;
+  height: auto !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  gap: var(--space-sm) !important;
+  padding: 10px var(--space-sm) !important;
+  margin: 0 !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 0.88rem !important;
+  text-align: left;
+}
+
+.nav-overflow-list .nav-link span {
+  font-size: 0.88rem !important;
+  max-width: none !important;
+  text-align: left !important;
+}
+
+.nav-overflow-list .nav-link.active::after { display: none; }
+
+.nav-overflow-list .dropdown-menu {
+  position: static !important;
+  display: none;
+  flex-direction: column;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 0 0 var(--space-lg) !important;
+  margin: 0 !important;
+}
+
+.nav-overflow-list .nav-dropdown-group.open .dropdown-menu { display: flex; }
+
 
 .appearance-tabs {
   display: flex;
