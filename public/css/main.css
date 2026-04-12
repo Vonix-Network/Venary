@@ -1042,3 +1042,191 @@ html.style-radius-pill {
   --radius-md: 24px;
   --radius-lg: 32px;
 }
+
+/* ========== Cyber-Float Sidebar Layout ========== */
+@media (min-width: 769px) {
+  html.layout-cyber-float .main-nav {
+    left: 20px;
+    top: 20px;
+    height: calc(100vh - 40px);
+    border-radius: 20px;
+    background: rgba(10, 15, 25, 0.6);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(var(--neon-cyan-rgb, 0, 240, 255), 0.1);
+    transition: all 0.3s ease;
+    z-index: 1000;
+  }
+  
+  html.layout-cyber-float .page-container {
+    margin-left: 280px; /* 20px offset + 240px width + 20px margin */
+    padding-top: 20px;
+  }
+
+  html.layout-cyber-float .nav-link {
+    position: relative;
+    border-radius: 12px;
+    margin: 4px 10px;
+    overflow: hidden;
+    transition: transform 0.2s ease, background 0.3s ease;
+  }
+
+  html.layout-cyber-float .nav-link:hover {
+    transform: translateX(4px);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  html.layout-cyber-float .nav-link::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 12px;
+    padding: 2px;
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  html.layout-cyber-float .nav-link:hover::before {
+    opacity: 1;
+    animation: borderTrace 2s linear infinite;
+  }
+
+  html.layout-cyber-float .nav-link.active {
+    background: linear-gradient(90deg, rgba(41,182,246, 0.2) 0%, transparent 100%);
+    box-shadow: inset 3px 0 0 var(--neon-cyan);
+    animation: neonPulse 2s infinite alternate;
+  }
+  
+  html.layout-cyber-float .nav-link.active::before {
+      display: none;
+  }
+}
+
+/* ========== Neon-Bar Top Navbar Layout ========== */
+@media (min-width: 769px) {
+  html.layout-neon-bar .main-nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 72px;
+    flex-direction: row;
+    background: rgba(5, 5, 10, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+    padding: 0 var(--space-xl);
+    align-items: center;
+    justify-content: space-between;
+    z-index: 1000;
+  }
+
+  html.layout-neon-bar .nav-brand {
+    margin-bottom: 0; padding: 0; width: auto; flex-shrink: 0;
+    display: flex; flex-direction: row; align-items: center;
+  }
+
+  html.layout-neon-bar .nav-user {
+    position: relative; top: auto; transform: none; margin-top: 0;
+    border-top: none; border-left: none; padding: 0; margin-left: 0;
+    flex-shrink: 0; display: flex; align-items: center; gap: var(--space-sm);
+  }
+
+  html.layout-neon-bar .page-container,
+  html.layout-neon-bar .page-container.full-width {
+    margin-left: 0;
+    padding-top: calc(72px + var(--space-xl));
+  }
+
+  html.layout-neon-bar .nav-center-links {
+    flex: 1; min-width: 0; display: flex; flex-direction: row;
+    align-items: center; justify-content: center; height: 100%;
+  }
+
+  html.layout-neon-bar .nav-links,
+  html.layout-neon-bar .ext-nav {
+    display: flex; flex-direction: row; align-items: center;
+    flex-shrink: 0; border: none !important; margin: 0; padding: 0; height: 100%;
+  }
+
+  html.layout-neon-bar .mobile-only-nav-btn { display: none !important; }
+
+  html.layout-neon-bar .nav-link,
+  html.layout-neon-bar .dropdown-toggle {
+    flex-shrink: 0; width: 110px; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; color: var(--text-secondary); font-size: 0.79rem;
+    border-radius: 0; margin: 0; padding: 0; transition: color 0.3s ease;
+    position: relative;
+  }
+
+  html.layout-neon-bar .nav-link span {
+    font-size: 0.79rem; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 96px; font-weight: 500;
+  }
+
+  html.layout-neon-bar .nav-link:hover,
+  html.layout-neon-bar .dropdown-toggle:hover {
+    color: #fff;
+    background: transparent;
+  }
+
+  html.layout-neon-bar .nav-link.active {
+    color: var(--neon-cyan);
+    background: transparent;
+  }
+
+  html.layout-neon-bar .nav-link::after {
+    content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px;
+    background: var(--gradient-primary); transform: scaleX(0);
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    transform-origin: center;
+    box-shadow: 0 -2px 10px var(--neon-cyan);
+  }
+
+  html.layout-neon-bar .nav-link:hover::after,
+  html.layout-neon-bar .nav-link.active::after {
+    transform: scaleX(1);
+  }
+
+  html.layout-neon-bar .nav-more-btn {
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 5px; width: 110px; height: 100%; cursor: pointer; color: var(--text-secondary);
+    background: transparent; border: none; font-family: inherit; font-size: 0.79rem;
+    transition: color 0.3s ease;
+  }
+  
+  html.layout-neon-bar .nav-more-btn:not(.hidden) { display: flex; }
+  html.layout-neon-bar .nav-more-btn:hover { color: #fff; }
+
+  html.layout-neon-bar .nav-dropdown-group {
+    flex-direction: row; align-items: center; height: 100%; flex-shrink: 0; position: relative;
+  }
+
+  html.layout-neon-bar .dropdown-menu {
+    background: rgba(10, 15, 25, 0.95); backdrop-filter: blur(20px);
+    border: 1px solid var(--border-accent); border-radius: var(--radius-md);
+    padding: var(--space-sm); top: calc(100% + 5px); min-width: 200px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    animation: slideDown 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  
+  html.layout-neon-bar .dropdown-chevron { margin-left: 0; width: 12px; height: 12px; }
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes borderTrace {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@keyframes neonPulse {
+  0% { box-shadow: inset 3px 0 0 var(--neon-cyan), 0 0 5px rgba(41, 182, 246, 0.2); }
+  100% { box-shadow: inset 3px 0 0 var(--neon-cyan), 0 0 15px rgba(41, 182, 246, 0.6); }
+}

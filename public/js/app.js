@@ -267,7 +267,7 @@ var App = {
         navContainer.innerHTML = html;
 
         // If top-nav, re-run OverflowNav so new extension items are counted
-        if (document.documentElement.classList.contains('layout-top-nav')) {
+        if (document.documentElement.classList.contains('layout-top-nav') || document.documentElement.classList.contains('layout-neon-bar')) {
             requestAnimationFrame(() => OverflowNav.init());
         }
 
@@ -1064,6 +1064,10 @@ var App = {
                             <div class="card-preview" style="background:#1a1a24; border-left:15px solid #2a2a35"></div>
                             <span>Compact Sidebar</span>
                         </div>
+                        <div class="appearance-card ${layoutId === 'cyber-float' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'cyber-float', this)">
+                            <div class="card-preview" style="background:#1a1a24; padding:5px"><div style="width:20px;height:100%;border-radius:3px;background:linear-gradient(135deg, #00f0ff, #ab47bc); box-shadow:0 0 5px #00f0ff"></div></div>
+                            <span>Cyber-Float (Sidebar)</span>
+                        </div>
                         <div class="appearance-card ${layoutId === 'wide' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'wide', this)">
                             <div class="card-preview" style="background:#1a1a24; overflow:hidden;"><div style="width:100%;height:100%;margin:5px;background:#2a2a35"></div></div>
                             <span>Wide View</span>
@@ -1071,6 +1075,10 @@ var App = {
                         <div class="appearance-card ${layoutId === 'top-nav' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'top-nav', this)">
                             <div class="card-preview" style="background:#1a1a24; border-top:15px solid #2a2a35"></div>
                             <span>Top Navbar</span>
+                        </div>
+                        <div class="appearance-card ${layoutId === 'neon-bar' ? 'selected' : ''}" onclick="App.selectAppearanceObj('layout', 'neon-bar', this)">
+                            <div class="card-preview" style="background:#1a1a24; border-top:10px solid #0a0f19; box-shadow:inset 0 2px 0 #ab47bc"></div>
+                            <span>Neon-Bar (Top)</span>
                         </div>
                     </div>
                 </div>
@@ -1602,7 +1610,7 @@ var App = {
             group.classList.add('open');
             
             // Portal logic: If in top-nav, we absolutely position it to escape clipping
-            const isTopNav = document.documentElement.classList.contains('layout-top-nav');
+            const isTopNav = document.documentElement.classList.contains('layout-top-nav') || document.documentElement.classList.contains('layout-neon-bar');
             if (isTopNav) {
                 const rect = btn.getBoundingClientRect();
                 menu.style.position = 'fixed';
@@ -1635,7 +1643,7 @@ const OverflowNav = {
 
     /* Called by applyAppearance() and after _injectNavLinks() */
     init() {
-        if (!document.documentElement.classList.contains('layout-top-nav')) {
+        if (!document.documentElement.classList.contains('layout-top-nav') && !document.documentElement.classList.contains('layout-neon-bar')) {
             this.destroy();
             return;
         }
