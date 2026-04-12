@@ -479,8 +479,19 @@ var MessengerPage = {
         var messagesEl = document.getElementById('msn-message-area');
         if (messagesEl) messagesEl.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center"><div class="loading-spinner"></div></div>';
 
-        // Find DM metadata from dmList so we can show partner info in header
+        // Find DM metadata from dmList; if absent, fetch directly from API
         var dmMeta = this.dmList.find(d => d.id === dmId);
+        if (!dmMeta) {
+            try {
+                var fetched = await this._api('GET', '/dm/' + dmId);
+                if (fetched && !fetched.error) {
+                    dmMeta = fetched;
+                    // Add to local list so future opens work without a round-trip
+                    this.dmList.push(dmMeta);
+                    this._showDMList();
+                }
+            } catch (e) { /* non-fatal */ }
+        }
 
         // Pre-populate memberCache for all participants so messages render correctly
         if (dmMeta && Array.isArray(dmMeta.member_ids)) {
@@ -859,7 +870,7 @@ var MessengerPage = {
             </div>`;
         }
 
-        return `<div class="msn-msg-group ${isNewAuthor ? 'msn-msg-new-author' : ''}" data-msg-id="${msg.id}"
+        return `<div class="msn-msg-group ${isNewAuthor ? 'msn-msg-new-author' : ''}" data-msg-id="${msg.id}" data-author-id="${msg.author_id}"
             oncontextmenu="event.preventDefault();MessengerPage._msgCtxMenu('${msg.id}','${isSelf}',event)">
             ${isNewAuthor
                 ? `<div class="msn-msg-avatar" onclick="MessengerPage._showUserPopout('${msg.author_id}',event)" title="${this._esc(authorName)}">
@@ -1066,7 +1077,7 @@ var MessengerPage = {
         var knownDm = this.dmList.find(d => d.id === msg.dm_channel_id);
         if (!knownDm) {
             this._loadDMs().then(() => {
-                if (this.activeDmId === null) this._showDMList();
+                if (!this.activeSpaceId) this._showDMList();
             });
         }
 
@@ -1093,13 +1104,25 @@ var MessengerPage = {
         var emptyState = msgsEl.querySelector('.msn-empty-channel');
         if (emptyState) emptyState.remove();
 
-        // Prefetch author info if not cached
-        if (msg.author_id && !this.memberCache[msg.author_id]) {
+        // Seed cache from inline sender fields so the message renders correctly
+        if (msg.author_id && (msg.sender_username || msg.sender_display_name)) {
+            if (!this.memberCache[msg.author_id]) {
+                this.memberCache[msg.author_id] = {
+                    username:     msg.sender_username     || null,
+                    display_name: msg.sender_display_name || null,
+                    avatar:       msg.sender_avatar       || null
+                };
+            }
+        } else if (msg.author_id && !this.memberCache[msg.author_id]) {
             this._getMemberInfo(msg.author_id);
         }
 
+        // Determine grouping: only start a new author block when the author changes
+        var lastGroup = msgsEl.querySelector('.msn-msg-group:last-of-type');
+        var isNewAuthor = !lastGroup || lastGroup.dataset.authorId !== msg.author_id;
+
         var div = document.createElement('div');
-        div.innerHTML = this._renderMessageGroup(msg, true);
+        div.innerHTML = this._renderMessageGroup(msg, isNewAuthor);
         while (div.firstChild) msgsEl.appendChild(div.firstChild);
 
         var atBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 200;

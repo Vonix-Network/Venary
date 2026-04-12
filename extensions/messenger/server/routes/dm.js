@@ -206,6 +206,47 @@ module.exports = function (db, ns) {
         }
     });
 
+    // GET /dm/:channelId — Get DM channel info (used as fallback when not in local list)
+    router.get('/dm/:channelId', authenticateToken, async (req, res) => {
+        try {
+            const member = await db.get(
+                'SELECT 1 FROM dm_members WHERE dm_channel_id = ? AND user_id = ?',
+                [req.params.channelId, req.user.id]
+            );
+            if (!member) return res.status(403).json({ error: 'Not a member of this DM' });
+
+            const dm = await db.get('SELECT * FROM dm_channels WHERE id = ?', [req.params.channelId]);
+            if (!dm) return res.status(404).json({ error: 'DM not found' });
+
+            const memberRows = await db.all('SELECT user_id FROM dm_members WHERE dm_channel_id = ?', [req.params.channelId]);
+            const memberIds = memberRows.map(r => r.user_id);
+            const result = { ...dm, member_ids: memberIds };
+
+            if (dm.type === 'dm') {
+                const partnerId = memberIds.find(id => id !== req.user.id);
+                if (partnerId) {
+                    try {
+                        const partner = await mainDb.get(
+                            'SELECT id, username, display_name, avatar, status FROM users WHERE id = ?',
+                            [partnerId]
+                        );
+                        if (partner) {
+                            result.partner_id           = partner.id;
+                            result.partner_username     = partner.username;
+                            result.partner_display_name = partner.display_name;
+                            result.partner_avatar       = partner.avatar;
+                            result.partner_status       = partner.status || 'offline';
+                        }
+                    } catch (e) { /* non-fatal */ }
+                }
+            }
+
+            res.json(result);
+        } catch (err) {
+            res.status(500).json({ error: 'Failed to fetch DM channel' });
+        }
+    });
+
     // GET /dm/:channelId/messages — Get DM message history
     router.get('/dm/:channelId/messages', authenticateToken, async (req, res) => {
         try {
