@@ -443,6 +443,74 @@ const WebGLEngine = {
         };
     },
 
+    initLavalamp() {
+        const cfg = JSON.parse(localStorage.getItem('venary_bg_lavalamp')) || { primary: '#ff3300', secondary: '#ff9900' };
+        const c1 = new THREE.Color(cfg.primary);
+        const c2 = new THREE.Color(cfg.secondary);
+
+        const uniforms = {
+            u_time: { value: 0.0 },
+            u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+            u_color1: { value: c1 },
+            u_color2: { value: c2 }
+        };
+
+        const fragmentShader = `
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            uniform vec3 u_color1;
+            uniform vec3 u_color2;
+
+            void main() {
+                vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;
+                
+                float t1 = u_time * 0.4;
+                float t2 = u_time * 0.5;
+                float t3 = u_time * 0.3;
+                
+                float blob1 = 0.08 / length(uv - vec2(0.4 * sin(t1), 0.6 * cos(t1 * 0.8)));
+                float blob2 = 0.09 / length(uv - vec2(0.5 * cos(t2), 0.3 * sin(t2 * 1.2)));
+                float blob3 = 0.1 / length(uv - vec2(0.3 * sin(t3 * 1.1), 0.5 * cos(t3 * 0.9)));
+                float blob4 = 0.07 / length(uv - vec2(-0.4 * cos(t1 * 1.3), -0.6 * sin(t2 * 0.7)));
+
+                float field = blob1 + blob2 + blob3 + blob4;
+
+                float alpha = smoothstep(1.0, 1.1, field);
+
+                vec2 uv_norm = gl_FragCoord.xy / u_resolution.xy;
+                vec3 color = mix(u_color1, u_color2, uv_norm.y + 0.1 * sin(u_time));
+                
+                vec3 bg = mix(u_color1 * 0.15, vec3(0.02, 0.0, 0.02), uv_norm.y);
+
+                gl_FragColor = vec4(mix(bg, color, alpha), 1.0);
+            }
+        `;
+
+        const vertexShader = `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `;
+
+        const material = new THREE.ShaderMaterial({
+            vertexShader,
+            fragmentShader,
+            uniforms,
+            depthWrite: false
+        });
+
+        const geometry = new THREE.PlaneGeometry(2, 2);
+        const mesh = new THREE.Mesh(geometry, material);
+        this.scene.add(mesh);
+        this.objects.push(mesh);
+        this.materials.push(material);
+
+        this.customUpdate = () => {
+            uniforms.u_time.value = this.time;
+            uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
+        };
+    },
+
     initParticles() {
         this.scene.background = this.getCssColor('--bg-primary', 0x100516);
         

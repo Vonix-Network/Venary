@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Themes & UI** — Built a new WebGL-powered Lava Lamp background using custom shaders.
+- **Themes & UI** — Restored theme customization options (Settings icons) for dynamic backgrounds like Pink Bubbles and Lava Lamp in the Personalization modal.
 - **Navigation** — Built a Minecraft creeper SVG and replaced the generic grid navigation icon for the Minecraft extension.
 - **Themes & UI** â€” Integrated Three.js to support WebGL animated backgrounds. Added 7 new interactive 3D themes (Cyberpunk, Matrix, Stars, Geometry, Fluid, Aurora, Particles) to the Themes Store.
 - **Themes & UI** — Decoupled Layout, Color Palette, and Backgrounds into independent options inside the new Appearance Settings modal. Users can now freely mix-and-match CSS colors with any 2D canvas or 3D WebGL background engine.

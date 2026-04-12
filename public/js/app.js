@@ -1404,7 +1404,7 @@ var App = {
         }
 
         // 4. Background Engine Map
-        const webGLThemes = ['webgl-cyber', 'webgl-matrix', 'webgl-stars', 'webgl-geometry', 'webgl-fluid', 'webgl-aurora', 'webgl-particles'];
+        const webGLThemes = ['webgl-cyber', 'webgl-matrix', 'webgl-stars', 'webgl-geometry', 'webgl-fluid', 'webgl-aurora', 'webgl-particles', 'webgl-lavalamp'];
         const isWebGL = webGLThemes.includes(bg);
 
         const particleCanvas = document.getElementById('particle-canvas');
@@ -1463,7 +1463,7 @@ var App = {
             html += '<div class="input-group"><label>Lava Color 2</label><input type="color" id="ts-lava-c2" class="input-field" value="' + cfg.secondary + '"></div>';
             html += '<div style="display:flex;gap:10px;margin-top:20px;">';
             html += '<button class="btn btn-primary" onclick="App.saveThemeSettings(\'lavalamp\')" style="flex:1;">Save Settings</button>';
-            html += '<button class="btn btn-secondary" onclick="localStorage.removeItem(\'venary_bg_lavalamp\'); if(typeof ParticleEngine !== \'undefined\') ParticleEngine.refreshTheme(); document.getElementById(\'theme-settings-modal\').remove(); App.showToast(\'Reset to Default\',\'success\');" title="Reset to Defaults">Reset</button>';
+            html += '<button class="btn btn-secondary" onclick="localStorage.removeItem(\'venary_bg_lavalamp\'); if(typeof WebGLEngine !== \'undefined\') WebGLEngine.refreshTheme(\'webgl-lavalamp\'); document.getElementById(\'theme-settings-modal\').remove(); App.showToast(\'Reset to Default\',\'success\');" title="Reset to Defaults">Reset</button>';
             html += '</div></div></div></div>';
             document.body.insertAdjacentHTML('beforeend', html);
         }
@@ -1486,7 +1486,12 @@ var App = {
         }
         document.getElementById('theme-settings-modal')?.remove();
         const currentBg = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
-        if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme(currentBg);
+        const webGLThemes = ['webgl-cyber', 'webgl-matrix', 'webgl-stars', 'webgl-geometry', 'webgl-fluid', 'webgl-aurora', 'webgl-particles', 'webgl-lavalamp'];
+        if (webGLThemes.includes(currentBg)) {
+            if (typeof WebGLEngine !== 'undefined') WebGLEngine.refreshTheme(currentBg);
+        } else {
+            if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme(currentBg);
+        }
         App.showToast('Theme settings applied automatically!', 'success');
     },
 
