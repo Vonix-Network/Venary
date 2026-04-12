@@ -1,6 +1,16 @@
-# Dynamic.md — Venary Live Application & Messenger Upgrade Plan
+# Dynamic.md — Venary Live Application & Messenger Roadmap
 
-> **Purpose**: This document serves as the comprehensive implementation blueprint for converting Venary from a request-response application into a fully real-time "Live Application" powered by Socket.IO, and for building a Discord/Slack-style Messenger extension with servers, channels, bots, webhooks, roles, and a dedicated `/messenger/` layout.
+> **Purpose**: Comprehensive implementation blueprint for converting Venary from a request-response application into a fully real-time **Live Application** powered by Socket.IO (Phase 1), and building a Discord/Slack-style **Messenger Extension** with servers, channels, bots, webhooks, roles, and a dedicated `/messenger/` layout (Phase 2).
+
+---
+
+## Current Status
+
+| Area | Status | Notes |
+|---|---|---|
+| **Top Navbar layout** | ✅ Stable | Carousel removed; `OverflowNav` singleton enforces 5-item window with slide-in overflow drawer |
+| **Phase 1 — Live Application** | 🔲 Not started | All checklist items pending |
+| **Phase 2 — Messenger Extension** | 🔲 Not started | Depends on Phase 1 event bus |
 
 ---
 
