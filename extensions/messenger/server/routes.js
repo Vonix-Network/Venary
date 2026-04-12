@@ -25,6 +25,7 @@ module.exports = function (db, { io } = {}) {
     router.use('/', require('./routes/webhooks')(db, ns));
     router.use('/', require('./routes/bots')(db, ns));
     router.use('/', require('./routes/dm')(db, ns));
+    router.use('/', require('./routes/settings')(db, ns));
 
     // Health check / info
     router.get('/info', (req, res) => {

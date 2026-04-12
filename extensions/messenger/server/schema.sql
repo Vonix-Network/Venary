@@ -213,6 +213,41 @@ CREATE TABLE IF NOT EXISTS custom_emojis (
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
 );
 
+-- Messenger user settings (per-user privacy/notification/appearance config)
+CREATE TABLE IF NOT EXISTS messenger_settings (
+    user_id TEXT PRIMARY KEY,
+    -- Privacy
+    allow_dms TEXT DEFAULT 'everyone',          -- 'everyone' | 'friends' | 'nobody'
+    message_requests INTEGER DEFAULT 1,         -- 1 = non-friends go through requests
+    auto_accept_requests INTEGER DEFAULT 0,     -- 1 = auto-accept all incoming requests
+    show_online_status INTEGER DEFAULT 1,       -- 1 = others can see you as online
+    show_read_receipts INTEGER DEFAULT 1,       -- 1 = show read receipts in DMs
+    allow_friend_requests INTEGER DEFAULT 1,    -- 1 = allow friend requests via DM
+    -- Notifications
+    dm_notifications TEXT DEFAULT 'all',        -- 'all' | 'mentions' | 'none'
+    notification_sounds INTEGER DEFAULT 1,
+    notification_previews INTEGER DEFAULT 1,    -- 1 = show message content in notif
+    -- Appearance
+    compact_mode INTEGER DEFAULT 0,
+    emoji_size TEXT DEFAULT 'medium',           -- 'small' | 'medium' | 'large'
+    link_previews INTEGER DEFAULT 1,
+    -- Advanced
+    developer_mode INTEGER DEFAULT 0,
+    updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+);
+
+-- Message requests (non-friend DM requests when target has message_requests=1)
+CREATE TABLE IF NOT EXISTS message_requests (
+    id TEXT PRIMARY KEY,
+    from_user_id TEXT NOT NULL,
+    to_user_id TEXT NOT NULL,
+    dm_channel_id TEXT,
+    status TEXT DEFAULT 'pending',              -- 'pending' | 'accepted' | 'declined'
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    updated_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    UNIQUE(from_user_id, to_user_id)
+);
+
 -- Indices
 CREATE INDEX IF NOT EXISTS idx_ch_msg_channel  ON channel_messages(channel_id);
 CREATE INDEX IF NOT EXISTS idx_ch_msg_created  ON channel_messages(created_at);
@@ -222,3 +257,5 @@ CREATE INDEX IF NOT EXISTS idx_members_user    ON members(user_id);
 CREATE INDEX IF NOT EXISTS idx_channels_space  ON channels(space_id);
 CREATE INDEX IF NOT EXISTS idx_dm_msg_channel  ON dm_messages(dm_channel_id);
 CREATE INDEX IF NOT EXISTS idx_read_state_user ON read_states(user_id);
+CREATE INDEX IF NOT EXISTS idx_msg_req_to      ON message_requests(to_user_id);
+CREATE INDEX IF NOT EXISTS idx_msg_req_from    ON message_requests(from_user_id);

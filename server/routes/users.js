@@ -19,20 +19,28 @@ function calcLevel(xp) {
     return level;
 }
 
-// Search users
+// Search users — returns all non-banned users matching the query
 router.get('/search', authenticateToken, async (req, res) => {
     try {
         const { q } = req.query;
-        if (!q || q.length < 2) {
+        if (!q || q.trim().length < 1) {
             return res.json([]);
         }
 
+        const term = `%${q.trim()}%`;
         const users = await db.all(
             `SELECT id, username, display_name, avatar, bio, level, status
              FROM users
-             WHERE (username LIKE ? OR display_name LIKE ?) AND id != ?
-             LIMIT 20`,
-            [`%${q}%`, `%${q}%`, req.user.id]
+             WHERE (username LIKE ? OR display_name LIKE ?)
+               AND id != ?
+               AND banned = 0
+             ORDER BY
+               CASE WHEN LOWER(username) = LOWER(?) THEN 0
+                    WHEN LOWER(display_name) = LOWER(?) THEN 0
+                    ELSE 1 END,
+               username ASC
+             LIMIT 25`,
+            [term, term, req.user.id, q.trim(), q.trim()]
         );
 
         res.json(users);

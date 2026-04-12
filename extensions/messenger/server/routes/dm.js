@@ -4,6 +4,18 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { authenticateToken } = require('../../../../server/middleware/auth');
+const mainDb = require('../../../../server/db');
+
+const SETTING_DEFAULTS = {
+    allow_dms: 'everyone',
+    message_requests: 1,
+    auto_accept_requests: 0
+};
+
+async function getTargetSettings(db, userId) {
+    const s = await db.get('SELECT allow_dms, message_requests, auto_accept_requests FROM messenger_settings WHERE user_id = ?', [userId]);
+    return Object.assign({}, SETTING_DEFAULTS, s || {});
+}
 
 module.exports = function (db, ns) {
     const router = express.Router();
@@ -14,6 +26,10 @@ module.exports = function (db, ns) {
             const { target_user_id } = req.body;
             if (!target_user_id) return res.status(400).json({ error: 'target_user_id required' });
             if (target_user_id === req.user.id) return res.status(400).json({ error: 'Cannot DM yourself' });
+
+            // Verify target user exists
+            const targetUser = await mainDb.get('SELECT id FROM users WHERE id = ?', [target_user_id]);
+            if (!targetUser) return res.status(404).json({ error: 'User not found' });
 
             // Check if DM already exists between these two users
             const existing = await db.get(
@@ -26,6 +42,66 @@ module.exports = function (db, ns) {
 
             if (existing) return res.json(existing);
 
+            // Load target user's messenger settings
+            const settings = await getTargetSettings(db, target_user_id);
+
+            // Check allow_dms policy
+            if (settings.allow_dms === 'nobody') {
+                return res.status(403).json({ error: 'This user is not accepting direct messages.' });
+            }
+
+            // Check friendship status
+            const friendship = await mainDb.get(
+                `SELECT status FROM friendships
+                 WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?))
+                 AND status = 'accepted'`,
+                [req.user.id, target_user_id, target_user_id, req.user.id]
+            );
+            const areFriends = !!friendship;
+
+            if (settings.allow_dms === 'friends' && !areFriends) {
+                return res.status(403).json({ error: 'This user only accepts messages from friends.' });
+            }
+
+            // If message requests are enabled and they're not friends, create a request instead
+            if (settings.message_requests && !areFriends && !settings.auto_accept_requests) {
+                // Check for an existing pending request
+                const existingReq = await db.get(
+                    `SELECT * FROM message_requests WHERE from_user_id = ? AND to_user_id = ?`,
+                    [req.user.id, target_user_id]
+                );
+
+                if (existingReq) {
+                    if (existingReq.status === 'accepted') {
+                        // Request was accepted — DM channel should exist
+                        if (existingReq.dm_channel_id) {
+                            const dmChannel = await db.get('SELECT * FROM dm_channels WHERE id = ?', [existingReq.dm_channel_id]);
+                            if (dmChannel) return res.json(dmChannel);
+                        }
+                    } else if (existingReq.status === 'declined') {
+                        return res.status(403).json({ error: 'Your message request was declined.' });
+                    } else {
+                        return res.status(202).json({ message_request: true, request_id: existingReq.id });
+                    }
+                }
+
+                // Create a new message request
+                const reqId = uuidv4();
+                await db.run(
+                    `INSERT INTO message_requests (id, from_user_id, to_user_id, status, created_at, updated_at)
+                     VALUES (?, ?, ?, 'pending', ?, ?)`,
+                    [reqId, req.user.id, target_user_id, new Date().toISOString(), new Date().toISOString()]
+                );
+
+                // Notify target via socket
+                if (ns) {
+                    ns.to(`user:${target_user_id}`).emit('dm:message_request', { request_id: reqId, from_user_id: req.user.id });
+                }
+
+                return res.status(202).json({ message_request: true, request_id: reqId });
+            }
+
+            // Create DM directly
             const dmId = uuidv4();
             const now = new Date().toISOString();
 
@@ -33,18 +109,13 @@ module.exports = function (db, ns) {
                 `INSERT INTO dm_channels (id, type, created_at) VALUES (?, 'dm', ?)`,
                 [dmId, now]
             );
-            await db.run(
-                'INSERT INTO dm_members (dm_channel_id, user_id) VALUES (?, ?)',
-                [dmId, req.user.id]
-            );
-            await db.run(
-                'INSERT INTO dm_members (dm_channel_id, user_id) VALUES (?, ?)',
-                [dmId, target_user_id]
-            );
+            await db.run('INSERT INTO dm_members (dm_channel_id, user_id) VALUES (?, ?)', [dmId, req.user.id]);
+            await db.run('INSERT INTO dm_members (dm_channel_id, user_id) VALUES (?, ?)', [dmId, target_user_id]);
 
             const dmChannel = await db.get('SELECT * FROM dm_channels WHERE id = ?', [dmId]);
             res.status(201).json(dmChannel);
         } catch (err) {
+            console.error('Open DM error:', err);
             res.status(500).json({ error: 'Failed to open DM' });
         }
     });

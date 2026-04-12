@@ -26,6 +26,8 @@ var MessengerPage = {
     _replyToId: null,
     _replyToContent: null,
     _searchDebounce: null,
+    _messengerSettings: null,   // cached settings object
+    _pendingRequests: [],        // pending incoming message requests
 
     // ── Render ──────────────────────────────────────────────────
     async render(container) {
@@ -67,7 +69,7 @@ var MessengerPage = {
         var dmUserId   = this._getHashParam('dm');
 
         this._connectSocket();
-        await Promise.all([this._loadSpaces(), this._loadDMs()]);
+        await Promise.all([this._loadSpaces(), this._loadDMs(), this._loadMessengerSettings(), this._loadMessageRequests()]);
         this._renderSpaceList();
         this._renderSidebarFooter();
         this._showDMList();
@@ -105,6 +107,9 @@ var MessengerPage = {
         this.socket.on('space:deleted',          (d) => this._onSpaceDeleted(d));
         this.socket.on('channel:created',        (c) => this._onChannelCreated(c));
         this.socket.on('channel:deleted',        (d) => this._onChannelDeleted(d));
+        this.socket.on('dm:message_request',     (d) => this._onMessageRequest(d));
+        this.socket.on('dm:request_accepted',    (d) => { this._toast('Your message request was accepted!'); this._loadDMs(); });
+        this.socket.on('dm:request_declined',    (d) => { this._toast('Your message request was declined.'); });
     },
 
     // ── API helpers ─────────────────────────────────────────────
@@ -397,7 +402,7 @@ var MessengerPage = {
     _searchUsersForDM(query) {
         clearTimeout(this._searchDebounce);
         var results = document.getElementById('msn-user-search-results');
-        if (!query || query.length < 2) {
+        if (!query || query.trim().length < 1) {
             if (results) results.innerHTML = '';
             return;
         }
@@ -405,11 +410,15 @@ var MessengerPage = {
 
         this._searchDebounce = setTimeout(async () => {
             try {
-                var users = await this._coreApi('GET', '/users/search?q=' + encodeURIComponent(query));
+                var users = await this._coreApi('GET', '/users/search?q=' + encodeURIComponent(query.trim()));
                 var resultsEl = document.getElementById('msn-user-search-results');
                 if (!resultsEl) return;
 
-                if (!Array.isArray(users) || users.length === 0) {
+                if (!Array.isArray(users)) {
+                    resultsEl.innerHTML = `<div style="padding:8px;color:#ed4245;font-size:0.85rem">${this._esc(users?.error || 'Search error.')}</div>`;
+                    return;
+                }
+                if (users.length === 0) {
                     resultsEl.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:0.85rem">No users found.</div>';
                     return;
                 }
@@ -441,13 +450,16 @@ var MessengerPage = {
         document.getElementById('msn-new-dm-overlay')?.remove();
         try {
             var dm = await this._api('POST', '/dm', { target_user_id: userId });
+            if (dm && dm.message_request) {
+                this._toast('Message request sent! They will be notified.', 4000);
+                return;
+            }
             if (dm && !dm.error) {
-                // Reload DM list and open
                 await this._loadDMs();
                 this._selectDMs();
                 await this._openDM(dm.id);
             } else {
-                this._toast(dm.error || 'Failed to open DM');
+                this._toast(dm?.error || 'Failed to open DM');
             }
         } catch (e) {
             this._toast('Failed to open DM');
@@ -1871,9 +1883,13 @@ var MessengerPage = {
     },
 
     _showUserSettingsMenu(e) {
+        var reqCount = this._pendingRequests.length;
         this._showContextMenu(e.clientX, e.clientY, [
             { label: '👤 View Profile', action: () => { window.location.hash = '#/profile'; } },
             { label: '✏️ Edit Profile', action: () => { if (typeof ProfilePage !== 'undefined') ProfilePage.showEditModal(App.currentUser); } },
+            { separator: true },
+            { label: '💬 Messenger Settings', action: () => this._showMessengerSettings() },
+            { label: reqCount > 0 ? `📨 Message Requests (${reqCount})` : '📨 Message Requests', action: () => this._showMessageRequests() },
             { separator: true },
             { label: '🎨 Appearance', action: () => App.showAppearanceModal() },
             { label: '🔔 Notifications', action: () => this._requestNotificationPermission(true) },
@@ -1882,6 +1898,305 @@ var MessengerPage = {
                 if (typeof App !== 'undefined' && App.logout) App.logout();
             }}
         ]);
+    },
+
+    // ── Messenger Settings & Message Requests ────────────────────
+
+    async _loadMessengerSettings() {
+        try {
+            var s = await this._api('GET', '/settings');
+            if (s && !s.error) this._messengerSettings = s;
+        } catch (e) {}
+    },
+
+    async _loadMessageRequests() {
+        try {
+            var reqs = await this._api('GET', '/requests');
+            if (Array.isArray(reqs)) {
+                this._pendingRequests = reqs;
+                this._updateRequestBadge();
+            }
+        } catch (e) {}
+    },
+
+    _updateRequestBadge() {
+        var count = this._pendingRequests.length;
+        var badge = document.getElementById('msn-req-badge');
+        var btn = document.getElementById('msn-sidebar-footer')?.querySelector('.msn-footer-btn');
+        if (!badge && count > 0 && btn) {
+            badge = document.createElement('span');
+            badge.id = 'msn-req-badge';
+            badge.className = 'msn-req-badge';
+            btn.style.position = 'relative';
+            btn.appendChild(badge);
+        }
+        if (badge) {
+            if (count > 0) { badge.textContent = count > 9 ? '9+' : count; badge.style.display = 'flex'; }
+            else badge.style.display = 'none';
+        }
+    },
+
+    _onMessageRequest(data) {
+        this._loadMessageRequests();
+        this._toast('You have a new message request!', 4000);
+    },
+
+    async _showMessengerSettings() {
+        var s = this._messengerSettings || {};
+        var overlay = document.createElement('div');
+        overlay.className = 'msn-modal-overlay';
+        overlay.id = 'msn-messenger-settings-overlay';
+        overlay.innerHTML = `<div class="msn-modal msn-settings-modal" style="width:700px;max-width:95vw">
+            <div class="msn-settings-sidebar">
+                <div class="msn-settings-section-label">Messenger Settings</div>
+                <button class="msn-settings-tab active" data-tab="privacy" onclick="MessengerPage._switchSettingsTab(this,'mss-privacy')">Privacy & Safety</button>
+                <button class="msn-settings-tab" data-tab="notifications" onclick="MessengerPage._switchSettingsTab(this,'mss-notifications')">Notifications</button>
+                <button class="msn-settings-tab" data-tab="appearance" onclick="MessengerPage._switchSettingsTab(this,'mss-appearance')">Text & Appearance</button>
+                <button class="msn-settings-tab" data-tab="advanced" onclick="MessengerPage._switchSettingsTab(this,'mss-advanced')">Advanced</button>
+            </div>
+            <div class="msn-settings-content">
+                <button class="msn-settings-close" onclick="this.closest('.msn-modal-overlay').remove()">✕</button>
+
+                <!-- Privacy & Safety -->
+                <div id="msn-tab-mss-privacy" class="msn-settings-pane">
+                    <h2>Privacy &amp; Safety</h2>
+
+                    <div class="msn-setting-group">
+                        <div class="msn-setting-label">Who can send you direct messages</div>
+                        <div class="msn-setting-desc">Control who is allowed to open a DM conversation with you.</div>
+                        <select class="msn-setting-select" id="mss-allow-dms" onchange="MessengerPage._saveSetting('allow_dms',this.value)">
+                            <option value="everyone" ${s.allow_dms==='everyone'?'selected':''}>Everyone</option>
+                            <option value="friends"  ${s.allow_dms==='friends'?'selected':''}>Friends Only</option>
+                            <option value="nobody"   ${s.allow_dms==='nobody'?'selected':''}>Nobody</option>
+                        </select>
+                    </div>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('message_requests','Enable Message Requests',
+                            'When on, DMs from non-friends become requests you can accept or decline.',
+                            s.message_requests)}
+                    </div>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('auto_accept_requests','Auto-Accept Message Requests',
+                            'Automatically accept all incoming message requests without review.',
+                            s.auto_accept_requests)}
+                    </div>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('show_online_status','Show Online Status',
+                            'Let other users see when you are online or active.',
+                            s.show_online_status)}
+                    </div>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('show_read_receipts','Show Read Receipts',
+                            'Let people in DMs know when you have read their messages.',
+                            s.show_read_receipts)}
+                    </div>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('allow_friend_requests','Allow Friend Requests via DM',
+                            'Allow users to send you friend requests through direct messages.',
+                            s.allow_friend_requests)}
+                    </div>
+                </div>
+
+                <!-- Notifications -->
+                <div id="msn-tab-mss-notifications" class="msn-settings-pane hidden">
+                    <h2>Notifications</h2>
+
+                    <div class="msn-setting-group">
+                        <div class="msn-setting-label">DM Notification Level</div>
+                        <div class="msn-setting-desc">Choose how you are notified about direct messages.</div>
+                        <select class="msn-setting-select" id="mss-dm-notif" onchange="MessengerPage._saveSetting('dm_notifications',this.value)">
+                            <option value="all"      ${s.dm_notifications==='all'?'selected':''}>All Messages</option>
+                            <option value="mentions" ${s.dm_notifications==='mentions'?'selected':''}>Only Mentions</option>
+                            <option value="none"     ${s.dm_notifications==='none'?'selected':''}>Nothing</option>
+                        </select>
+                    </div>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('notification_sounds','Notification Sounds',
+                            'Play a sound when you receive a new message.',
+                            s.notification_sounds)}
+                    </div>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('notification_previews','Message Preview in Notifications',
+                            'Show message content in desktop and push notifications.',
+                            s.notification_previews)}
+                    </div>
+                </div>
+
+                <!-- Appearance -->
+                <div id="msn-tab-mss-appearance" class="msn-settings-pane hidden">
+                    <h2>Text &amp; Appearance</h2>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('compact_mode','Compact Mode',
+                            'Display messages in a condensed layout with less spacing.',
+                            s.compact_mode)}
+                    </div>
+
+                    <div class="msn-setting-group">
+                        <div class="msn-setting-label">Emoji Size</div>
+                        <div class="msn-setting-desc">Size of emoji displayed in messages.</div>
+                        <select class="msn-setting-select" id="mss-emoji-size" onchange="MessengerPage._saveSetting('emoji_size',this.value)">
+                            <option value="small"  ${s.emoji_size==='small'?'selected':''}>Small</option>
+                            <option value="medium" ${s.emoji_size==='medium'||!s.emoji_size?'selected':''}>Medium</option>
+                            <option value="large"  ${s.emoji_size==='large'?'selected':''}>Large</option>
+                        </select>
+                    </div>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('link_previews','Link Previews',
+                            'Show a preview card when a message contains a URL.',
+                            s.link_previews)}
+                    </div>
+                </div>
+
+                <!-- Advanced -->
+                <div id="msn-tab-mss-advanced" class="msn-settings-pane hidden">
+                    <h2>Advanced</h2>
+
+                    <div class="msn-setting-group">
+                        ${this._settingToggle('developer_mode','Developer Mode',
+                            'Adds "Copy ID" to context menus for messages, users, and channels.',
+                            s.developer_mode)}
+                    </div>
+
+                    <div class="msn-setting-group" style="background:var(--bg-tertiary,#2b2d31);border-radius:8px;padding:12px 16px;margin-top:24px">
+                        <div class="msn-setting-label" style="color:#ed4245">Danger Zone</div>
+                        <div class="msn-setting-desc" style="margin-bottom:8px">These actions cannot be undone easily.</div>
+                        <button class="msn-btn msn-btn-danger" onclick="MessengerPage._clearAllDMHistory()">Clear All DM History (local)</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    },
+
+    _settingToggle(key, label, desc, value) {
+        var checked = value === 1 || value === true || value === '1' ? 'checked' : '';
+        return `<div class="msn-setting-row">
+            <div class="msn-setting-row-text">
+                <div class="msn-setting-label">${label}</div>
+                <div class="msn-setting-desc">${desc}</div>
+            </div>
+            <label class="msn-toggle">
+                <input type="checkbox" ${checked} onchange="MessengerPage._saveSetting('${key}',this.checked?1:0)">
+                <span class="msn-toggle-slider"></span>
+            </label>
+        </div>`;
+    },
+
+    async _saveSetting(key, value) {
+        try {
+            var body = {};
+            body[key] = value;
+            var updated = await this._api('PUT', '/settings', body);
+            if (updated && !updated.error) {
+                this._messengerSettings = updated;
+                this._toast('Setting saved');
+            } else {
+                this._toast(updated?.error || 'Failed to save setting');
+            }
+        } catch (e) {
+            this._toast('Failed to save setting');
+        }
+    },
+
+    async _showMessageRequests() {
+        await this._loadMessageRequests();
+        var reqs = this._pendingRequests;
+
+        var overlay = document.createElement('div');
+        overlay.className = 'msn-modal-overlay';
+        overlay.id = 'msn-requests-overlay';
+
+        var listHtml = '';
+        if (reqs.length === 0) {
+            listHtml = '<div style="color:var(--text-muted);padding:24px 0;text-align:center;font-size:0.9rem">No pending message requests.</div>';
+        } else {
+            listHtml = reqs.map(r => {
+                var sender = r.sender || {};
+                var initials = (sender.display_name || sender.username || '?').charAt(0).toUpperCase();
+                return `<div class="msn-request-row" id="msn-req-${r.id}">
+                    <div class="msn-dm-avatar" style="width:40px;height:40px;font-size:0.9rem;flex-shrink:0">
+                        ${sender.avatar ? `<img src="${this._esc(sender.avatar)}" alt="">` : initials}
+                        <span class="msn-dm-status-dot ${sender.status||'offline'}"></span>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:600;font-size:0.9rem">${this._esc(sender.display_name || sender.username || 'Unknown')}</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted)">@${this._esc(sender.username || r.from_user_id)}</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${new Date(r.created_at).toLocaleDateString()}</div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-shrink:0">
+                        <button class="msn-btn msn-btn-primary" style="padding:6px 14px;font-size:0.8rem"
+                            onclick="MessengerPage._acceptRequest('${r.id}')">Accept</button>
+                        <button class="msn-btn msn-btn-danger" style="padding:6px 14px;font-size:0.8rem"
+                            onclick="MessengerPage._declineRequest('${r.id}')">Decline</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        overlay.innerHTML = `<div class="msn-modal" style="width:500px">
+            <h2 style="margin-bottom:4px">Message Requests</h2>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px">People who want to message you. You will not receive their messages until you accept.</p>
+            <div id="msn-requests-list">${listHtml}</div>
+            <div class="msn-modal-actions" style="margin-top:16px">
+                <button class="msn-btn msn-btn-secondary" onclick="this.closest('.msn-modal-overlay').remove()">Close</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    },
+
+    async _acceptRequest(reqId) {
+        try {
+            var result = await this._api('POST', '/requests/' + reqId + '/accept');
+            if (result && result.dm_channel) {
+                document.getElementById('msn-req-' + reqId)?.remove();
+                this._pendingRequests = this._pendingRequests.filter(r => r.id !== reqId);
+                this._updateRequestBadge();
+
+                // Close the request modal and open the DM
+                document.getElementById('msn-requests-overlay')?.remove();
+                await this._loadDMs();
+                this._selectDMs();
+                await this._openDM(result.dm_channel.id);
+            } else {
+                this._toast(result?.error || 'Failed to accept request');
+            }
+        } catch (e) {
+            this._toast('Failed to accept request');
+        }
+    },
+
+    async _declineRequest(reqId) {
+        try {
+            await this._api('POST', '/requests/' + reqId + '/decline');
+            document.getElementById('msn-req-' + reqId)?.remove();
+            this._pendingRequests = this._pendingRequests.filter(r => r.id !== reqId);
+            this._updateRequestBadge();
+            if (this._pendingRequests.length === 0) {
+                var list = document.getElementById('msn-requests-list');
+                if (list) list.innerHTML = '<div style="color:var(--text-muted);padding:24px 0;text-align:center;font-size:0.9rem">No pending message requests.</div>';
+            }
+            this._toast('Request declined');
+        } catch (e) {
+            this._toast('Failed to decline request');
+        }
+    },
+
+    _clearAllDMHistory() {
+        // This is a local-only action — clears cached messages, not server data
+        this.messages = [];
+        this.dmList = [];
+        this._toast('Local DM cache cleared');
     },
 
     // ── Desktop Notifications ────────────────────────────────────
