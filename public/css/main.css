@@ -725,6 +725,37 @@ html.layout-compact .composer-textarea {
     box-shadow: var(--shadow-md);
     margin-top: 0;
   }
+
+  /* ─── Dropdown group: behave like a peer nav-link in top-nav ─── */
+  html.layout-top-nav .nav-dropdown-group {
+    /* Row item in the flex bar — same height as other nav items */
+    flex-direction: row;
+    align-items: center;
+    height: 68px;
+    flex-shrink: 0;
+  }
+
+  /* Toggle button: column layout, centred — identical to <a class="nav-link"> */
+  html.layout-top-nav .dropdown-toggle {
+    width: 108px;
+    height: 60px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 4px;
+    margin: 0 2px;
+    /* Remove sidebar overrides */
+    justify-content: center !important;
+  }
+
+  /* Chevron: in column layout margin-left:auto pushes it nowhere useful; reset it */
+  html.layout-top-nav .dropdown-chevron {
+    margin-left: 0;
+    /* Scale down slightly so all three elements fit in 60px */
+    width: 12px;
+    height: 12px;
+  }
 }
 
 @media (max-width: 1080px) and (min-width: 769px) {
