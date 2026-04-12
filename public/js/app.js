@@ -19,7 +19,10 @@ var App = {
             const savedLayout = localStorage.getItem('venary_layout') || 'default';
             const savedColor = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
             const savedBg = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
-            this.applyAppearance(savedLayout, savedColor, savedBg);
+            const savedRadius = localStorage.getItem('venary_radius') || 'medium';
+            const savedGlass = localStorage.getItem('venary_glass') || 'light';
+            const savedBorder = localStorage.getItem('venary_border') || 'subtle';
+            this.applyAppearance(savedLayout, savedColor, savedBg, savedRadius, savedGlass, savedBorder);
         }
 
         // Register core routes
@@ -1193,7 +1196,7 @@ var App = {
             let styleHtml = `
                 <div id="pane-style" class="appearance-pane">
                     <h4 style="margin-bottom:10px; color:var(--text-secondary)">UI Corner Radius</h4>
-                    <div class="appearance-grid">
+                    <div class="appearance-grid" style="margin-bottom:20px;">
                         <div class="appearance-card ${radiusId === 'sharp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('radius', 'sharp', this)">
                             <div class="card-preview" style="border-radius:0; border:2px solid #fff"></div><span>Sharp (0px)</span>
                         </div>
@@ -1207,6 +1210,32 @@ var App = {
                             <div class="card-preview" style="border-radius:30px; border:2px solid #fff"></div><span>Pill (Max)</span>
                         </div>
                     </div>
+
+                    <h4 style="margin-bottom:10px; color:var(--text-secondary)">Glassmorphism & Opacity</h4>
+                    <div class="appearance-grid" style="margin-bottom:20px;">
+                        <div class="appearance-card ${glassId === 'solid' ? 'selected' : ''}" onclick="App.selectAppearanceObj('glass', 'solid', this)">
+                            <div class="card-preview" style="background:#2a2a35; border:none;"></div><span>Solid (Opaque)</span>
+                        </div>
+                        <div class="appearance-card ${glassId === 'light' ? 'selected' : ''}" onclick="App.selectAppearanceObj('glass', 'light', this)">
+                            <div class="card-preview" style="background:rgba(42,42,53,0.85); backdrop-filter:blur(4px); border:none;"></div><span>Light Glass</span>
+                        </div>
+                        <div class="appearance-card ${glassId === 'heavy' ? 'selected' : ''}" onclick="App.selectAppearanceObj('glass', 'heavy', this)">
+                            <div class="card-preview" style="background:rgba(42,42,53,0.4); backdrop-filter:blur(10px); border:none;"></div><span>Heavy Glass</span>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-bottom:10px; color:var(--text-secondary)">Card Borders</h4>
+                    <div class="appearance-grid">
+                        <div class="appearance-card ${borderId === 'hidden' ? 'selected' : ''}" onclick="App.selectAppearanceObj('border', 'hidden', this)">
+                            <div class="card-preview" style="background:transparent; border:none;"></div><span>Hidden</span>
+                        </div>
+                        <div class="appearance-card ${borderId === 'subtle' ? 'selected' : ''}" onclick="App.selectAppearanceObj('border', 'subtle', this)">
+                            <div class="card-preview" style="background:transparent; border:1px solid rgba(255,255,255,0.2);"></div><span>Subtle (1px)</span>
+                        </div>
+                        <div class="appearance-card ${borderId === 'glow' ? 'selected' : ''}" onclick="App.selectAppearanceObj('border', 'glow', this)">
+                            <div class="card-preview" style="background:transparent; border:1px solid var(--neon-cyan); box-shadow:0 0 8px var(--neon-cyan);"></div><span>Neon Glow</span>
+                        </div>
+                    </div>
                 </div>
             `;
 
@@ -1216,6 +1245,8 @@ var App = {
                 <input type="hidden" id="sel-color" value="${colorId}">
                 <input type="hidden" id="sel-bg" value="${bgId}">
                 <input type="hidden" id="sel-radius" value="${radiusId}">
+                <input type="hidden" id="sel-glass" value="${glassId}">
+                <input type="hidden" id="sel-border" value="${borderId}">
             `;
 
             let footerHtml = `
@@ -1302,6 +1333,8 @@ var App = {
         const color = document.getElementById('sel-color').value;
         const bg = document.getElementById('sel-bg').value;
         const radius = document.getElementById('sel-radius').value;
+        const glass = document.getElementById('sel-glass').value;
+        const border = document.getElementById('sel-border').value;
         
         let customObj = null;
         if (color === 'custom') {
@@ -1314,7 +1347,7 @@ var App = {
             };
         }
         
-        this.applyAppearance(layout, color, bg, radius, customObj);
+        this.applyAppearance(layout, color, bg, radius, glass, border, customObj);
     },
 
     saveAppearance() {
@@ -1346,9 +1379,9 @@ var App = {
         this.showToast('Appearance settings saved!', 'success');
     },
 
-    applyAppearance(layout, color, bg, radius, customObj = null) {
+    applyAppearance(layout, color, bg, radius, glass = 'light', border = 'subtle', customObj = null) {
         // 1. Layout
-        document.documentElement.classList.remove('layout-default', 'layout-compact', 'layout-wide', 'layout-top-nav');
+        document.documentElement.classList.remove('layout-default', 'layout-compact', 'layout-wide', 'layout-top-nav', 'layout-cyber-float', 'layout-neon-bar');
         if (layout !== 'default') {
             document.documentElement.classList.add('layout-' + layout);
         }
@@ -1356,17 +1389,29 @@ var App = {
         // Boot / tear down the overflow nav engine based on layout
         // Use rAF so the new layout class has applied before measuring
         requestAnimationFrame(() => {
-            if (layout === 'top-nav') {
+            if (layout === 'top-nav' || layout === 'neon-bar') {
                 if (typeof OverflowNav !== 'undefined') OverflowNav.init();
             } else {
                 if (typeof OverflowNav !== 'undefined') OverflowNav.destroy();
             }
         });
 
-        // 2. Styling (Radius)
+        // 2a. Styling (Radius)
         document.documentElement.classList.remove('radius-sharp', 'radius-medium', 'radius-round', 'radius-pill');
         if (radius !== 'medium') {
             document.documentElement.classList.add('radius-' + radius);
+        }
+        
+        // 2b. Styling (Glass)
+        document.documentElement.classList.remove('glass-solid', 'glass-light', 'glass-heavy');
+        if (glass !== 'default') {
+            document.documentElement.classList.add('glass-' + glass);
+        }
+        
+        // 2c. Styling (Border)
+        document.documentElement.classList.remove('border-hidden', 'border-subtle', 'border-glow');
+        if (border !== 'default') {
+            document.documentElement.classList.add('border-' + border);
         }
 
         // 3. Color Scheme

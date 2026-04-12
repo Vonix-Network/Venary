@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Themes & UI** — Introduced extensive new personalization options for "Glassmorphism & Opacity" (Solid, Light Glass, Heavy Glass) and "Card Borders" (Hidden, Subtle, Neon Glow), allowing users to completely customize the aesthetic of panels, cards, and dropdowns.
 - **Layouts & Navigation** — Initiated Phase 1 of the Enterprise Layouts overhaul. Added 2 brand new highly animated, enterprise-grade navigational layouts: "Cyber-Float" (a glassmorphic floating sidebar) and "Neon-Bar" (an animated, edge-to-edge top navigation bar).
 - **Themes & UI** — Rebuilt all color schemes from scratch, replacing the old legacy names (bame, mykd, gamon, gio, etc.) with 11 brand new beautifully crafted, unique themes (Obsidian, Nebula, Synthwave, Toxic, Magma, Solarflare, Glacier, Bubblegum, Hologram, Stealth, Cyberpunk).
 - **Themes & UI** — Built a new WebGL-powered Lava Lamp background using custom shaders.

@@ -1230,3 +1230,47 @@ html.style-radius-pill {
   0% { box-shadow: inset 3px 0 0 var(--neon-cyan), 0 0 5px rgba(41, 182, 246, 0.2); }
   100% { box-shadow: inset 3px 0 0 var(--neon-cyan), 0 0 15px rgba(41, 182, 246, 0.6); }
 }
+
+/* ========== Personalization Modifiers (Glass & Borders) ========== */
+html.glass-solid {
+  --bg-card: var(--bg-secondary) !important;
+}
+html.glass-solid .post-card, html.glass-solid .appearance-card, html.glass-solid .dropdown-menu {
+  backdrop-filter: none !important;
+}
+html.glass-heavy {
+  --bg-card: rgba(5, 10, 15, 0.4) !important;
+}
+html.glass-heavy .post-card, html.glass-heavy .appearance-card, html.glass-heavy .dropdown-menu, html.glass-heavy .main-nav {
+  backdrop-filter: blur(40px) !important;
+}
+html.glass-light {
+  --bg-card: rgba(15, 20, 25, 0.85) !important;
+}
+html.glass-light .post-card, html.glass-light .appearance-card, html.glass-light .dropdown-menu, html.glass-light .main-nav {
+  backdrop-filter: blur(8px) !important;
+}
+
+html.border-hidden .post-card, 
+html.border-hidden .appearance-card, 
+html.border-hidden .admin-stat-card, 
+html.border-hidden .ext-card, 
+html.border-hidden .comment,
+html.border-hidden .input-field,
+html.border-hidden .dropdown-menu {
+  border-color: transparent !important;
+}
+
+html.border-glow .post-card,
+html.border-glow .appearance-card,
+html.border-glow .admin-stat-card,
+html.border-glow .ext-card,
+html.border-glow .comment,
+html.border-glow .dropdown-menu {
+  border-color: var(--neon-cyan) !important;
+  box-shadow: 0 0 15px rgba(41, 182, 246, 0.15) !important;
+}
+html.border-glow .input-field:focus {
+  border-color: var(--neon-magenta) !important;
+  box-shadow: 0 0 15px rgba(171, 71, 188, 0.3) !important;
+}
