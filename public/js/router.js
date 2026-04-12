@@ -18,9 +18,10 @@ var Router = {
         var queryIndex = fullPath.indexOf('?');
         var path = queryIndex !== -1 ? fullPath.substring(0, queryIndex) : fullPath;
 
-        // Restore nav if leaving admin (only for authenticated users — auth/guest pages handle their own nav state below)
+        // Restore nav if leaving admin/messenger (only for authenticated users — auth/guest pages handle their own nav state below)
         var segments = path.split('/').filter(Boolean);
-        if (segments[0] !== 'admin' && API.token) {
+        var fullscreenPages = ['admin', 'messenger'];
+        if (!fullscreenPages.includes(segments[0]) && API.token) {
             var mainNav = document.getElementById('main-nav');
             var mobileBottomNav = document.getElementById('mobile-bottom-nav');
             var pageContainer = document.getElementById('page-container');

@@ -2,7 +2,7 @@
    Venary Messenger — Main SPA Page
    Discord-like 4-panel layout.
    ======================================= */
-const MessengerPage = {
+var MessengerPage = {
     // ── State ──────────────────────────────────────────────────
     socket: null,
     spaces: [],
@@ -19,8 +19,17 @@ const MessengerPage = {
     messageObserver: null,
     _typingTimeout: null,
 
-    // ── Render ─────────────────��───────────────────────────────
+    // ── Render ──────────────────────────────────────────────────
     async render(container) {
+        // Hide the main nav — messenger is a full-page overlay
+        var mainNav = document.getElementById('main-nav');
+        var mobileBottomNav = document.getElementById('mobile-bottom-nav');
+        var mobileHeader = document.getElementById('mobile-header');
+        if (mainNav) mainNav.classList.add('hidden');
+        if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
+        if (mobileHeader) mobileHeader.classList.add('hidden');
+        container.classList.add('full-width', 'admin-fullscreen');
+
         container.innerHTML = `
         <div class="messenger-root" id="msn-root">
             <div class="msn-space-list" id="msn-space-list"></div>
