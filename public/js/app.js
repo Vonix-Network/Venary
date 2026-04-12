@@ -1093,7 +1093,17 @@ var App = {
             themes.forEach(t => {
                 if (t.id === 'default') return;
                 let bgStyle = 'background: #555';
-                if(t.id === 'obsidian') bgStyle = 'background: linear-gradient(135deg, #FF0033, #99001F)';\n                else if(t.id === 'nebula') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #FF00FF)';\n                else if(t.id === 'synthwave') bgStyle = 'background: linear-gradient(135deg, #FF007F, #00F0FF)';\n                else if(t.id === 'toxic') bgStyle = 'background: linear-gradient(135deg, #39FF14, #00B800)';\n                else if(t.id === 'magma') bgStyle = 'background: linear-gradient(135deg, #FF4500, #FFD700)';\n                else if(t.id === 'solarflare') bgStyle = 'background: linear-gradient(135deg, #FFCC00, #FF6600)';\n                else if(t.id === 'glacier') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #88FFFF)';\n                else if(t.id === 'bubblegum') bgStyle = 'background: linear-gradient(135deg, #FF70A6, #FF9770)';\n                else if(t.id === 'hologram') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #BF00FF)';\n                else if(t.id === 'stealth') bgStyle = 'background: linear-gradient(135deg, #AAAAAA, #445588)';\n                else if(t.id === 'cyberpunk') bgStyle = 'background: linear-gradient(135deg, #FCE205, #FF0055)';
+                if(t.id === 'obsidian') bgStyle = 'background: linear-gradient(135deg, #FF0033, #99001F)';
+                else if(t.id === 'nebula') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #FF00FF)';
+                else if(t.id === 'synthwave') bgStyle = 'background: linear-gradient(135deg, #FF007F, #00F0FF)';
+                else if(t.id === 'toxic') bgStyle = 'background: linear-gradient(135deg, #39FF14, #00B800)';
+                else if(t.id === 'magma') bgStyle = 'background: linear-gradient(135deg, #FF4500, #FFD700)';
+                else if(t.id === 'solarflare') bgStyle = 'background: linear-gradient(135deg, #FFCC00, #FF6600)';
+                else if(t.id === 'glacier') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #88FFFF)';
+                else if(t.id === 'bubblegum') bgStyle = 'background: linear-gradient(135deg, #FF70A6, #FF9770)';
+                else if(t.id === 'hologram') bgStyle = 'background: linear-gradient(135deg, #00FFFF, #BF00FF)';
+                else if(t.id === 'stealth') bgStyle = 'background: linear-gradient(135deg, #AAAAAA, #445588)';
+                else if(t.id === 'cyberpunk') bgStyle = 'background: linear-gradient(135deg, #FCE205, #FF0055)';
                 
                 colorsHtml += `
                     <div class="color-swatch-wrapper ${colorId === t.id ? 'selected' : ''}" onclick="App.selectAppearanceObj('color', '${t.id}', this)">
