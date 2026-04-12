@@ -19,7 +19,6 @@
     padding: var(--space-lg) 0;
     transition: width var(--transition-normal), transform var(--transition-normal);
 }
-
 .nav-scroll-area {
     flex: 1;
     overflow-y: auto;
@@ -29,12 +28,21 @@
     flex-direction: column;
 }
 
-.nav-scroll-area>* {
+.nav-center-links {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-scroll-area > * {
     direction: ltr;
 }
 
 /* Custom Scrollbar for Nav */
-.nav-scroll-area::-webkit-scrollbar {
+.nav-scroll-area::-webkit-scrollbar,
+.nav-center-links::-webkit-scrollbar {
     width: 6px;
 }
 
