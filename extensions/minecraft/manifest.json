@@ -8,7 +8,7 @@
     "nav": [
         {
             "label": "Minecraft",
-            "icon": "grid",
+            "icon": "minecraft",
             "position": 2,
             "dropdown": true,
             "children": [
