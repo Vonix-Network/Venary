@@ -7,6 +7,7 @@
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { JWT_SECRET } = require('../../../server/middleware/auth');
+const mainDb = require('../../../server/db');
 
 module.exports = function attachMessengerNamespace(io, db) {
     const ns = io.of('/messenger');
@@ -26,6 +27,17 @@ module.exports = function attachMessengerNamespace(io, db) {
 
     ns.on('connection', async (socket) => {
         const userId = socket.user.id;
+
+        // Enrich socket.user with display_name and avatar from main DB once per connection
+        try {
+            const profile = await mainDb.get(
+                'SELECT display_name, avatar FROM users WHERE id = ?', [userId]
+            );
+            if (profile) {
+                socket.user.display_name = profile.display_name;
+                socket.user.avatar       = profile.avatar;
+            }
+        } catch (e) { /* non-fatal */ }
         console.log(`[Messenger] User connected: ${socket.user.username}`);
 
         // Join personal room
@@ -79,7 +91,12 @@ module.exports = function attachMessengerNamespace(io, db) {
                 );
 
                 const message = await db.get('SELECT * FROM channel_messages WHERE id = ?', [msgId]);
-                const enriched = { ...message, sender_username: socket.user.username };
+                const enriched = {
+                    ...message,
+                    sender_username:     socket.user.username,
+                    sender_display_name: socket.user.display_name || null,
+                    sender_avatar:       socket.user.avatar       || null
+                };
 
                 ns.to(`channel:${channelId}`).emit('channel:message', enriched);
 
@@ -176,7 +193,12 @@ module.exports = function attachMessengerNamespace(io, db) {
                 );
 
                 const message = await db.get('SELECT * FROM dm_messages WHERE id = ?', [msgId]);
-                const enriched = { ...message, sender_username: socket.user.username };
+                const enriched = {
+                    ...message,
+                    sender_username:     socket.user.username,
+                    sender_display_name: socket.user.display_name || null,
+                    sender_avatar:       socket.user.avatar       || null
+                };
 
                 // Emit to all DM members
                 const members = await db.all(

@@ -171,19 +171,23 @@ module.exports = function (db, ns) {
                 const result = { ...dm, member_ids: memberIds };
 
                 if (dm.type === 'dm') {
-                    // Find the partner (the other user)
                     const partnerId = memberIds.find(id => id !== req.user.id);
                     if (partnerId) {
-                        const partner = await mainDb.get(
-                            'SELECT id, username, display_name, avatar, status FROM users WHERE id = ?',
-                            [partnerId]
-                        );
-                        if (partner) {
-                            result.partner_id           = partner.id;
-                            result.partner_username     = partner.username;
-                            result.partner_display_name = partner.display_name;
-                            result.partner_avatar       = partner.avatar;
-                            result.partner_status       = partner.status || 'offline';
+                        try {
+                            const partner = await mainDb.get(
+                                'SELECT id, username, display_name, avatar, status FROM users WHERE id = ?',
+                                [partnerId]
+                            );
+                            if (partner) {
+                                result.partner_id           = partner.id;
+                                result.partner_username     = partner.username;
+                                result.partner_display_name = partner.display_name;
+                                result.partner_avatar       = partner.avatar;
+                                result.partner_status       = partner.status || 'offline';
+                            }
+                        } catch (e) {
+                            // Non-fatal: partner lookup failed, return raw DM data
+                            console.error('[Messenger] partner lookup failed for', partnerId, e.message);
                         }
                     }
                 }
@@ -193,7 +197,7 @@ module.exports = function (db, ns) {
 
             res.json(enriched);
         } catch (err) {
-            console.error('Fetch DMs error:', err);
+            console.error('[Messenger] Fetch DMs error:', err);
             res.status(500).json({ error: 'Failed to fetch DM channels' });
         }
     });

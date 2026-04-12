@@ -148,7 +148,11 @@ var MessengerPage = {
     async _loadDMs() {
         try {
             var data = await this._api('GET', '/dm');
-            if (Array.isArray(data)) this.dmList = data;
+            if (Array.isArray(data)) {
+                this.dmList = data;
+            } else {
+                console.error('[Messenger] GET /dm returned non-array:', data);
+            }
         } catch (e) { console.error('[Messenger] load DMs:', e); }
     },
 
@@ -1047,11 +1051,30 @@ var MessengerPage = {
     },
 
     _onDmMessage(msg) {
+        // Seed memberCache from inline sender fields on real-time messages
+        if (msg.author_id && (msg.sender_username || msg.sender_display_name)) {
+            if (!this.memberCache[msg.author_id]) {
+                this.memberCache[msg.author_id] = {
+                    username:     msg.sender_username     || null,
+                    display_name: msg.sender_display_name || null,
+                    avatar:       msg.sender_avatar       || null
+                };
+            }
+        }
+
+        // If this DM channel isn't in our list yet, reload the list so it appears
+        var knownDm = this.dmList.find(d => d.id === msg.dm_channel_id);
+        if (!knownDm) {
+            this._loadDMs().then(() => {
+                if (this.activeDmId === null) this._showDMList();
+            });
+        }
+
         if (msg.dm_channel_id === this.activeDmId) {
             this._appendMessage(msg);
         } else {
             this.unreadCounts[msg.dm_channel_id] = (this.unreadCounts[msg.dm_channel_id] || 0) + 1;
-            this._showDMList(); // Re-render to show badge
+            this._showDMList();
             this._sendDesktopNotification('New message', msg.content ? msg.content.slice(0, 80) : '');
         }
         // Update unread badge in top nav
