@@ -1,0 +1,30 @@
+{
+    "id": "messenger",
+    "name": "Venary Messenger",
+    "version": "1.0.0",
+    "description": "Discord-like messaging platform with spaces, channels, roles, bots, webhooks, threads, and rich media.",
+    "author": "Venary",
+    "enabled": true,
+    "nav": [
+        {
+            "label": "Messenger",
+            "icon": "message-square",
+            "route": "/messenger",
+            "position": 2
+        }
+    ],
+    "routes": {
+        "prefix": "/api/ext/messenger",
+        "file": "server/routes.js"
+    },
+    "pages": [
+        {
+            "route": "/messenger",
+            "file": "public/pages/messenger.js",
+            "global": "MessengerPage"
+        }
+    ],
+    "css": [
+        "public/css/messenger.css"
+    ]
+}

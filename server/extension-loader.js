@@ -126,7 +126,10 @@ class ExtensionLoader {
 
                 // If the routes file exports a function, call it with the extension's db
                 if (typeof routeFactory === 'function') {
-                    router = routeFactory(ext.db);
+                    router = routeFactory(ext.db, {
+                        eventBus: require('./events'),
+                        io: app.get('io')
+                    });
                 } else {
                     router = routeFactory;
                 }

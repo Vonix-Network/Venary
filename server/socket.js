@@ -1,7 +1,14 @@
+/* =======================================
+   Venary — Socket.IO Server
+   Handles real-time DMs, presence, and
+   fans out all application events from
+   the centralized event bus.
+   ======================================= */
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { JWT_SECRET } = require('./middleware/auth');
 const db = require('./db');
+const eventBus = require('./events');
 
 // Track online users: { userId: Set<socketId> }
 const onlineUsers = new Map();
@@ -9,12 +16,11 @@ let ioInstance;
 
 function initializeSocket(io) {
     ioInstance = io;
-    // Auth middleware for socket connections
+
+    // ── Auth middleware ──────────────────────────────────────────
     io.use((socket, next) => {
         const token = socket.handshake.auth.token;
-        if (!token) {
-            return next(new Error('Authentication required'));
-        }
+        if (!token) return next(new Error('Authentication required'));
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
             socket.user = decoded;
@@ -29,22 +35,16 @@ function initializeSocket(io) {
         console.log(`User connected: ${socket.user.username} (${userId})`);
 
         // Track online status
-        if (!onlineUsers.has(userId)) {
-            onlineUsers.set(userId, new Set());
-        }
+        if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
         onlineUsers.get(userId).add(socket.id);
 
-        // Update status in DB
         db.run("UPDATE users SET status = 'online', last_seen = ? WHERE id = ?", [new Date().toISOString(), userId])
             .catch(err => console.error('Status update error:', err));
 
-        // Broadcast status to friends
         broadcastPresence(io, userId, 'online');
-
-        // Join user's own room for targeted messages
         socket.join(`user:${userId}`);
 
-        // Send message
+        // ── DM: send message ────────────────────────────────────
         socket.on('send_message', async (data) => {
             try {
                 const { receiver_id, content } = data;
@@ -68,9 +68,7 @@ function initializeSocket(io) {
                     sender_username: socket.user.username
                 };
 
-                // Send to receiver
                 io.to(`user:${receiver_id}`).emit('new_message', message);
-                // Send back to sender for confirmation
                 socket.emit('message_sent', message);
             } catch (err) {
                 console.error('Send message error:', err);
@@ -78,7 +76,7 @@ function initializeSocket(io) {
             }
         });
 
-        // Typing indicator
+        // ── DM: typing indicator ─────────────────────────────────
         socket.on('typing', (data) => {
             const { receiver_id, is_typing } = data;
             io.to(`user:${receiver_id}`).emit('user_typing', {
@@ -88,7 +86,7 @@ function initializeSocket(io) {
             });
         });
 
-        // Mark messages as read
+        // ── DM: mark as read ─────────────────────────────────────
         socket.on('mark_read', async (data) => {
             const { sender_id } = data;
             await db.run(
@@ -96,14 +94,12 @@ function initializeSocket(io) {
                  WHERE sender_id = ? AND receiver_id = ? AND read = 0`,
                 [sender_id, userId]
             );
-
             io.to(`user:${sender_id}`).emit('messages_read', { reader_id: userId });
         });
 
-        // Disconnect
+        // ── Disconnect ───────────────────────────────────────────
         socket.on('disconnect', () => {
             console.log(`User disconnected: ${socket.user.username}`);
-
             const userSockets = onlineUsers.get(userId);
             if (userSockets) {
                 userSockets.delete(socket.id);
@@ -116,17 +112,47 @@ function initializeSocket(io) {
             }
         });
     });
+
+    // ── Global Event Bus Subscriptions ──────────────────────────
+    // Feed
+    eventBus.on('post:created',      (post)  => io.emit('feed:new_post', post));
+    eventBus.on('post:deleted',      (data)  => io.emit('feed:post_deleted', data));
+    eventBus.on('post:updated',      (data)  => io.emit('feed:post_updated', data));
+    eventBus.on('post:liked',        (data)  => io.emit('feed:post_liked', data));
+    eventBus.on('post:unliked',      (data)  => io.emit('feed:post_unliked', data));
+    eventBus.on('comment:created',   (data)  => io.emit('feed:new_comment', data));
+    eventBus.on('comment:deleted',   (data)  => io.emit('feed:comment_deleted', data));
+
+    // Friends
+    eventBus.on('friend:request',  (data) => io.to(`user:${data.to}`).emit('friend:request', data));
+    eventBus.on('friend:accepted', (data) => {
+        io.to(`user:${data.userId}`).emit('friend:accepted', data);
+        io.to(`user:${data.friendId}`).emit('friend:accepted', data);
+    });
+    eventBus.on('friend:removed',  (data) => {
+        io.to(`user:${data.userId}`).emit('friend:removed', data);
+        io.to(`user:${data.friendId}`).emit('friend:removed', data);
+    });
+
+    // Notifications
+    eventBus.on('notification:created', (data) => {
+        io.to(`user:${data.userId}`).emit('notification:new', data);
+    });
+
+    // Users / admin
+    eventBus.on('user:updated',      (data) => io.emit('user:updated', data));
+    eventBus.on('user:banned',       (data) => io.to(`user:${data.userId}`).emit('user:banned', data));
+    eventBus.on('user:unbanned',     (data) => io.to(`user:${data.userId}`).emit('user:unbanned', data));
+    eventBus.on('user:role_changed', (data) => io.to(`user:${data.userId}`).emit('user:role_changed', data));
 }
 
 async function broadcastPresence(io, userId, status) {
-    // Get user's friends
     const friends = await db.all(
         `SELECT CASE WHEN user_id = ? THEN friend_id ELSE user_id END as friend_id
          FROM friendships
          WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'`,
         [userId, userId, userId]
     );
-
     friends.forEach(f => {
         io.to(`user:${f.friend_id}`).emit('presence_update', { user_id: userId, status });
     });
