@@ -475,9 +475,27 @@ var MessengerPage = {
         var messagesEl = document.getElementById('msn-message-area');
         if (messagesEl) messagesEl.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center"><div class="loading-spinner"></div></div>';
 
+        // Find DM metadata from dmList so we can show partner info in header
+        var dmMeta = this.dmList.find(d => d.id === dmId);
+
+        // Pre-populate memberCache for all participants so messages render correctly
+        if (dmMeta && Array.isArray(dmMeta.member_ids)) {
+            await Promise.all(dmMeta.member_ids.map(uid => this._getMemberInfo(uid)));
+        }
+
+        // Also seed cache from inline partner fields on dmMeta
+        if (dmMeta && dmMeta.partner_id && !this.memberCache[dmMeta.partner_id]) {
+            this.memberCache[dmMeta.partner_id] = {
+                username:     dmMeta.partner_username     || null,
+                display_name: dmMeta.partner_display_name || null,
+                avatar:       dmMeta.partner_avatar       || null,
+                status:       dmMeta.partner_status       || 'offline'
+            };
+        }
+
         var messages = await this._loadDMMessages(dmId);
         if (!Array.isArray(messages)) messages = [];
-        this._renderMessageArea(null, messages, true, dmId);
+        this._renderMessageArea(null, messages, true, dmId, dmMeta);
     },
 
     // ── Space Selection ──────────────────────────────────────────
@@ -643,20 +661,46 @@ var MessengerPage = {
         </div>`;
     },
 
-    _renderMessageArea(channel, messages, isDM, dmId) {
+    _renderMessageArea(channel, messages, isDM, dmId, dmMeta) {
         var area = document.getElementById('msn-message-area');
         if (!area) return;
 
-        var title   = channel ? channel.name : (isDM ? 'Direct Message' : '');
+        // Resolve DM partner info for header
+        var partnerName   = '';
+        var partnerAvatar = null;
+        var partnerStatus = 'offline';
+        var partnerId     = null;
+        if (isDM && dmMeta) {
+            if (dmMeta.type === 'group_dm') {
+                partnerName = dmMeta.name || 'Group DM';
+            } else {
+                var currentUserId = App.currentUser ? App.currentUser.id : null;
+                partnerId     = dmMeta.partner_id || (dmMeta.member_ids || []).find(id => id !== currentUserId);
+                var cached    = partnerId ? this.memberCache[partnerId] : null;
+                partnerName   = (cached ? (cached.display_name || cached.username) : null)
+                                || dmMeta.partner_display_name || dmMeta.partner_username || 'Direct Message';
+                partnerAvatar = (cached ? cached.avatar : null) || dmMeta.partner_avatar || null;
+                partnerStatus = (cached ? cached.status : null) || dmMeta.partner_status || 'offline';
+            }
+        }
+
+        var title   = channel ? channel.name : partnerName;
         var topic   = channel ? (channel.topic || '') : '';
-        var icon    = isDM ? '💬' : (channel ? (channel.type === 'voice' ? '🔊' : channel.type === 'announcement' ? '📢' : '#') : '#');
+        var icon    = isDM ? null : (channel ? (channel.type === 'voice' ? '🔊' : channel.type === 'announcement' ? '📢' : '#') : '#');
         var canSend = channel ? channel.type !== 'voice' : isDM;
         var contextId = isDM ? dmId : (channel ? channel.id : null);
 
+        var headerIconHtml = isDM
+            ? `<div class="msn-dm-avatar" style="width:28px;height:28px;font-size:0.75rem;flex-shrink:0;margin-right:4px">
+                ${partnerAvatar ? `<img src="${this._esc(partnerAvatar)}" alt="">` : this._esc((partnerName || '?').charAt(0).toUpperCase())}
+                <span class="msn-dm-status-dot ${this._esc(partnerStatus)}" style="width:8px;height:8px;border-width:1.5px"></span>
+               </div>`
+            : `<span class="msn-ch-icon">${icon}</span>`;
+
         area.innerHTML = `
         <div class="msn-channel-header">
-            <span class="msn-ch-icon">${icon}</span>
-            <span class="msn-ch-name">${this._esc(title)}</span>
+            ${headerIconHtml}
+            <span class="msn-ch-name" ${partnerId ? `onclick="MessengerPage._showUserPopout('${partnerId}',event)" style="cursor:pointer"` : ''}>${this._esc(title)}</span>
             ${topic ? `<span class="msn-ch-topic" title="${this._esc(topic)}">${this._esc(topic)}</span>` : ''}
             <div class="msn-header-actions">
                 <button class="msn-header-btn" title="Search Messages" onclick="MessengerPage._showMessageSearch('${contextId}','${isDM}')">
@@ -693,10 +737,9 @@ var MessengerPage = {
                 : ''}
             ${messages.length === 0 ? `
             <div class="msn-empty-channel">
-                <div class="msn-ch-welcome-icon">${isDM ? '👋' : icon}</div>
-                <h2>${isDM ? 'Start of your conversation' : 'Welcome to #' + this._esc(title)}</h2>
-                <p>${isDM ? 'This is the beginning of your direct message history.' :
-                    'This is the beginning of the <strong>#' + this._esc(title) + '</strong> channel.'}</p>
+                <div class="msn-ch-welcome-icon">${isDM ? (partnerAvatar ? `<img src="${this._esc(partnerAvatar)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">` : '👋') : icon}</div>
+                <h2>${isDM ? 'This is the beginning of your direct message history with <strong>' + this._esc(title) + '</strong>' : 'Welcome to #' + this._esc(title)}</h2>
+                <p>${isDM ? '' : 'This is the beginning of the <strong>#' + this._esc(title) + '</strong> channel.'}</p>
             </div>` : this._renderMessages(messages)}
         </div>
         <div class="msn-reply-preview hidden" id="msn-reply-preview">
@@ -714,7 +757,7 @@ var MessengerPage = {
                 </button>
                 <input type="file" id="msn-file-input" style="display:none" onchange="MessengerPage._handleFileUpload(this,'${contextId}','${isDM}')">
                 <textarea class="msn-chat-input" id="msn-chat-input"
-                    placeholder="Message ${isDM ? '' : '#'}${this._esc(title)}" rows="1"
+                    placeholder="Message ${isDM ? '@' : '#'}${this._esc(title)}" rows="1"
                     data-context="${contextId}" data-isdm="${isDM}"></textarea>
                 <button class="msn-input-emoji" title="Emoji" onclick="MessengerPage._showEmojiPicker()">😊</button>
                 <button class="msn-send-btn" id="msn-send-btn" disabled>
@@ -757,12 +800,23 @@ var MessengerPage = {
         var currentUserId = App.currentUser ? App.currentUser.id : null;
         var isSelf = msg.author_id === currentUserId;
 
-        // Resolve author display from memberCache or fallback
+        // Seed memberCache from inline sender fields (set by backend)
+        if (msg.author_id && (msg.sender_username || msg.sender_display_name)) {
+            if (!this.memberCache[msg.author_id]) {
+                this.memberCache[msg.author_id] = {
+                    username:     msg.sender_username     || null,
+                    display_name: msg.sender_display_name || null,
+                    avatar:       msg.sender_avatar       || null
+                };
+            }
+        }
+
+        // Resolve author display: cache → inline fields → fallback
         var cached = this.memberCache[msg.author_id];
         var authorName = (cached ? (cached.display_name || cached.username) : null)
-            || msg.sender_username || msg.webhook_name
+            || msg.sender_display_name || msg.sender_username || msg.webhook_name
             || (msg.author_id ? msg.author_id.slice(0, 8) : 'Unknown');
-        var authorAvatar = cached ? cached.avatar : null;
+        var authorAvatar = (cached ? cached.avatar : null) || msg.sender_avatar || null;
         var avatarInitial = authorName.charAt(0).toUpperCase();
 
         var time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

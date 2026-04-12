@@ -151,7 +151,7 @@ module.exports = function (db, ns) {
         }
     });
 
-    // GET /dm — List all DM channels for the current user
+    // GET /dm — List all DM channels for the current user, enriched with partner info
     router.get('/dm', authenticateToken, async (req, res) => {
         try {
             const dms = await db.all(
@@ -166,13 +166,34 @@ module.exports = function (db, ns) {
                 [req.user.id]
             );
 
-            const formatted = dms.map(dm => ({
-                ...dm,
-                member_ids: dm.member_ids ? dm.member_ids.split(',') : []
+            const enriched = await Promise.all(dms.map(async dm => {
+                const memberIds = dm.member_ids ? dm.member_ids.split(',') : [];
+                const result = { ...dm, member_ids: memberIds };
+
+                if (dm.type === 'dm') {
+                    // Find the partner (the other user)
+                    const partnerId = memberIds.find(id => id !== req.user.id);
+                    if (partnerId) {
+                        const partner = await mainDb.get(
+                            'SELECT id, username, display_name, avatar, status FROM users WHERE id = ?',
+                            [partnerId]
+                        );
+                        if (partner) {
+                            result.partner_id           = partner.id;
+                            result.partner_username     = partner.username;
+                            result.partner_display_name = partner.display_name;
+                            result.partner_avatar       = partner.avatar;
+                            result.partner_status       = partner.status || 'offline';
+                        }
+                    }
+                }
+
+                return result;
             }));
 
-            res.json(formatted);
+            res.json(enriched);
         } catch (err) {
+            console.error('Fetch DMs error:', err);
             res.status(500).json({ error: 'Failed to fetch DM channels' });
         }
     });
@@ -208,7 +229,27 @@ module.exports = function (db, ns) {
             params.push(limit);
 
             const messages = await db.all(query, params);
-            res.json(messages.reverse());
+            const reversed = messages.reverse();
+
+            // Enrich with sender info from main DB (deduplicated lookups)
+            const userCache = {};
+            const enriched = await Promise.all(reversed.map(async msg => {
+                if (!userCache[msg.author_id]) {
+                    userCache[msg.author_id] = await mainDb.get(
+                        'SELECT username, display_name, avatar FROM users WHERE id = ?',
+                        [msg.author_id]
+                    ) || {};
+                }
+                const u = userCache[msg.author_id];
+                return {
+                    ...msg,
+                    sender_username:     u.username     || null,
+                    sender_display_name: u.display_name || null,
+                    sender_avatar:       u.avatar       || null
+                };
+            }));
+
+            res.json(enriched);
         } catch (err) {
             res.status(500).json({ error: 'Failed to fetch DM messages' });
         }
@@ -242,6 +283,18 @@ module.exports = function (db, ns) {
 
             const message = await db.get('SELECT * FROM dm_messages WHERE id = ?', [msgId]);
 
+            // Attach sender info so clients can render immediately without a lookup
+            const sender = await mainDb.get(
+                'SELECT username, display_name, avatar FROM users WHERE id = ?',
+                [req.user.id]
+            ) || {};
+            const enrichedMsg = {
+                ...message,
+                sender_username:     sender.username     || null,
+                sender_display_name: sender.display_name || null,
+                sender_avatar:       sender.avatar       || null
+            };
+
             if (ns) {
                 // Emit to all DM members
                 const members = await db.all(
@@ -249,11 +302,11 @@ module.exports = function (db, ns) {
                     [req.params.channelId]
                 );
                 members.forEach(m => {
-                    ns.to(`user:${m.user_id}`).emit('dm:message', message);
+                    ns.to(`user:${m.user_id}`).emit('dm:message', enrichedMsg);
                 });
             }
 
-            res.status(201).json(message);
+            res.status(201).json(enrichedMsg);
         } catch (err) {
             res.status(500).json({ error: 'Failed to send DM' });
         }
