@@ -42,8 +42,7 @@ const ParticleEngine = {
         this.animate();
     },
 
-    animate() {
-        if (!this.canvas || !this.ctx || this.paused) return;
+    refreshTheme(forceBgId) {
         this.theme = document.documentElement.getAttribute('data-theme') || 'default'; // keep for color
         this.bgStyle = forceBgId || localStorage.getItem('venary_bg') || this.theme;
         this.entities = []; // Reset entities
@@ -246,6 +245,7 @@ const ParticleEngine = {
     // ─── RENDERERS ───────────────────────────────────────────────────────────────
 
     animate() {
+        if (this.paused) return;
         this.ctx.globalCompositeOperation = 'source-over';
         
         let bgColor = '#000000';

@@ -31,6 +31,7 @@ var Router = {
         if (!isFullscreen && API.token) {
             if (mainNav) mainNav.classList.remove('hidden');
             if (mobileBottomNav) mobileBottomNav.classList.remove('hidden');
+            if (mobileHeader) mobileHeader.classList.remove('hidden');
             if (pageContainer) {
                 pageContainer.classList.remove('admin-fullscreen');
                 pageContainer.classList.remove('full-width');
