@@ -172,7 +172,7 @@ module.exports = function (extDb) {
 
     function requireAdmin(req, res, next) {
         coreDb.get('SELECT role FROM users WHERE id = ?', [req.user.id]).then(u => {
-            if (!u || !['admin', 'superadmin', 'moderator'].includes(u.role)) return res.status(403).json({ error: 'Admin access required' });
+            if (!u || !['admin', 'superadmin'].includes(u.role)) return res.status(403).json({ error: 'Admin access required' });
             next();
         }).catch(() => res.status(500).json({ error: 'Server error' }));
     }

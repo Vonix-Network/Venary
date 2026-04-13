@@ -33,6 +33,12 @@ module.exports = function createForumRoutes(extDb) {
         return user && (user.role === 'admin' || user.role === 'superadmin' || user.role === 'moderator');
     }
 
+    // Admin/superadmin only — moderators cannot manage forum structure
+    async function isAdmin(userId) {
+        const user = await coreDb.get('SELECT role FROM users WHERE id = ?', [userId]);
+        return user && (user.role === 'admin' || user.role === 'superadmin');
+    }
+
     // ==========================================
     // CATEGORIES
     // ==========================================
@@ -92,7 +98,7 @@ module.exports = function createForumRoutes(extDb) {
 
     router.post('/categories', authenticateToken, async (req, res) => {
         try {
-            if (!(await isModOrAdmin(req.user.id))) {
+            if (!(await isAdmin(req.user.id))) {
                 return res.status(403).json({ error: 'Admin access required' });
             }
 
@@ -120,7 +126,7 @@ module.exports = function createForumRoutes(extDb) {
 
     router.put('/categories/:id', authenticateToken, async (req, res) => {
         try {
-            if (!(await isModOrAdmin(req.user.id))) {
+            if (!(await isAdmin(req.user.id))) {
                 return res.status(403).json({ error: 'Admin access required' });
             }
             const cat = await db.get(`SELECT * FROM ${T.categories} WHERE id = ?`, [req.params.id]);
@@ -148,7 +154,7 @@ module.exports = function createForumRoutes(extDb) {
 
     router.delete('/categories/:id', authenticateToken, async (req, res) => {
         try {
-            if (!(await isModOrAdmin(req.user.id))) {
+            if (!(await isAdmin(req.user.id))) {
                 return res.status(403).json({ error: 'Admin access required' });
             }
             const cat = await db.get(`SELECT * FROM ${T.categories} WHERE id = ?`, [req.params.id]);

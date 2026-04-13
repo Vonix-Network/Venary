@@ -31,6 +31,15 @@ const Mailer = {
     },
 
     /**
+     * Strip CRLF characters to prevent email header injection.
+     * @param {string} val
+     * @returns {string}
+     */
+    _sanitizeHeader(val) {
+        return String(val || '').replace(/[\r\n]+/g, ' ').trim();
+    },
+
+    /**
      * Send a single email.
      * @param {Object} opts  – { to, subject, html, text }
      * @returns {Promise<{accepted: string[]}>}
@@ -38,18 +47,27 @@ const Mailer = {
     async send({ to, subject, html, text }) {
         const transport = this._createTransport();
         if (!transport) {
-            console.log(`[Mailer] SMTP not configured — skipping email to ${to} (subject: ${subject})`);
+            logger.info(`[Mailer] SMTP not configured — skipping email (subject: ${subject})`);
+            return { skipped: true };
+        }
+
+        // Sanitize header fields to prevent CRLF / header injection
+        const safeTo      = this._sanitizeHeader(to);
+        const safeSubject = this._sanitizeHeader(subject);
+
+        if (!safeTo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeTo)) {
+            logger.warn('[Mailer] Refusing to send — invalid recipient address');
             return { skipped: true };
         }
 
         const smtp = Config.get('smtp', {});
-        const fromName = Config.get('siteName', 'Venary');
+        const fromName  = this._sanitizeHeader(Config.get('siteName', 'Venary'));
         const fromEmail = smtp.from || smtp.user || `no-reply@venary.app`;
 
         return transport.sendMail({
             from: `"${fromName}" <${fromEmail}>`,
-            to,
-            subject,
+            to: safeTo,
+            subject: safeSubject,
             html,
             text: text || html.replace(/<[^>]+>/g, '')
         });
@@ -146,7 +164,7 @@ const Mailer = {
             subject: `Password Reset Request for ${siteName}`,
             html: this._template(siteName, `
                 <h2 style="color:#00d4ff">🔐 Password Reset</h2>
-                <p>We received a request to reset your password. Click the button below to choose a new password. This link will expire in 1 hour.</p>
+                <p>We received a request to reset your password. Click the button below to choose a new password. This link will expire in 15 minutes.</p>
                 <a href="${resetLink}" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#00d4ff;color:#000;border-radius:8px;text-decoration:none;font-weight:600">Reset Password</a>
                 <p style="margin-top:24px;color:#aaa;font-size:0.85rem">If you did not request this, please ignore this email.</p>
             `)
