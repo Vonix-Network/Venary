@@ -51,8 +51,8 @@ var App = {
             this.onGuest();
         }
 
-        // Load extensions before initializing router
-        await this.loadExtensions();
+        // Load feature pages before initializing router
+        await this.loadFeatures();
 
         // Init router
         Router.init();
@@ -138,108 +138,147 @@ var App = {
     },
 
     // ===========================================
-    // Extension Loading System
+    // Feature Loading System
     // ===========================================
-    async loadExtensions() {
-        try {
-            var extensions = await API.get('/api/extensions');
-            this.extensions = extensions;
 
-            var enabledExts = extensions.filter(function (e) { return e.enabled; });
-            if (enabledExts.length === 0) return;
-
-            // Fetch per-extension access grants for the current user.
-            // Currently only pterodactyl-panel gates its nav behind a DB permission.
-            var pteroAccess = false;
-            var hasPtero = enabledExts.some(function (e) { return e.id === 'pterodactyl-panel'; });
-            if (hasPtero && API.token) {
-                try {
-                    var ar = await API.get('/api/ext/pterodactyl-panel/access/me');
-                    pteroAccess = !!ar.granted;
-                } catch { pteroAccess = false; }
-            }
-            this._extAccessMap = { 'pterodactyl-panel': pteroAccess };
-
-            // Load CSS files
-            enabledExts.forEach(function (ext) {
-                (ext.css || []).forEach(function (cssPath) {
-                    var link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = cssPath;
-                    document.head.appendChild(link);
-                });
-            });
-
-            // Load JS page files and register routes
-            var loadPromises = [];
-            enabledExts.forEach(function (ext) {
-                (ext.pages || []).forEach(function (page) {
-                    loadPromises.push(App._loadScript(page, ext));
-                });
-            });
-            await Promise.all(loadPromises);
-
-            // Inject nav links (access-gated entries filtered here)
-            this._injectNavLinks(enabledExts);
-
-            console.log('🧩 Loaded ' + enabledExts.length + ' extension(s)');
-        } catch (err) {
-            console.warn('Extension loading skipped (not logged in or server error):', err.message || err);
-        }
+    // Feature definitions: CSS, pages (route + global + src), and nav items.
+    // Each feature is gated by App.siteSettings.features[key] !== false.
+    _featureDefs: {
+        images: {
+            css: ['/css/images-admin.css'],
+            pages: [
+                { src: '/js/pages/images-hook.js',  global: 'ImagesHook' },
+                { src: '/js/pages/images-admin.js', global: 'ImagesAdminPage', route: '/admin/images' },
+            ],
+            nav: [],
+        },
+        forum: {
+            css: ['/css/forum.css'],
+            pages: [
+                { src: '/js/pages/forum.js', global: 'ForumPage', route: '/forum' },
+            ],
+            nav: [{ route: '/forum', label: 'Forum', icon: 'grid', position: 30 }],
+        },
+        donations: {
+            css: ['/css/donations.css'],
+            pages: [
+                { src: '/js/pages/donations.js',       global: 'DonationsPage',      route: '/donate' },
+                { src: '/js/pages/donations-admin.js', global: 'DonationsAdminPage', route: '/donations-admin' },
+            ],
+            nav: [{ route: '/donate', label: 'Donate', icon: 'heart', position: 40 }],
+        },
+        minecraft: {
+            css: ['/css/minecraft.css'],
+            pages: [
+                { src: '/js/pages/minecraft.js',       global: 'MinecraftPage',      route: '/servers' },
+                { src: '/js/pages/minecraft.js',       global: 'MinecraftPage',      route: '/mc-leaderboard' },
+                { src: '/js/pages/minecraft.js',       global: 'MinecraftPage',      route: '/mc-link' },
+                { src: '/js/pages/minecraft-admin.js', global: 'MinecraftAdminPage', route: '/mc-admin' },
+            ],
+            nav: [{
+                label: 'Minecraft', icon: 'minecraft', position: 20, dropdown: true,
+                children: [
+                    { route: '/servers',       label: 'Servers',     icon: 'server' },
+                    { route: '/mc-leaderboard', label: 'Leaderboard', icon: 'grid' },
+                    { route: '/mc-link',        label: 'Link Account', icon: 'users' },
+                ],
+            }],
+        },
+        pterodactyl: {
+            css: ['/css/pterodactyl.css'],
+            pages: [
+                { src: '/js/pages/pterodactyl.js',       global: 'PterodactylPage',      route: '/pterodactyl' },
+                { src: '/js/pages/pterodactyl-admin.js', global: 'PterodactylAdminPage', route: '/pterodactyl-admin' },
+            ],
+            // Nav injected after access check in loadFeatures()
+            nav: [],
+            _accessGated: true,
+        },
+        messenger: {
+            css: ['/css/messenger.css'],
+            pages: [
+                { src: '/js/pages/messenger.js', global: 'MessengerPage', route: '/messenger' },
+            ],
+            nav: [{ route: '/messenger', label: 'Messenger', icon: 'message-square', position: 10 }],
+        },
     },
 
-    _loadScript(page, ext) {
+    async loadFeatures() {
+        var features = (App.siteSettings && App.siteSettings.features) || {};
+
+        // Pterodactyl access gate (requires auth)
+        var pteroAccess = false;
+        if (features.pterodactyl !== false && API.token) {
+            try {
+                var ar = await API.get('/api/pterodactyl/access/me');
+                pteroAccess = !!ar.granted;
+            } catch { pteroAccess = false; }
+        }
+
+        var allNavItems = [];
+        var loadPromises = [];
+        var loadedScripts = {};
+
+        Object.keys(this._featureDefs).forEach(function (key) {
+            if (features[key] === false) return; // disabled by admin
+
+            var def = App._featureDefs[key];
+
+            // Load CSS
+            (def.css || []).forEach(function (cssPath) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = cssPath;
+                document.head.appendChild(link);
+            });
+
+            // Load JS pages (deduplicate by src)
+            (def.pages || []).forEach(function (page) {
+                if (!loadedScripts[page.src]) {
+                    loadedScripts[page.src] = App._loadScript(page);
+                    loadPromises.push(loadedScripts[page.src]);
+                }
+                // Always register the route (multiple routes can share same script)
+                if (page.route) {
+                    loadedScripts[page.src].then(function () {
+                        if (page.route && window[page.global] && typeof window[page.global].render === 'function') {
+                            Router.register(page.route, function (c, p) {
+                                window[page.global].render(c, p);
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Collect nav items (skip pterodactyl nav if user has no access)
+            if (def._accessGated && key === 'pterodactyl' && !pteroAccess) return;
+            (def.nav || []).forEach(function (nav) { allNavItems.push(nav); });
+        });
+
+        await Promise.all(loadPromises);
+        this._injectNavLinks(allNavItems);
+    },
+
+    _loadScript(page) {
         return new Promise(function (resolve) {
             var script = document.createElement('script');
             script.src = page.src;
-            script.onload = function () {
-                var globalName = page.global;
-                if (!globalName) {
-                    var idCap = ext.id.charAt(0).toUpperCase() + ext.id.slice(1);
-                    globalName = idCap + 'Page';
-                }
-
-                // If it's a page with a route, register it
-                if (page.route && window[globalName] && typeof window[globalName].render === 'function') {
-                    Router.register(page.route, function (c, p) {
-                        window[globalName].render(c, p);
-                    });
-                    console.log('  🔗 Route registered: ' + page.route + ' \u2192 ' + globalName);
-                }
-                // If it's a global hook (no route), just confirm it loaded
-                else if (window[globalName]) {
-                    console.log('  ⚓ Global hook loaded: ' + globalName);
-                }
-                else {
-                    console.warn('  \u26a0\ufe0f Global "' + globalName + '" not found after loading ' + page.src);
-                }
-                resolve();
-            };
+            script.onload = resolve;
             script.onerror = function () {
-                console.error('Failed to load extension script:', page.src);
+                console.error('Failed to load feature script:', page.src);
                 resolve();
             };
             document.body.appendChild(script);
         });
     },
 
-    _injectNavLinks(extensions) {
+    // navItems: flat array of nav item objects {route, label, icon, position, dropdown?, children?}
+    _injectNavLinks(navItems) {
         var navContainer = document.getElementById('ext-nav-links');
         if (!navContainer) return;
 
         var html = '';
-        var allNavItems = [];
-        var accessMap = App._extAccessMap || {};
-
-        extensions.forEach(function (ext) {
-            // Skip nav entirely if this extension requires an access grant the user doesn't have
-            if (accessMap.hasOwnProperty(ext.id) && !accessMap[ext.id]) return;
-
-            (ext.nav || []).forEach(function (nav) {
-                var item = { ...nav, extId: ext.id };
-                allNavItems.push(item);
-            });
-        });
+        var allNavItems = (navItems || []).slice();
 
         // Sort by position
         allNavItems.sort(function (a, b) { return (a.position || 99) - (b.position || 99); });
@@ -257,13 +296,13 @@ var App = {
                 nav.children.forEach(function (child) {
                     var childIcon = App._getNavIcon(child.icon);
                     var page = child.route.replace('/', '');
-                    html += '<a href="#' + child.route + '" class="nav-link dropdown-item" data-page="' + page + '" id="nav-' + nav.extId + '-' + page + '">' +
+                    html += '<a href="#' + child.route + '" class="nav-link dropdown-item" data-page="' + page + '">' +
                         childIcon + '<span>' + child.label + '</span></a>';
                 });
                 html += '</div></div>';
             } else {
                 var page = nav.route ? nav.route.replace('/', '') : '';
-                html += '<a href="#' + nav.route + '" class="nav-link" data-page="' + page + '" id="nav-' + nav.extId + '">' +
+                html += '<a href="#' + nav.route + '" class="nav-link" data-page="' + page + '">' +
                     iconSvg + '<span>' + nav.label + '</span></a>';
             }
         });

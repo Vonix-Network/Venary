@@ -1,0 +1,507 @@
+/* =======================================
+   Pterodactyl Panel Extension — Styles
+   ======================================= */
+
+/* ── Page layout ── */
+.ptero-page {
+    padding-bottom: 2rem;
+}
+
+/* ── Top bar: title + server selector + status ── */
+.ptero-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.ptero-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.ptero-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    white-space: nowrap;
+}
+
+.ptero-server-select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    padding: 6px 12px;
+    height: 34px;
+    min-width: 180px;
+    max-width: 260px;
+    cursor: pointer;
+    transition: border-color var(--transition-fast);
+}
+
+.ptero-server-select:focus {
+    border-color: var(--border-accent);
+    outline: none;
+}
+
+/* ── Status pill ── */
+.ptero-status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.ptero-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.ptero-status-running  { background: rgba(102,187,106,0.12); border-color: rgba(102,187,106,0.4); color: #a5d6a7; }
+.ptero-status-running .ptero-status-dot  { background: #66bb6a; box-shadow: 0 0 6px #66bb6a; animation: ptero-pulse 2s infinite; }
+.ptero-status-offline  { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.3);  color: #fca5a5; }
+.ptero-status-offline .ptero-status-dot  { background: #ef4444; }
+.ptero-status-starting { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.35); color: #fde68a; }
+.ptero-status-starting .ptero-status-dot { background: #fbbf24; animation: ptero-pulse 1s infinite; }
+.ptero-status-stopping { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.35); color: #fde68a; }
+.ptero-status-stopping .ptero-status-dot { background: #fbbf24; animation: ptero-pulse 1s infinite; }
+
+/* ── Error banner ── */
+.ptero-error-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.35);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    margin-bottom: 1rem;
+    color: #fca5a5;
+    font-size: 0.82rem;
+    animation: ptero-slide-in 0.2s ease;
+}
+
+.ptero-error-banner svg { flex-shrink: 0; color: #f87171; }
+.ptero-error-banner span { flex: 1; }
+
+.ptero-banner-close {
+    background: none;
+    border: none;
+    color: #f87171;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 2px;
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+    line-height: 1;
+}
+.ptero-banner-close:hover { opacity: 1; }
+
+/* ── Main panel card ── */
+.ptero-panel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* ── Power controls bar ── */
+.ptero-power-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-wrap: wrap;
+}
+
+.ptero-power-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.ptero-btn-start {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(102,187,106,0.12);
+    border: 1px solid rgba(102,187,106,0.35);
+    color: #a5d6a7;
+    transition: all var(--transition-fast);
+}
+.ptero-btn-start:hover:not(:disabled) {
+    background: rgba(102,187,106,0.22);
+    border-color: rgba(102,187,106,0.6);
+    box-shadow: 0 0 10px rgba(102,187,106,0.2);
+}
+
+.ptero-stop-group {
+    display: flex;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid rgba(251,191,36,0.35);
+}
+
+.ptero-btn-stop {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(251,191,36,0.1);
+    border: none;
+    border-right: 1px solid rgba(251,191,36,0.25);
+    color: #fde68a;
+    transition: background var(--transition-fast);
+}
+.ptero-btn-stop:hover:not(:disabled) { background: rgba(251,191,36,0.2); }
+
+.ptero-btn-kill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(251,191,36,0.06);
+    border: none;
+    color: #fbbf24;
+    transition: all var(--transition-fast);
+}
+.ptero-btn-kill:hover:not(:disabled) {
+    background: rgba(239,68,68,0.18);
+    color: #fca5a5;
+}
+
+.ptero-btn-restart {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(41,182,246,0.1);
+    border: 1px solid rgba(41,182,246,0.3);
+    color: var(--neon-cyan);
+    transition: all var(--transition-fast);
+}
+.ptero-btn-restart:hover:not(:disabled) {
+    background: rgba(41,182,246,0.2);
+    border-color: rgba(41,182,246,0.55);
+    box-shadow: 0 0 10px rgba(41,182,246,0.15);
+}
+
+.ptero-btn-start:disabled,
+.ptero-btn-stop:disabled,
+.ptero-btn-kill:disabled,
+.ptero-btn-restart:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* ── Console output ── */
+.ptero-console-wrap {
+    position: relative;
+}
+
+.ptero-console-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(0,0,0,0.2);
+}
+
+.ptero-console-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ptero-console-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.ptero-console-dot.red    { background: #ef4444; }
+.ptero-console-dot.yellow { background: #fbbf24; }
+.ptero-console-dot.green  { background: #22c55e; }
+
+.ptero-console-title {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+}
+
+.ptero-console {
+    background: #0a0b0f;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: #c9d1d9;
+    line-height: 1.6;
+    overflow-y: auto;
+    height: 420px;
+    padding: 12px 16px;
+}
+
+.ptero-line {
+    white-space: pre-wrap;
+    word-break: break-all;
+    padding: 1px 0;
+}
+
+/* Colour-coded log levels */
+.ptero-line.info    { color: #c9d1d9; }
+.ptero-line.warn    { color: #fbbf24; }
+.ptero-line.error   { color: #f87171; }
+.ptero-line.success { color: #86efac; }
+.ptero-line.cmd     { color: var(--neon-cyan); opacity: 0.7; }
+
+/* Scrollbar */
+.ptero-console::-webkit-scrollbar { width: 5px; }
+.ptero-console::-webkit-scrollbar-track { background: transparent; }
+.ptero-console::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+.ptero-console::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+/* ── Command input ── */
+.ptero-cmd-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-top: 1px solid var(--border-subtle);
+    background: rgba(0,0,0,0.25);
+}
+
+.ptero-cmd-prompt {
+    padding: 0 10px 0 14px;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--neon-cyan);
+    opacity: 0.7;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.ptero-cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 10px 0;
+    caret-color: var(--neon-cyan);
+}
+
+.ptero-cmd-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+.ptero-cmd-send {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--transition-fast), background var(--transition-fast);
+    flex-shrink: 0;
+}
+.ptero-cmd-send:hover { color: var(--neon-cyan); background: rgba(41,182,246,0.08); }
+.ptero-cmd-send:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Animations ── */
+@keyframes ptero-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+@keyframes ptero-slide-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    .ptero-topbar { flex-direction: column; align-items: flex-start; }
+    .ptero-power-bar { gap: 6px; }
+    .ptero-btn-start, .ptero-btn-restart { flex: 1; justify-content: center; }
+    .ptero-stop-group { flex: 1; }
+    .ptero-btn-stop { flex: 1; justify-content: center; }
+    .ptero-console { height: 300px; font-size: 0.72rem; }
+    .ptero-server-select { min-width: 0; width: 100%; max-width: 100%; }
+}
+
+@media (max-width: 360px) {
+    .ptero-power-bar { flex-direction: column; align-items: stretch; }
+    .ptero-stop-group { width: 100%; }
+}
+
+/* ── Server info bar ── */
+.ptero-info-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 8px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.ptero-info-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+}
+
+.ptero-info-item svg {
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+/* ── Stats row ── */
+.ptero-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.ptero-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.ptero-stat-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+}
+
+.ptero-stat-value {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ptero-stat-sub {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.ptero-graph {
+    width: 100%;
+    height: 36px;
+    display: block;
+    margin-top: 4px;
+}
+
+.ptero-stat-bar-wrap {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+}
+
+.ptero-stat-bar {
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+    min-width: 2px;
+}
+
+@media (max-width: 700px) {
+    .ptero-stats-row {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .ptero-stats-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Player count badge ── */
+.ptero-player-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(102,187,106,0.1);
+    border: 1px solid rgba(102,187,106,0.3);
+    color: #a5d6a7;
+    font-family: var(--font-mono);
+}
+
+.ptero-player-count::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #66bb6a;
+    flex-shrink: 0;
+}

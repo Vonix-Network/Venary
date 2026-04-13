@@ -499,14 +499,14 @@ const ProfilePage = {
     App.showModal('💰 Donation History', '<div style="text-align:center;padding:20px"><div class="loading-spinner"></div></div>');
 
     try {
-      const data = await API.get('/api/ext/donations/my-history');
+      const data = await API.get('/api/donations/my-history');
       const { donations, conversions } = data;
 
       let html = '';
 
       // Current rank summary
       try {
-        const rank = await API.get('/api/ext/donations/my-rank');
+        const rank = await API.get('/api/donations/my-rank');
         if (rank && rank.active && rank.rank_name) {
           const daysLeft = rank.expires_at
             ? Math.max(0, Math.ceil((new Date(rank.expires_at) - Date.now()) / (1000 * 60 * 60 * 24)))

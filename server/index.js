@@ -180,6 +180,7 @@ async function start() {
         app.use('/api/notifications', require('./routes/notifications'));
         app.use('/api/admin',         require('./routes/admin'));
         app.use('/api/themes',        require('./routes/themes'));
+        app.use('/api/features',      require('./routes/features'));
 
         // Public settings endpoint (no auth — used for theming on load)
         app.get('/api/settings', (req, res) => {

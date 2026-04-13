@@ -151,7 +151,7 @@ var ModPage = {
         var content = document.getElementById('mod-content');
         content.innerHTML = '<div class="loading-spinner"></div>';
         try {
-            var recentThreads = await API.get('/api/ext/forum/mod/threads');
+            var recentThreads = await API.get('/api/forum/mod/threads');
 
             if (!recentThreads || recentThreads.length === 0) {
                 content.innerHTML = '<div class="empty-state"><h3>No recent threads</h3><p>The forum is quiet right now.</p></div>';
@@ -190,7 +190,7 @@ var ModPage = {
 
     async toggleForumPin(threadId) {
         try {
-            await API.put('/api/ext/forum/threads/' + threadId + '/pin');
+            await API.put('/api/forum/threads/' + threadId + '/pin');
             App.showToast('Thread pin toggled', 'success');
             this.loadForumMod();
         } catch (e) { App.showToast(e.message, 'error'); }
@@ -198,7 +198,7 @@ var ModPage = {
 
     async toggleForumLock(threadId) {
         try {
-            await API.put('/api/ext/forum/threads/' + threadId + '/lock');
+            await API.put('/api/forum/threads/' + threadId + '/lock');
             App.showToast('Thread lock toggled', 'success');
             this.loadForumMod();
         } catch (e) { App.showToast(e.message, 'error'); }
@@ -208,7 +208,7 @@ var ModPage = {
         var confirmed = await App.confirm('Delete Thread', 'Are you sure you want to PERMANENTLY delete this thread?');
         if (!confirmed) return;
         try {
-            await API.delete('/api/ext/forum/threads/' + threadId);
+            await API.delete('/api/forum/threads/' + threadId);
             App.showToast('Thread deleted', 'success');
             this.loadForumMod();
         } catch (e) { App.showToast(e.message, 'error'); }

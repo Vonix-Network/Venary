@@ -205,7 +205,7 @@ var AdminPage = {
       var pteroGrantedSet = new Set();
       if (isPteroEnabled) {
         try {
-          var pteroAccess = await API.get('/api/ext/pterodactyl-panel/access/users');
+          var pteroAccess = await API.get('/api/pterodactyl/access/users');
           pteroAccess.forEach(function(r) { pteroGrantedSet.add(r.user_id); });
         } catch { /* ignore if not configured */ }
       }
@@ -353,26 +353,25 @@ var AdminPage = {
   },
 
   // ==========================================
-  // EXTENSIONS TAB
+  // FEATURES TAB
   // ==========================================
   async loadExtensions() {
     var content = document.getElementById('admin-content');
     content.innerHTML = '<div class="loading-spinner"></div>';
     try {
-      var extensions = await API.get('/api/extensions');
-      App.extensions = extensions; // Sync global state
+      var extensions = await API.get('/api/features');
       if (extensions.length === 0) {
-        content.innerHTML = '<div class="empty-state" style="padding:4rem 2rem;text-align:center;background:var(--bg-card);border:1px dashed var(--border-subtle);border-radius:16px"><div style="font-size:3rem;margin-bottom:1rem;opacity:0.5">🧩</div><h3 style="margin-bottom:0.5rem">No extensions installed</h3><p style="color:var(--text-muted)">Place extension folders in the <code>extensions/</code> directory to get started.</p></div>';
+        content.innerHTML = '<div class="empty-state" style="padding:4rem 2rem;text-align:center;background:var(--bg-card);border:1px dashed var(--border-subtle);border-radius:16px"><div style="font-size:3rem;margin-bottom:1rem;opacity:0.5">⚡</div><h3 style="margin-bottom:0.5rem">No features configured</h3></div>';
         return;
       }
-      
+
       const activeCount = extensions.filter(e => e.enabled).length;
       
       let html = `
         <div style="display:flex; justify-content:flex-end; margin-bottom: 2rem;">
           <div style="background: linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9)); border: 1px solid rgba(255,255,255,0.05); padding: 10px 16px; border-radius: 12px; display:flex; align-items:center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
             <div style="text-align:right">
-              <div style="font-size: 0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700">Active Extensions</div>
+              <div style="font-size: 0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700">Active Features</div>
               <div style="font-size: 1.2rem; font-weight: 800; color: var(--neon-cyan)">${activeCount} <span style="color:var(--text-muted); font-size: 0.9rem">/ ${extensions.length}</span></div>
             </div>
           </div>
@@ -386,13 +385,11 @@ var AdminPage = {
         const statusBg = isEnabled ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.05)';
         const borderColor = isEnabled ? 'rgba(74,222,128,0.3)' : 'var(--border-subtle)';
 
-        const toggleBtn = isEnabled 
-            ? '<button class="mc-btn" style="background: rgba(239,68,68,0.05); color: var(--neon-magenta); border: 1px solid rgba(239,68,68,0.2); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Disable Extension</button>'
-            : '<button class="mc-btn" style="background: rgba(102,187,106,0.1); color: var(--neon-green); border: 1px solid rgba(102,187,106,0.3); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Enable Extension</button>';
+        const toggleBtn = isEnabled
+            ? '<button class="mc-btn" style="background: rgba(239,68,68,0.05); color: var(--neon-magenta); border: 1px solid rgba(239,68,68,0.2); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Disable</button>'
+            : '<button class="mc-btn" style="background: rgba(102,187,106,0.1); color: var(--neon-green); border: 1px solid rgba(102,187,106,0.3); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Enable</button>';
 
-        const manageBtn = (isEnabled && ext.admin_route)
-            ? '<button class="mc-btn" style="background: rgba(41,182,246,0.1); color: var(--neon-cyan); border: 1px solid rgba(41,182,246,0.3); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1; text-align: center; justify-content: center; display:flex; align-items:center; gap:6px;" onclick="window.location.hash=\'#' + ext.admin_route + '\'"><span>⚙️</span> Manage</button>'
-            : '';
+        const manageBtn = '';
 
         let navBadges = '';
         if (ext.nav && ext.nav.length > 0) {
@@ -413,13 +410,10 @@ var AdminPage = {
                             '🧩' +
                         '</div>' +
                         '<div>' +
-                            '<h3 style="margin: 0 0 4px 0; font-size: 1.2rem; color: var(--text-primary); font-weight: 800; display: flex; align-items: center; gap: 8px;">' +
+                            '<h3 style="margin: 0 0 4px 0; font-size: 1.2rem; color: var(--text-primary); font-weight: 800;">' +
                                 App.escapeHtml(ext.name) +
-                                '<span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; font-family: monospace;">v' + ext.version + '</span>' +
                             '</h3>' +
-                            '<div style="font-size: 0.8rem; color: var(--text-muted);">' +
-                                'by <strong style="color: var(--text-secondary);">' + App.escapeHtml(ext.author || 'Unknown') + '</strong>' +
-                            '</div>' +
+                            '<div style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">' + ext.id + '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div style="background: ' + statusBg + '; color: ' + statusColor + '; border: 1px solid ' + statusColor + '30; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">' +
@@ -430,10 +424,6 @@ var AdminPage = {
                 '<p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0 0 1.5rem 0; flex-grow: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">' +
                     App.escapeHtml(ext.description) +
                 '</p>' +
-
-                '<div style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted); background: rgba(0,0,0,0.15); padding: 8px 12px; border-radius: 8px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.03);">' +
-                    '<span>ID: <span style="color: var(--text-secondary); font-weight: 600;">' + ext.id + '</span></span>' +
-                '</div>' +
 
                 '<div style="display: flex; gap: 10px; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.2rem;">' +
                     toggleBtn +
@@ -454,7 +444,7 @@ var AdminPage = {
 
   async toggleExtension(extId) {
     try {
-      var result = await API.post('/api/extensions/' + extId + '/toggle');
+      var result = await API.post('/api/features/' + extId + '/toggle');
       App.showToast(result.message, 'success');
       this.loadExtensions();
     } catch (err) { App.showToast(err.message, 'error'); }
@@ -525,7 +515,7 @@ var AdminPage = {
     var uuid = await App.prompt('Assign UUID', 'Enter Minecraft UUID to assign to this user:');
     if (!uuid) return;
     try {
-      await API.put('/api/ext/minecraft/admin/users/' + userId + '/minecraft', { minecraft_uuid: uuid });
+      await API.put('/api/minecraft/admin/users/' + userId + '/minecraft', { minecraft_uuid: uuid });
       App.showToast('Minecraft UUID assigned', 'success');
       this.loadUsers();
     } catch (err) {
@@ -543,9 +533,9 @@ var AdminPage = {
     var grant = checkbox.checked;
     try {
       if (grant) {
-        await API.post('/api/ext/pterodactyl-panel/access/' + userId);
+        await API.post('/api/pterodactyl/access/' + userId);
       } else {
-        await API.delete('/api/ext/pterodactyl-panel/access/' + userId);
+        await API.delete('/api/pterodactyl/access/' + userId);
       }
       App.showToast('Panel access ' + (grant ? 'granted' : 'revoked') + '.', 'success');
     } catch (err) {
@@ -841,7 +831,7 @@ var AdminPage = {
     var content = document.getElementById('admin-content');
     content.innerHTML = '<div class="loading-spinner"></div>';
     try {
-      var categories = await API.get('/api/ext/forum/categories');
+      var categories = await API.get('/api/forum/categories');
 
       var addForm = '<div class="admin-settings-card animate-fade-up" style="margin-bottom:var(--space-md)">' +
         '<div class="admin-settings-header"><h3>Add Forum Category</h3></div>' +
@@ -882,7 +872,7 @@ var AdminPage = {
     if (!name) return App.showToast('Please enter a category name', 'error');
 
     try {
-      await API.post('/api/ext/forum/categories', { icon: icon, name: name, description: desc });
+      await API.post('/api/forum/categories', { icon: icon, name: name, description: desc });
       App.showToast('Category created', 'success');
       this.loadForumConfig();
     } catch (err) { App.showToast(err.message, 'error'); }
@@ -891,7 +881,7 @@ var AdminPage = {
   async deleteForumCategory(id) {
     if (!confirm('Are you sure you want to delete this category? All threads and posts inside it will be PERMANENTLY DELETED.')) return;
     try {
-      await API.delete('/api/ext/forum/categories/' + id);
+      await API.delete('/api/forum/categories/' + id);
       App.showToast('Category deleted', 'success');
       this.loadForumConfig();
     } catch (err) { App.showToast(err.message, 'error'); }
@@ -905,7 +895,7 @@ var AdminPage = {
     content.innerHTML = '<div class="loading-spinner"></div>';
     try {
       var s = await API.get('/api/admin/settings');
-      var exts = await API.get('/api/extensions');
+      var exts = await API.get('/api/features');
       var hasMC = exts.find(e => e.id === 'minecraft' && e.enabled);
 
       var html = '<div class="admin-settings-section">' +
