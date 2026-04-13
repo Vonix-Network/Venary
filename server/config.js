@@ -175,6 +175,8 @@ const Config = {
 function deepMerge(target, source) {
     const out = Object.assign({}, target);
     for (const key of Object.keys(source)) {
+        // Prevent prototype pollution
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
         if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])) {
             out[key] = deepMerge(target[key] || {}, source[key]);
         } else {

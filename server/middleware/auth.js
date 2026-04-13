@@ -12,7 +12,7 @@ function authenticateToken(req, res, next) {
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         req.user = decoded;
         next();
     } catch (err) {
@@ -26,7 +26,7 @@ function optionalAuth(req, res, next) {
 
     if (token) {
         try {
-            const decoded = jwt.verify(token, JWT_SECRET);
+            const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
             req.user = decoded;
         } catch (err) {
             // Token invalid, continue without user

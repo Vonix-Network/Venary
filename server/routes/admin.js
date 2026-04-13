@@ -439,10 +439,57 @@ router.post('/settings', authenticateToken, requireAdmin, async (req, res) => {
             return res.status(400).json({ error: 'Invalid accentColor format (use #rrggbb)' });
         }
 
-        // Validate numbers
-        if (updates.xpPerPost !== undefined) updates.xpPerPost = parseInt(updates.xpPerPost) || 10;
-        if (updates.xpPerComment !== undefined) updates.xpPerComment = parseInt(updates.xpPerComment) || 5;
-        if (updates.xpPerLike !== undefined) updates.xpPerLike = parseInt(updates.xpPerLike) || 1;
+        // Validate and clamp numeric settings
+        if (updates.xpPerPost !== undefined) {
+            const v = parseInt(updates.xpPerPost);
+            if (isNaN(v) || v < 0 || v > 10000) return res.status(400).json({ error: 'xpPerPost must be 0–10000' });
+            updates.xpPerPost = v;
+        }
+        if (updates.xpPerComment !== undefined) {
+            const v = parseInt(updates.xpPerComment);
+            if (isNaN(v) || v < 0 || v > 10000) return res.status(400).json({ error: 'xpPerComment must be 0–10000' });
+            updates.xpPerComment = v;
+        }
+        if (updates.xpPerLike !== undefined) {
+            const v = parseInt(updates.xpPerLike);
+            if (isNaN(v) || v < 0 || v > 1000) return res.status(400).json({ error: 'xpPerLike must be 0–1000' });
+            updates.xpPerLike = v;
+        }
+        if (updates.maxUsernameLength !== undefined) {
+            const v = parseInt(updates.maxUsernameLength);
+            if (isNaN(v) || v < 3 || v > 64) return res.status(400).json({ error: 'maxUsernameLength must be 3–64' });
+            updates.maxUsernameLength = v;
+        }
+        if (updates.maxBioLength !== undefined) {
+            const v = parseInt(updates.maxBioLength);
+            if (isNaN(v) || v < 0 || v > 5000) return res.status(400).json({ error: 'maxBioLength must be 0–5000' });
+            updates.maxBioLength = v;
+        }
+
+        // Sanitize string length limits
+        if (updates.siteName !== undefined) updates.siteName = String(updates.siteName).slice(0, 100);
+        if (updates.siteTagline !== undefined) updates.siteTagline = String(updates.siteTagline).slice(0, 200);
+        if (updates.siteDescription !== undefined) updates.siteDescription = String(updates.siteDescription).slice(0, 500);
+        if (updates.maintenanceMessage !== undefined) updates.maintenanceMessage = String(updates.maintenanceMessage).slice(0, 500);
+        if (updates.footerText !== undefined) updates.footerText = String(updates.footerText).slice(0, 300);
+
+        // Validate URL fields
+        const urlRe = /^https?:\/\/.+/i;
+        if (updates.logoUrl && updates.logoUrl !== '' && !urlRe.test(updates.logoUrl)) {
+            return res.status(400).json({ error: 'logoUrl must be a valid http/https URL' });
+        }
+        if (updates.faviconUrl && updates.faviconUrl !== '' && !urlRe.test(updates.faviconUrl)) {
+            return res.status(400).json({ error: 'faviconUrl must be a valid http/https URL' });
+        }
+
+        // Validate levelThresholds
+        if (updates.levelThresholds !== undefined) {
+            if (!Array.isArray(updates.levelThresholds) || updates.levelThresholds.length < 2 ||
+                updates.levelThresholds.length > 50 ||
+                updates.levelThresholds.some(t => typeof t !== 'number' || t < 0 || t > 1e9)) {
+                return res.status(400).json({ error: 'Invalid levelThresholds: must be an array of 2–50 non-negative numbers' });
+            }
+        }
 
         Config.update(updates);
 

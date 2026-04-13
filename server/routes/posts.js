@@ -30,6 +30,9 @@ router.post('/', authenticateToken, async (req, res) => {
         if (content.length > 10000) {
             return res.status(400).json({ error: 'Post content cannot exceed 10,000 characters' });
         }
+        if (image !== undefined && image !== null && image !== '' && !/^https?:\/\/.{1,2000}$/i.test(image)) {
+            return res.status(400).json({ error: 'Image must be a valid http/https URL' });
+        }
 
         const id = uuidv4();
         const now = new Date().toISOString();
@@ -75,7 +78,8 @@ router.post('/', authenticateToken, async (req, res) => {
 // Get feed — public for guests (optionalAuth), only public posts shown when unauthenticated
 router.get('/feed', optionalAuth, async (req, res) => {
     try {
-        const { before, limit = 20 } = req.query;
+        const before = req.query.before;
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 50);
         const userId = req.user ? req.user.id : null;
 
         let query, params;
@@ -194,6 +198,9 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
         const { content } = req.body;
         if (!content || content.trim().length === 0) {
             return res.status(400).json({ error: 'Content is required' });
+        }
+        if (content.length > 2000) {
+            return res.status(400).json({ error: 'Comment cannot exceed 2,000 characters' });
         }
 
         const postId = req.params.id;
@@ -327,6 +334,12 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
         const { content, image } = req.body;
+        if (content !== undefined && content.length > 10000) {
+            return res.status(400).json({ error: 'Post content cannot exceed 10,000 characters' });
+        }
+        if (image !== undefined && image !== null && image !== '' && !/^https?:\/\/.{1,2000}$/i.test(image)) {
+            return res.status(400).json({ error: 'Image must be a valid http/https URL' });
+        }
         const post = await db.get('SELECT * FROM posts WHERE id = ?', [req.params.id]);
         if (!post) {
             return res.status(404).json({ error: 'Post not found' });

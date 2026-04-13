@@ -161,6 +161,9 @@ router.put('/profile', authenticateToken, async (req, res) => {
             values.push(JSON.stringify(skin_animation));
         }
         if (avatar !== undefined) {
+            if (avatar !== '' && !/^https?:\/\/.{1,2000}$/i.test(avatar)) {
+                return res.status(400).json({ error: 'Avatar must be a valid http/https URL' });
+            }
             updates.push('avatar = ?');
             values.push(avatar);
         }

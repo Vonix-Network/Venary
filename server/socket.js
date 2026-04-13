@@ -15,6 +15,19 @@ const eventBus = require('./events');
 const onlineUsers = new Map();
 let ioInstance;
 
+// Simple in-memory per-socket rate limiter
+// Returns true if the action is allowed, false if rate-limited
+function socketRateLimit(store, key, maxPerWindow, windowMs) {
+    const now = Date.now();
+    if (!store.has(key)) store.set(key, { count: 0, resetAt: now + windowMs });
+    const entry = store.get(key);
+    if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
+    entry.count++;
+    return entry.count <= maxPerWindow;
+}
+const msgRateLimitStore  = new Map(); // send_message: 30/min per socket
+const typingRateLimitStore = new Map(); // typing: 60/min per socket
+
 function initializeSocket(io) {
     ioInstance = io;
 
@@ -48,6 +61,9 @@ function initializeSocket(io) {
         // ── DM: send message ────────────────────────────────────
         socket.on('send_message', async (data) => {
             try {
+                if (!socketRateLimit(msgRateLimitStore, socket.id, 30, 60 * 1000)) {
+                    return socket.emit('error', { message: 'Message rate limit exceeded. Please slow down.' });
+                }
                 const { receiver_id, content } = data;
                 if (!receiver_id || !content) return;
 
@@ -84,7 +100,9 @@ function initializeSocket(io) {
 
         // ── DM: typing indicator ─────────────────────────────────
         socket.on('typing', (data) => {
+            if (!socketRateLimit(typingRateLimitStore, socket.id, 60, 60 * 1000)) return;
             const { receiver_id, is_typing } = data;
+            if (!receiver_id) return;
             io.to(`user:${receiver_id}`).emit('user_typing', {
                 user_id: userId,
                 username: socket.user.username,
@@ -106,6 +124,8 @@ function initializeSocket(io) {
         // ── Disconnect ───────────────────────────────────────────
         socket.on('disconnect', () => {
             logger.info('socket_disconnected', { username: socket.user.username });
+            msgRateLimitStore.delete(socket.id);
+            typingRateLimitStore.delete(socket.id);
             const userSockets = onlineUsers.get(userId);
             if (userSockets) {
                 userSockets.delete(socket.id);

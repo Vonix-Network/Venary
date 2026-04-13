@@ -50,6 +50,16 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: `Username must be 3–${maxUsernameLength} characters` });
         }
 
+        // Only allow alphanumeric, underscores, and hyphens
+        if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+            return res.status(400).json({ error: 'Username may only contain letters, numbers, underscores, and hyphens' });
+        }
+
+        // Basic email format check
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+            return res.status(400).json({ error: 'Invalid email address' });
+        }
+
         if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
             return res.status(400).json({ error: 'Password must be at least 8 characters and contain a letter and a number' });
         }
@@ -70,7 +80,7 @@ router.post('/register', async (req, res) => {
             [id, username, email, hashedPassword, display_name || username, now]
         );
 
-        const token = jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '2h' });
 
         // Link any completed guest donations that used this email address
         try {
@@ -135,7 +145,7 @@ router.post('/login', async (req, res) => {
         // Update last seen
         await db.run("UPDATE users SET last_seen = ?, status = ? WHERE id = ?", [new Date().toISOString(), 'online', user.id]);
 
-        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '2h' });
 
         logger.security('login_success', { userId: user.id, username: user.username, ip });
 
@@ -177,7 +187,7 @@ router.post('/forgot-password', async (req, res) => {
 
         // Generate a cryptographically random token, store it in DB with 1h expiry
         const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = Date.now() + 60 * 60 * 1000;
+        const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
         await db.run('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]);
         await db.run(
             'INSERT INTO password_reset_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
