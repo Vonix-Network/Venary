@@ -125,23 +125,20 @@ router.get('/feed', optionalAuth, async (req, res) => {
 
         // Enrich posts with donation rank badges
         try {
-            const extLoader = require('../extension-loader');
-            const donDb = extLoader.getExtensionDb('donations');
-            if (donDb) {
-                const userIds = [...new Set(posts.map(p => p.user_id))];
-                for (const uid of userIds) {
-                    const ur = await donDb.get(
-                        `SELECT r.name, r.color, r.icon FROM user_ranks ur
-                         LEFT JOIN donation_ranks r ON ur.rank_id = r.id
-                         WHERE ur.user_id = ? AND ur.active = 1`, [uid]);
-                    if (ur) {
-                        posts.filter(p => p.user_id === uid).forEach(p => {
-                            p.donation_rank = { name: ur.name, color: ur.color, icon: ur.icon };
-                        });
-                    }
+            const userIds = [...new Set(posts.map(p => p.user_id))];
+            for (const uid of userIds) {
+                const ur = await db.get(
+                    `SELECT r.name, r.color, r.icon FROM user_ranks ur
+                     LEFT JOIN donation_ranks r ON ur.rank_id = r.id
+                     WHERE ur.user_id = ? AND ur.active = 1
+                     AND (ur.expires_at IS NULL OR ur.expires_at > ?)`, [uid, new Date().toISOString()]);
+                if (ur) {
+                    posts.filter(p => p.user_id === uid).forEach(p => {
+                        p.donation_rank = { name: ur.name, color: ur.color, icon: ur.icon };
+                    });
                 }
             }
-        } catch { /* donations ext not loaded */ }
+        } catch { /* donations tables may not exist yet */ }
 
         res.json(posts);
     } catch (err) {
@@ -276,23 +273,20 @@ router.get('/:id/comments', optionalAuth, async (req, res) => {
 
         // Enrich comments with donation rank badges
         try {
-            const extLoader = require('../extension-loader');
-            const donDb = extLoader.getExtensionDb('donations');
-            if (donDb) {
-                const userIds = [...new Set(comments.map(c => c.user_id))];
-                for (const uid of userIds) {
-                    const ur = await donDb.get(
-                        `SELECT r.name, r.color, r.icon FROM user_ranks ur
-                         LEFT JOIN donation_ranks r ON ur.rank_id = r.id
-                         WHERE ur.user_id = ? AND ur.active = 1`, [uid]);
-                    if (ur) {
-                        comments.filter(c => c.user_id === uid).forEach(c => {
-                            c.donation_rank = { name: ur.name, color: ur.color, icon: ur.icon };
-                        });
-                    }
+            const userIds = [...new Set(comments.map(c => c.user_id))];
+            for (const uid of userIds) {
+                const ur = await db.get(
+                    `SELECT r.name, r.color, r.icon FROM user_ranks ur
+                     LEFT JOIN donation_ranks r ON ur.rank_id = r.id
+                     WHERE ur.user_id = ? AND ur.active = 1
+                     AND (ur.expires_at IS NULL OR ur.expires_at > ?)`, [uid, new Date().toISOString()]);
+                if (ur) {
+                    comments.filter(c => c.user_id === uid).forEach(c => {
+                        c.donation_rank = { name: ur.name, color: ur.color, icon: ur.icon };
+                    });
                 }
             }
-        } catch { /* donations ext not loaded */ }
+        } catch { /* donations tables may not exist yet */ }
 
         res.json(comments);
     } catch (err) {

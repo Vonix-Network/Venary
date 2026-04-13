@@ -93,34 +93,33 @@ router.get('/:id', authenticateToken, async (req, res) => {
         );
         user.friend_count = friendCount.count;
 
-        // Fetch Minecraft data if extension is loaded
-        const extLoader = require('../extension-loader');
-        const mcExt = extLoader.extensions.get('minecraft');
+        // Fetch Minecraft linked account data
         user.total_xp = user.xp;
         user.minecraft_xp = 0;
-        if (mcExt && mcExt.enabled && mcExt.db) {
-            try {
-                const link = await mcExt.db.get('SELECT minecraft_xp, minecraft_username, minecraft_uuid FROM linked_accounts WHERE user_id = ?', [user.id]);
-                if (link) {
-                    user.minecraft_xp = link.minecraft_xp || 0;
-                    user.total_xp = user.xp + user.minecraft_xp;
-                    user.minecraft_username = link.minecraft_username;
-                    user.minecraft_uuid = link.minecraft_uuid;
-                }
-            } catch (e) { /* ignore */ }
-        }
+        try {
+            const link = await db.get(
+                'SELECT minecraft_xp, minecraft_username, minecraft_uuid FROM linked_accounts WHERE user_id = ?',
+                [user.id]
+            );
+            if (link) {
+                user.minecraft_xp    = link.minecraft_xp || 0;
+                user.total_xp        = user.xp + user.minecraft_xp;
+                user.minecraft_username = link.minecraft_username;
+                user.minecraft_uuid  = link.minecraft_uuid;
+            }
+        } catch { /* linked_accounts table may not exist */ }
 
-        // Fetch donation rank if extension is loaded
-        const donExt = extLoader.extensions.get('donations');
-        if (donExt && donExt.enabled && donExt.db) {
-            try {
-                const ur = await donExt.db.get(
-                    `SELECT r.name, r.color, r.icon FROM user_ranks ur
-                     LEFT JOIN donation_ranks r ON ur.rank_id = r.id
-                     WHERE ur.user_id = ? AND ur.active = 1`, [user.id]);
-                if (ur) user.donation_rank = { name: ur.name, color: ur.color, icon: ur.icon };
-            } catch (e) { /* ignore */ }
-        }
+        // Fetch active donation rank
+        try {
+            const ur = await db.get(
+                `SELECT r.name, r.color, r.icon FROM user_ranks ur
+                 LEFT JOIN donation_ranks r ON ur.rank_id = r.id
+                 WHERE ur.user_id = ? AND ur.active = 1
+                 AND (ur.expires_at IS NULL OR ur.expires_at > ?)`,
+                [user.id, new Date().toISOString()]
+            );
+            if (ur) user.donation_rank = { name: ur.name, color: ur.color, icon: ur.icon };
+        } catch { /* donation_ranks table may not exist */ }
 
         res.json(user);
     } catch (err) {

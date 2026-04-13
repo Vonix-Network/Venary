@@ -246,11 +246,7 @@ async function start() {
         // Make io available globally
         app.set('io', io);
 
-        // Load remaining extensions that haven't been migrated yet (PHPBB fallback)
-        const extensionLoader = require('./extension-loader');
-        await extensionLoader.loadAll(app, dbConfig);
-
-        // Deploy Discord commands (including those registered by extensions)
+        // Deploy Discord commands
         await discordBot.deployCommands();
 
         // Serve node modules (for UI libraries like skin3d)
