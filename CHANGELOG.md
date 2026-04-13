@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Messenger — UI & Mobile Polish** — Full structural and visual rebuild of the messenger UI to achieve Discord/Fluxer-parity. The Friends list has been integrated directly into the main message view via a "Friends" button in the sidebar. Fully implemented mobile responsive design featuring a slide-in sidebar (toggleable via hamburger menu), adjusted touch targets (44px minimum), safe-area insets for notches/keyboards, and long-press touch support for context menus. Fixed markdown underline rendering.
 - **Messenger — Settings System** — Full Discord-style per-user settings modal accessible from the gear button in the messenger sidebar footer. Organised into four tabs:
   - *Privacy & Safety*: Who can DM you (Everyone / Friends Only / Nobody), Message Requests toggle, Auto-Accept Requests, Show Online Status, Show Read Receipts, Allow Friend Requests via DM.
   - *Notifications*: DM notification level (All / Mentions / Nothing), Notification Sounds, Message Preview in Notifications.

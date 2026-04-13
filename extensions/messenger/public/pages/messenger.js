@@ -76,6 +76,23 @@ var MessengerPage = {
 
         if (inviteCode) this._acceptInviteByCode(inviteCode);
         if (dmUserId)   this._startDM(dmUserId);
+
+        // Setup long press for context menu
+        var touchTimer = null;
+        var touchEl = null;
+        container.addEventListener('touchstart', (e) => {
+            touchEl = e.target.closest('[oncontextmenu]');
+            if (!touchEl) return;
+            touchTimer = setTimeout(() => {
+                var ev = new Event('contextmenu', {bubbles: true, cancelable: true});
+                ev.clientX = e.touches[0].clientX;
+                ev.clientY = e.touches[0].clientY;
+                touchEl.dispatchEvent(ev);
+            }, 500);
+        }, {passive: true});
+        container.addEventListener('touchmove', () => clearTimeout(touchTimer), {passive: true});
+        container.addEventListener('touchend', () => clearTimeout(touchTimer), {passive: true});
+        container.addEventListener('touchcancel', () => clearTimeout(touchTimer), {passive: true});
     },
 
     // ── Socket ──────────────────────────────────────────────────
@@ -287,50 +304,121 @@ var MessengerPage = {
         <input class="msn-search-input" id="msn-dm-filter" placeholder="Find or start a conversation"
             oninput="MessengerPage._filterDMs(this.value)">`;
 
-        this._renderDMItems(scroll, this.dmList);
-        this._loadFriendsSection(scroll);
+        // Render the Friends button at the top of the scroll area
+        var friendsBtnHtml = `
+            <div class="msn-dm-item" id="msn-friends-btn" onclick="MessengerPage._showFriendsInMain()" style="margin-bottom:8px">
+                <div class="msn-dm-avatar" style="width:32px;height:32px;background:transparent;display:flex;align-items:center;justify-content:center;color:var(--text-primary)">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></path>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <div style="flex:1;min-width:0;font-weight:600;font-size:0.95rem;">Friends</div>
+            </div>
+            <div class="msn-friends-section-label" style="margin-top:0">DIRECT MESSAGES</div>
+        `;
+
+        scroll.innerHTML = friendsBtnHtml;
+        var dmContainer = document.createElement('div');
+        dmContainer.id = 'msn-dm-list-container';
+        scroll.appendChild(dmContainer);
+
+        this._renderDMItems(dmContainer, this.dmList);
     },
 
-    async _loadFriendsSection(scroll) {
+    async _showFriendsInMain() {
+        this.activeChannelId = null;
+        this.activeDmId = null;
+
+        var sidebar = document.getElementById('msn-channel-sidebar');
+        if (sidebar) sidebar.classList.remove('msn-sidebar-open');
+        
+        // Highlight friends button
+        document.querySelectorAll('.msn-dm-item, .msn-channel-item').forEach(el => el.classList.remove('active'));
+        var fBtn = document.getElementById('msn-friends-btn');
+        if (fBtn) fBtn.classList.add('active');
+
+        var area = document.getElementById('msn-message-area');
+        if (!area) return;
+
+        area.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center"><div class="loading-spinner"></div></div>';
+
         try {
             var friends = await this._coreApi('GET', '/friends');
-            if (!Array.isArray(friends) || friends.length === 0) return;
-            var container = document.getElementById('msn-channel-scroll');
-            if (!container) return;
-            // Remove any old section
-            var old = container.querySelector('.msn-friends-section');
-            if (old) old.remove();
+            if (!Array.isArray(friends)) friends = [];
 
-            var section = document.createElement('div');
-            section.className = 'msn-friends-section';
-            section.innerHTML = `
-                <div class="msn-friends-section-label" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('hidden')">
-                    <span class="msn-caret">▼</span> Friends — ${friends.filter(f => f.status === 'online').length} Online
-                </div>
-                <div id="msn-friends-list">
-                    ${friends.map(f => {
-                        var name = this._esc(f.display_name || f.username);
-                        var initials = (f.display_name || f.username || '?').charAt(0).toUpperCase();
-                        var avatar = f.avatar
-                            ? `<img src="${this._esc(f.avatar)}" alt="">`
-                            : initials;
-                        return `<div class="msn-friend-item" onclick="MessengerPage._startDM('${f.id}')">
-                            <div class="msn-dm-avatar" style="width:28px;height:28px;font-size:0.72rem;flex-shrink:0">
-                                ${avatar}
-                                <span class="msn-dm-status-dot ${f.status || 'offline'}"></span>
-                            </div>
-                            <span class="msn-friend-name">${name}</span>
-                            <button class="msn-friend-msg-btn" title="Send Message"
+            var online = friends.filter(f => f.status === 'online' || f.status === 'idle');
+            var offline = friends.filter(f => !f.status || f.status === 'offline');
+
+            var renderFriend = (f) => {
+                var name = this._esc(f.display_name || f.username);
+                var tag = this._esc(f.username);
+                var initials = (f.display_name || f.username || '?').charAt(0).toUpperCase();
+                var avatar = f.avatar ? `<img src="${this._esc(f.avatar)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` 
+                                      : `<div style="width:40px;height:40px;border-radius:50%;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:bold">${initials}</div>`;
+                
+                return `
+                <div class="msn-main-friend-item" style="display:flex;align-items:center;padding:12px;border-top:1px solid var(--border);cursor:pointer;border-radius:8px;transition:background 0.2s" 
+                     onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'"
+                     onclick="MessengerPage._startDM('${f.id}')">
+                    <div style="position:relative;margin-right:12px">
+                        ${avatar}
+                        <span class="msn-dm-status-dot ${f.status || 'offline'}" style="position:absolute;bottom:0;right:0;width:12px;height:12px;border:2px solid var(--bg-primary)"></span>
+                    </div>
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:1rem">${name} <span style="font-size:0.85rem;color:var(--text-muted);font-weight:normal;margin-left:4px">@${tag}</span></div>
+                        <div style="font-size:0.85rem;color:var(--text-muted)">${f.status === 'online' ? 'Online' : 'Offline'}</div>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button class="msn-msg-action-btn" title="Message" style="background:var(--bg-secondary);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center"
                                 onclick="event.stopPropagation();MessengerPage._startDM('${f.id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                </svg>
-                            </button>
-                        </div>`;
-                    }).join('')}
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>`;
-            container.appendChild(section);
-        } catch (e) { /* friends endpoint failure is non-fatal */ }
+            };
+
+            area.innerHTML = `
+            <div class="msn-channel-header" style="border-bottom:1px solid var(--border)">
+                <span class="msn-ch-icon" style="margin-right:8px">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></path><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                </span>
+                <span class="msn-ch-name">Friends</span>
+                <div style="margin-left:24px;display:flex;gap:16px;font-size:0.9rem;font-weight:600;color:var(--text-muted)">
+                    <span style="color:var(--text-primary);cursor:pointer">Online</span>
+                    <span style="cursor:pointer" onclick="MessengerPage._toast('All friends view not implemented yet')">All</span>
+                </div>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:16px 32px">
+                ${online.length > 0 ? `
+                    <div style="font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:8px">ONLINE — ${online.length}</div>
+                    <div style="display:flex;flex-direction:column;margin-bottom:24px">
+                        ${online.map(renderFriend).join('')}
+                    </div>
+                ` : ''}
+                ${offline.length > 0 ? `
+                    <div style="font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:8px">OFFLINE — ${offline.length}</div>
+                    <div style="display:flex;flex-direction:column">
+                        ${offline.map(renderFriend).join('')}
+                    </div>
+                ` : ''}
+                ${friends.length === 0 ? `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:16px">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></path><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <p>No one's around to play with Wumpus.</p>
+                    </div>
+                ` : ''}
+            </div>
+            `;
+        } catch (e) {
+            area.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted)">Failed to load friends.</div>';
+        }
     },
 
     _renderDMItems(scroll, list) {
@@ -647,6 +735,9 @@ var MessengerPage = {
             el.classList.toggle('active', el.id === 'ch-' + channelId);
             if (el.id === 'ch-' + channelId) el.classList.remove('has-unread');
         });
+        
+        var sidebar = document.getElementById('msn-channel-sidebar');
+        if (sidebar) sidebar.classList.remove('msn-sidebar-open');
 
         if (this.socket) this.socket.emit('join_channel', channelId);
 
@@ -664,6 +755,11 @@ var MessengerPage = {
     },
 
     // ── Message Area ─────────────────────────────────────────────
+    _toggleMobileSidebar() {
+        var sidebar = document.getElementById('msn-channel-sidebar');
+        if (sidebar) sidebar.classList.toggle('msn-sidebar-open');
+    },
+
     _clearMessageArea() {
         var area = document.getElementById('msn-message-area');
         if (!area) return;
@@ -714,6 +810,9 @@ var MessengerPage = {
 
         area.innerHTML = `
         <div class="msn-channel-header">
+            <button class="msn-header-btn msn-mobile-menu-btn" onclick="MessengerPage._toggleMobileSidebar()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
             ${headerIconHtml}
             <span class="msn-ch-name" ${partnerId ? `onclick="MessengerPage._showUserPopout('${partnerId}',event)" style="cursor:pointer"` : ''}>${this._esc(title)}</span>
             ${topic ? `<span class="msn-ch-topic" title="${this._esc(topic)}">${this._esc(topic)}</span>` : ''}
@@ -920,7 +1019,7 @@ var MessengerPage = {
         s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
         // Bold
         s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
+        s = s.replace(/__(.+?)__/g, '<u>$1</u>');
         // Italic
         s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
         s = s.replace(/_([^_\n]+)_/g, '<em>$1</em>');

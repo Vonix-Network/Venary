@@ -833,13 +833,67 @@
 
 /* ── Responsive: hide member list on smaller screens ────────────── */
 @media (max-width: 900px) {
-    .msn-member-list { display: none; }
+    .msn-member-list { display: none !important; }
 }
 @media (max-width: 640px) {
-    .msn-channel-sidebar { display: none; }
-    .msn-channel-sidebar.msn-sidebar-open { display: flex; position: absolute; z-index: 50; height: 100%; }
-    .msn-space-list { width: 56px; min-width: 56px; }
-    .msn-space-icon { width: 40px; height: 40px; }
+    .msn-space-list { width: 48px; min-width: 48px; }
+    .msn-space-icon { width: 36px; height: 36px; }
+    
+    .msn-channel-sidebar { 
+        display: none; 
+        position: absolute; 
+        left: 48px; 
+        top: 0; 
+        bottom: 0; 
+        z-index: 50; 
+        height: 100%; 
+        width: 240px; 
+        box-shadow: 4px 0 16px rgba(0,0,0,0.5);
+    }
+    .msn-channel-sidebar.msn-sidebar-open { 
+        display: flex; 
+    }
+    
+    .msn-message-area {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        background: var(--bg-primary);
+    }
+    
+    .msn-mobile-menu-btn {
+        display: flex !important;
+    }
+    
+    .msn-input-area {
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+    
+    .msn-msg-content {
+        font-size: 0.875rem;
+    }
+    .msn-msg-timestamp {
+        font-size: 0.68rem;
+    }
+    .msn-msg-group {
+        line-height: 1.4;
+    }
+    
+    .msn-modal, .msn-emoji-picker {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    /* Touch targets */
+    .msn-channel-item, .msn-dm-item, .msn-ctx-item, .msn-btn, .msn-header-btn, .msn-msg-action-btn, .msn-reaction {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+@media (min-width: 641px) {
+    .msn-mobile-menu-btn {
+        display: none !important;
+    }
 }
 
 /* ── Context menu ──────────────────────────────────────────────── */
