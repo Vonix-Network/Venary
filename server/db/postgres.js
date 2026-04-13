@@ -49,6 +49,8 @@ class PostgresAdapter {
                 .replace(/DEFAULT \(CURRENT_TIMESTAMP\)/gi, "DEFAULT (NOW()::TEXT)")
                 .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, "SERIAL PRIMARY KEY")
                 .replace(/AUTOINCREMENT/gi, "")
+                // SQLite strftime('%s','now') → PostgreSQL epoch integer
+                .replace(/strftime\s*\(\s*'%s'\s*,\s*'now'\s*\)/gi, "EXTRACT(EPOCH FROM NOW())::INTEGER")
                 // SQLite REAL type → DOUBLE PRECISION
                 .replace(/\bREAL\b/g, "DOUBLE PRECISION")
                 // SQLite BLOB type → BYTEA
@@ -97,6 +99,9 @@ class PostgresAdapter {
         else if (/^INSERT OR REPLACE INTO/i.test(s)) {
             s = s.replace(/^INSERT OR REPLACE INTO/i, 'INSERT INTO') + ' ON CONFLICT DO NOTHING';
         }
+
+        // Translate SQLite-specific functions to PostgreSQL equivalents
+        s = s.replace(/strftime\s*\(\s*'%s'\s*,\s*'now'\s*\)/gi, "EXTRACT(EPOCH FROM NOW())::INTEGER");
 
         // Convert ? placeholders to $1, $2, ... for pg
         let paramIdx = 0;
