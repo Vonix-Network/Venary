@@ -36,4 +36,8 @@
 
   --shadow-neon: 0 0 20px rgba(252, 226, 5, 0.2);
   --shadow-neon-strong: 0 0 32px rgba(252, 226, 5, 0.4);
+
+  /* Sidebar: deep teal-black gradient, electric yellow border slash */
+  --nav-bg: linear-gradient(180deg, rgba(1,22,26,0.92) 0%, rgba(1,10,11,0.88) 100%);
+  --nav-border-glow: rgba(252, 226, 5, 0.3);
 }

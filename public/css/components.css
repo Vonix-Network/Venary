@@ -9,10 +9,10 @@
     top: 0;
     width: var(--nav-width);
     height: 100vh;
-    background: rgba(5, 6, 10, 0.4);
+    background: var(--nav-bg);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
-    border-right: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--nav-border-glow);
     display: flex;
     flex-direction: column;
     z-index: var(--z-nav);

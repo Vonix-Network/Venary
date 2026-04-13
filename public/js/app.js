@@ -22,7 +22,8 @@ var App = {
             const savedRadius = localStorage.getItem('venary_radius') || 'medium';
             const savedGlass = localStorage.getItem('venary_glass') || 'light';
             const savedBorder = localStorage.getItem('venary_border') || 'subtle';
-            this.applyAppearance(savedLayout, savedColor, savedBg, savedRadius, savedGlass, savedBorder);
+            const savedNavStyle = localStorage.getItem('venary_nav_style') || 'gradient';
+            this.applyAppearance(savedLayout, savedColor, savedBg, savedRadius, savedGlass, savedBorder, null, savedNavStyle);
         }
 
         // Register core routes
@@ -995,6 +996,7 @@ var App = {
         const radiusId = localStorage.getItem('venary_radius') || 'medium';
         const glassId = localStorage.getItem('venary_glass') || 'light';
         const borderId = localStorage.getItem('venary_border') || 'subtle';
+        const navStyleId = localStorage.getItem('venary_nav_style') || 'gradient';
         const customObj = JSON.parse(localStorage.getItem('venary_custom_colors')) || {
             bgPrimary: '#05060a',
             bgCard: '#0a0c14',
@@ -1175,10 +1177,12 @@ var App = {
                             <span>Classic Dust</span>
                         </div>
                         <div class="appearance-card ${bgId === 'pink' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'pink', this)">
-                            <div class="card-preview" style="background:linear-gradient(45deg, #2a0a18, #110008)"></div><span>Pink Bubbles</span>
+                            <div class="card-preview" style="background:linear-gradient(45deg, #2a0a18, #110008)"></div><span>Bubbles</span>
+                            <button class="card-settings-btn" onclick="event.stopPropagation(); App.openThemeSettings('pink')" title="Customize Bubbles">⚙</button>
                         </div>
                         <div class="appearance-card ${bgId === 'lavalamp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'lavalamp', this)">
                             <div class="card-preview" style="background:linear-gradient(180deg, #330000, #000)"></div><span>Lava Lamp</span>
+                            <button class="card-settings-btn" onclick="event.stopPropagation(); App.openThemeSettings('lavalamp')" title="Customize Lava Lamp">⚙</button>
                         </div>
                     </div>
                     <h4 style="margin-bottom:10px; color:var(--neon-cyan)">3D WebGL Experiences</h4>
@@ -1232,7 +1236,7 @@ var App = {
                     </div>
 
                     <h4 style="margin-bottom:10px; color:var(--text-secondary)">Card Borders</h4>
-                    <div class="appearance-grid">
+                    <div class="appearance-grid" style="margin-bottom:20px;">
                         <div class="appearance-card ${borderId === 'hidden' ? 'selected' : ''}" onclick="App.selectAppearanceObj('border', 'hidden', this)">
                             <div class="card-preview" style="background:transparent; border:none;"></div><span>Hidden</span>
                         </div>
@@ -1241,6 +1245,19 @@ var App = {
                         </div>
                         <div class="appearance-card ${borderId === 'glow' ? 'selected' : ''}" onclick="App.selectAppearanceObj('border', 'glow', this)">
                             <div class="card-preview" style="background:transparent; border:1px solid var(--neon-cyan); box-shadow:0 0 8px var(--neon-cyan);"></div><span>Neon Glow</span>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-bottom:10px; color:var(--text-secondary)">Sidebar Background</h4>
+                    <div class="appearance-grid">
+                        <div class="appearance-card ${navStyleId === 'gradient' ? 'selected' : ''}" onclick="App.selectAppearanceObj('navstyle', 'gradient', this)">
+                            <div class="card-preview" style="background:linear-gradient(180deg,#0a0c14 0%,#181a2a 55%,#0a0c14 100%);"></div><span>Gradient (Theme)</span>
+                        </div>
+                        <div class="appearance-card ${navStyleId === 'solid' ? 'selected' : ''}" onclick="App.selectAppearanceObj('navstyle', 'solid', this)">
+                            <div class="card-preview" style="background:#0a0c14; border:1px solid rgba(255,255,255,0.08);"></div><span>Flat / Solid</span>
+                        </div>
+                        <div class="appearance-card ${navStyleId === 'accent' ? 'selected' : ''}" onclick="App.selectAppearanceObj('navstyle', 'accent', this)">
+                            <div class="card-preview" style="background:#0a0c14; border-top:3px solid var(--neon-cyan);"></div><span>Flat + Accent Bar</span>
                         </div>
                     </div>
                 </div>
@@ -1254,6 +1271,7 @@ var App = {
                 <input type="hidden" id="sel-radius" value="${radiusId}">
                 <input type="hidden" id="sel-glass" value="${glassId}">
                 <input type="hidden" id="sel-border" value="${borderId}">
+                <input type="hidden" id="sel-navstyle" value="${navStyleId}">
             `;
 
             let footerHtml = `
@@ -1331,7 +1349,10 @@ var App = {
         const colorId = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
         const bgId = localStorage.getItem('venary_bg') || localStorage.getItem('venary_theme') || 'default';
         const radiusId = localStorage.getItem('venary_radius') || 'medium';
-        this.applyAppearance(layoutId, colorId, bgId, radiusId);
+        const glassId = localStorage.getItem('venary_glass') || 'light';
+        const borderId = localStorage.getItem('venary_border') || 'subtle';
+        const navStyleId = localStorage.getItem('venary_nav_style') || 'gradient';
+        this.applyAppearance(layoutId, colorId, bgId, radiusId, glassId, borderId, null, navStyleId);
         document.getElementById('themes-modal').remove();
     },
 
@@ -1342,7 +1363,8 @@ var App = {
         const radius = document.getElementById('sel-radius').value;
         const glass = document.getElementById('sel-glass').value;
         const border = document.getElementById('sel-border').value;
-        
+        const navStyle = document.getElementById('sel-navstyle').value;
+
         let customObj = null;
         if (color === 'custom') {
             customObj = {
@@ -1353,8 +1375,8 @@ var App = {
                 neon2: document.getElementById('cf_neon2') ? document.getElementById('cf_neon2').value : '#7C4DFF',
             };
         }
-        
-        this.applyAppearance(layout, color, bg, radius, glass, border, customObj);
+
+        this.applyAppearance(layout, color, bg, radius, glass, border, customObj, navStyle);
     },
 
     saveAppearance() {
@@ -1362,12 +1384,18 @@ var App = {
         const color = document.getElementById('sel-color').value;
         const bg = document.getElementById('sel-bg').value;
         const radius = document.getElementById('sel-radius').value;
+        const glass = document.getElementById('sel-glass').value;
+        const border = document.getElementById('sel-border').value;
+        const navStyle = document.getElementById('sel-navstyle').value;
 
         localStorage.setItem('venary_layout', layout);
         localStorage.setItem('venary_color', color);
         localStorage.setItem('venary_bg', bg);
         localStorage.setItem('venary_radius', radius);
-        
+        localStorage.setItem('venary_glass', glass);
+        localStorage.setItem('venary_border', border);
+        localStorage.setItem('venary_nav_style', navStyle);
+
         let customObj = null;
         if (color === 'custom') {
             customObj = {
@@ -1380,13 +1408,13 @@ var App = {
             localStorage.setItem('venary_custom_colors', JSON.stringify(customObj));
         }
 
-        this.applyAppearance(layout, color, bg, radius, customObj);
+        this.applyAppearance(layout, color, bg, radius, glass, border, customObj, navStyle);
 
         document.getElementById('themes-modal').remove();
         this.showToast('Appearance settings saved!', 'success');
     },
 
-    applyAppearance(layout, color, bg, radius, glass = 'light', border = 'subtle', customObj = null) {
+    applyAppearance(layout, color, bg, radius, glass = 'light', border = 'subtle', customObj = null, navStyle = 'gradient') {
         // 1. Layout
         document.documentElement.classList.remove('layout-default', 'layout-compact', 'layout-wide', 'layout-top-nav', 'layout-cyber-float', 'layout-neon-bar');
         if (layout !== 'default') {
@@ -1420,6 +1448,15 @@ var App = {
         if (border !== 'default') {
             document.documentElement.classList.add('border-' + border);
         }
+
+        // 2d. Styling (Nav Background Style)
+        document.documentElement.classList.remove('nav-solid', 'nav-accent');
+        if (navStyle === 'solid') {
+            document.documentElement.classList.add('nav-solid');
+        } else if (navStyle === 'accent') {
+            document.documentElement.classList.add('nav-accent');
+        }
+        // 'gradient' is the default — no class needed
 
         // 3. Color Scheme
         document.documentElement.setAttribute('data-theme', color);
@@ -1515,7 +1552,7 @@ var App = {
             const cfg = JSON.parse(localStorage.getItem('venary_bg_pink')) || { preset: 'pink', style: 'bubbles', colors: ['#ff70a6', '#ff9770'] };
             if (!cfg.colors || cfg.colors.length < 2) cfg.colors = ['#ff70a6', '#ff9770'];
 
-            let html = '<div class="modal-overlay" id="theme-settings-modal"><div class="modal" style="width:400px; max-width:90vw;"><div class="modal-header"><div class="modal-title">⚙ Pink Theme Settings</div><button class="btn btn-ghost modal-close" onclick="document.getElementById(\'theme-settings-modal\').remove()">✕</button></div><div class="modal-body auth-form">';
+            let html = '<div class="modal-overlay" id="theme-settings-modal"><div class="modal" style="width:400px; max-width:90vw;"><div class="modal-header"><div class="modal-title">⚙ Bubbles Settings</div><button class="btn btn-ghost modal-close" onclick="document.getElementById(\'theme-settings-modal\').remove()">✕</button></div><div class="modal-body auth-form">';
             html += '<div class="input-group"><label>Particle Style</label><select id="ts-style" class="input-field"><option value="bubbles"' + (cfg.style === 'bubbles' ? ' selected' : '') + '>Bubbles</option><option value="ribbons"' + (cfg.style === 'ribbons' ? ' selected' : '') + '>Neon Ribbons</option></select></div>';
             html += '<div class="input-group"><label>Color Preset</label><select id="ts-preset" class="input-field"><option value="pink"' + (cfg.preset === 'pink' ? ' selected' : '') + '>Original Pink</option><option value="purple"' + (cfg.preset === 'purple' ? ' selected' : '') + '>Purple (Legacy)</option><option value="custom"' + (cfg.preset === 'custom' ? ' selected' : '') + '>Custom Colors</option></select></div>';
 

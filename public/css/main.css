@@ -84,6 +84,10 @@
   /* Layout */
   --nav-width: 260px;
   --nav-collapsed: 72px;
+
+  /* Nav Background — each theme overrides these for a distinct sidebar */
+  --nav-bg: linear-gradient(180deg, rgba(5,6,10,0.88) 0%, rgba(10,12,20,0.85) 100%);
+  --nav-border-glow: rgba(41, 182, 246, 0.12);
 }
 
 /* ========== Reset ========== */
@@ -1274,4 +1278,57 @@ html.border-glow .dropdown-menu {
 html.border-glow .input-field:focus {
   border-color: var(--neon-magenta) !important;
   box-shadow: 0 0 15px rgba(171, 71, 188, 0.3) !important;
+}
+
+/* ========== Nav Background Style Modifiers ========== */
+
+/* Flat/Solid — replaces per-theme gradient with flat bg-secondary */
+html.nav-solid .main-nav {
+  background: var(--bg-secondary) !important;
+  border-right-color: var(--border-light) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Accent-Top — flat background + colored bar across the top of the nav */
+html.nav-accent .main-nav {
+  background: var(--bg-secondary) !important;
+  border-right-color: var(--border-light) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+}
+html.nav-accent .main-nav::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 0 0 2px 2px;
+  z-index: 1;
+}
+
+/* ========== Card Settings Button (Customise bg) ========== */
+.appearance-card {
+  position: relative;
+}
+.card-settings-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  z-index: 2;
+}
+.card-settings-btn:hover {
+  background: var(--neon-cyan);
+  color: #000;
+  border-color: var(--neon-cyan);
 }

@@ -36,4 +36,8 @@
 
   --shadow-neon: 0 0 20px rgba(170, 170, 170, 0.2);
   --shadow-neon-strong: 0 0 32px rgba(170, 170, 170, 0.4);
+
+  /* Sidebar: pitch black with a cool military-blue tint pooling below center */
+  --nav-bg: linear-gradient(180deg, rgba(0,0,0,0.94) 0%, rgba(4,5,14,0.9) 60%, rgba(0,0,0,0.94) 100%);
+  --nav-border-glow: rgba(68, 85, 136, 0.35);
 }

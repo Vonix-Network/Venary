@@ -36,4 +36,8 @@
 
   --shadow-neon: 0 0 20px rgba(57, 255, 20, 0.2);
   --shadow-neon-strong: 0 0 32px rgba(57, 255, 20, 0.4);
+
+  /* Sidebar: charcoal with a toxic-green tint swelling in the middle */
+  --nav-bg: linear-gradient(180deg, rgba(10,12,10,0.9) 0%, rgba(6,18,6,0.87) 50%, rgba(10,12,10,0.9) 100%);
+  --nav-border-glow: rgba(57, 255, 20, 0.22);
 }

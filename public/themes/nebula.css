@@ -36,4 +36,8 @@
 
   --shadow-neon: 0 0 20px rgba(0, 255, 255, 0.2);
   --shadow-neon-strong: 0 0 32px rgba(0, 255, 255, 0.4);
+
+  /* Sidebar: deep space with violet nebula cloud mid-panel */
+  --nav-bg: linear-gradient(180deg, rgba(13,8,20,0.9) 0%, rgba(22,5,38,0.87) 55%, rgba(13,8,20,0.9) 100%);
+  --nav-border-glow: rgba(255, 0, 255, 0.22);
 }

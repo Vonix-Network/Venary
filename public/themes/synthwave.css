@@ -36,4 +36,8 @@
 
   --shadow-neon: 0 0 20px rgba(255, 0, 127, 0.2);
   --shadow-neon-strong: 0 0 32px rgba(255, 0, 127, 0.4);
+
+  /* Sidebar: dark top, deep magenta-purple bloom mid, back to dark */
+  --nav-bg: linear-gradient(180deg, rgba(11,12,16,0.9) 0%, rgba(28,4,40,0.87) 55%, rgba(11,12,16,0.9) 100%);
+  --nav-border-glow: rgba(255, 0, 127, 0.3);
 }
