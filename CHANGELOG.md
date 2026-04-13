@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Messenger Layout & Replies** — Fixed massive internal message padding by applying correct flex alignment. Aligned the layout to a cohesive block, ensuring correct text flow and timestamp placement. Timestamps are now visible on hover for follow-up messages. Restructured replies to show above the message header and implemented an interactive snippet with an anchor-link ("jump to") feature that temporarily highlights the original message.
+- **Messenger Navigation & Sync** — Fixed an issue where new channels and spaces required a page refresh to display by automatically subscribing the socket to new spaces upon creation/joining and instantly rendering locally created channels.
+- **Messenger URLs** — The URL hash now actively updates to reflect the current space, channel, or DM, allowing users to safely refresh the page and return to their active chat instead of the default welcome screen.
 - **Messenger — Settings System** — Full Discord-style per-user settings modal accessible from the gear button in the messenger sidebar footer. Organised into four tabs:
   - *Privacy & Safety*: Who can DM you (Everyone / Friends Only / Nobody), Message Requests toggle, Auto-Accept Requests, Show Online Status, Show Read Receipts, Allow Friend Requests via DM.
   - *Notifications*: DM notification level (All / Mentions / Nothing), Notification Sounds, Message Preview in Notifications.

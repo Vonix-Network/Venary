@@ -66,16 +66,30 @@ var MessengerPage = {
 
         // Check for hash query params
         var inviteCode = this._getHashParam('invite');
-        var dmUserId   = this._getHashParam('dm');
+        var dmUserId   = this._getHashParam('dmUser');
+        var dmId       = this._getHashParam('dm');
+        var spaceId    = this._getHashParam('space');
+        var channelId  = this._getHashParam('channel');
 
         this._connectSocket();
         await Promise.all([this._loadSpaces(), this._loadDMs(), this._loadMessengerSettings(), this._loadMessageRequests()]);
         this._renderSpaceList();
         this._renderSidebarFooter();
-        this._showDMList();
 
-        if (inviteCode) this._acceptInviteByCode(inviteCode);
-        if (dmUserId)   this._startDM(dmUserId);
+        if (inviteCode) {
+            this._showDMList();
+            this._acceptInviteByCode(inviteCode);
+        } else if (dmUserId) {
+            this._showDMList();
+            this._startDM(dmUserId);
+        } else if (dmId) {
+            this._openDM(dmId);
+        } else if (spaceId) {
+            await this._selectSpace(spaceId);
+            if (channelId) this._selectChannel(channelId);
+        } else {
+            this._showDMList();
+        }
 
         // Setup long press for context menu
         var touchTimer = null;
@@ -280,11 +294,13 @@ var MessengerPage = {
     _selectDMs() {
         this.activeSpaceId = null;
         this.activeChannelId = null;
+        this.activeDmId = null;
         this._renderSpaceList();
         this._showDMList();
         this._clearMessageArea();
         var ml = document.getElementById('msn-member-list');
         if (ml) ml.innerHTML = '';
+        window.history.replaceState(null, '', '#/messenger');
     },
 
     _showDMList() {
@@ -564,6 +580,8 @@ var MessengerPage = {
         this.activeChannelId = null;
         this.unreadCounts[dmId] = 0;
         this._showDMList();
+        
+        window.history.replaceState(null, '', '#/messenger?dm=' + dmId);
 
         var messagesEl = document.getElementById('msn-message-area');
         if (messagesEl) messagesEl.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center"><div class="loading-spinner"></div></div>';
@@ -607,6 +625,8 @@ var MessengerPage = {
         this.activeSpaceId = spaceId;
         this.activeDmId = null;
         this._renderSpaceList();
+
+        window.history.replaceState(null, '', '#/messenger?space=' + spaceId);
 
         var sidebar = document.getElementById('msn-channel-sidebar');
         var scroll = document.getElementById('msn-channel-scroll');
@@ -731,6 +751,8 @@ var MessengerPage = {
         this.activeChannelId = channelId;
         this.activeDmId = null;
         this.unreadCounts[channelId] = 0;
+        
+        window.history.replaceState(null, '', '#/messenger?space=' + this.activeSpaceId + '&channel=' + channelId);
 
         document.querySelectorAll('.msn-channel-item').forEach(el => {
             el.classList.toggle('active', el.id === 'ch-' + channelId);
@@ -1861,6 +1883,7 @@ var MessengerPage = {
             this._toast('Joined space!');
             document.querySelector('.msn-modal-overlay')?.remove();
             await this._loadSpaces();
+            if (this.socket) this.socket.emit('subscribe_spaces');
             this._renderSpaceList();
             this._selectSpace(spaceId);
         } else {
@@ -1905,6 +1928,7 @@ var MessengerPage = {
 
         document.querySelector('.msn-modal-overlay')?.remove();
         this.spaces.push(res);
+        if (this.socket) this.socket.emit('subscribe_spaces');
         this._renderSpaceList();
         this._selectSpace(res.id);
         this._toast('Space created!');
@@ -1987,6 +2011,10 @@ var MessengerPage = {
         if (res && res.error) return this._toast(res.error);
         document.querySelector('.msn-modal-overlay')?.remove();
         this._toast('Channel created!');
+        
+        // Ensure local list has it immediately and we select it, or just let it render
+        var exists = (this.channels[this.activeSpaceId] || []).find(c => c.id === res.id);
+        if (!exists) this._onChannelCreated(res);
     },
 
     async _deleteChannel(channelId) {
