@@ -224,12 +224,10 @@ async function start() {
         }
 
         if (features.messenger !== false) {
-            // Messenger has sub-routers; mount via the index
-            try {
-                const messengerRouter = require('./routes/messenger');
-                app.use('/api/messenger',     messengerRouter);
-                app.use('/api/ext/messenger', messengerRouter);
-            } catch { /* messenger not yet migrated — extension-loader will handle */ }
+            const messengerRouter = require('./routes/messenger');
+            app.use('/api/messenger',     messengerRouter);
+            app.use('/api/ext/messenger', messengerRouter);
+            app._messengerRouter = messengerRouter;
         }
 
         // Initialize Discord Bot ecosystem
@@ -274,6 +272,11 @@ async function start() {
         // Attach Pterodactyl console namespace (needs io to be ready)
         if (app._pterodactylRouter?.attachConsoleNamespace) {
             app._pterodactylRouter.attachConsoleNamespace(io);
+        }
+
+        // Attach Messenger Socket.IO namespace (needs io to be ready)
+        if (app._messengerRouter?.attachNamespace) {
+            app._messengerRouter.attachNamespace(io);
         }
     }
 
