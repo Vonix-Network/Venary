@@ -21,16 +21,34 @@ var Router = {
         // Restore nav if leaving admin/messenger (only for authenticated users — auth/guest pages handle their own nav state below)
         var segments = path.split('/').filter(Boolean);
         var fullscreenPages = ['admin', 'messenger'];
-        if (!fullscreenPages.includes(segments[0]) && API.token) {
-            var mainNav = document.getElementById('main-nav');
-            var mobileBottomNav = document.getElementById('mobile-bottom-nav');
-            var pageContainer = document.getElementById('page-container');
+        var isFullscreen = fullscreenPages.includes(segments[0]);
+
+        var mainNav = document.getElementById('main-nav');
+        var mobileBottomNav = document.getElementById('mobile-bottom-nav');
+        var mobileHeader = document.getElementById('mobile-header');
+        var pageContainer = document.getElementById('page-container');
+
+        if (!isFullscreen && API.token) {
             if (mainNav) mainNav.classList.remove('hidden');
             if (mobileBottomNav) mobileBottomNav.classList.remove('hidden');
             if (pageContainer) {
                 pageContainer.classList.remove('admin-fullscreen');
                 pageContainer.classList.remove('full-width');
             }
+        } else if (isFullscreen) {
+            // Instantly hide nav elements to prevent visual flashing while loading
+            if (mainNav) mainNav.classList.add('hidden');
+            if (mobileBottomNav) mobileBottomNav.classList.add('hidden');
+            if (mobileHeader) mobileHeader.classList.add('hidden');
+        }
+
+        // Pause heavy background engines if in a fullscreen opaque overlay
+        if (isFullscreen) {
+            if (typeof ParticleEngine !== 'undefined') ParticleEngine.pause();
+            if (typeof WebGLEngine !== 'undefined') WebGLEngine.pause();
+        } else {
+            if (typeof ParticleEngine !== 'undefined') ParticleEngine.resume();
+            if (typeof WebGLEngine !== 'undefined') WebGLEngine.resume();
         }
 
         // 1. Try exact match first (e.g. /admin/images)

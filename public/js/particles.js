@@ -9,8 +9,8 @@ const ParticleEngine = {
     entities: [],
     mouse: { x: -1000, y: -1000, vx: 0, vy: 0 },
     lastMouse: { x: -1000, y: -1000 },
-    animationId: null,
     time: 0,
+    paused: false,
 
     init() {
         this.canvas = document.getElementById('particle-canvas');
@@ -18,7 +18,7 @@ const ParticleEngine = {
         this.ctx = this.canvas.getContext('2d', { alpha: false });
         this.resize();
         this.bindEvents();
-        
+
         // Initial setup based on current theme
         this.refreshTheme();
         this.animate();
@@ -28,7 +28,22 @@ const ParticleEngine = {
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     },
 
-    refreshTheme(forceBgId) {
+    pause() {
+        this.paused = true;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+    },
+
+    resume() {
+        if (!this.paused) return;
+        this.paused = false;
+        this.animate();
+    },
+
+    animate() {
+        if (!this.canvas || !this.ctx || this.paused) return;
         this.theme = document.documentElement.getAttribute('data-theme') || 'default'; // keep for color
         this.bgStyle = forceBgId || localStorage.getItem('venary_bg') || this.theme;
         this.entities = []; // Reset entities

@@ -15,6 +15,7 @@ const WebGLEngine = {
     raycaster: new THREE.Raycaster(),
     objects: [],
     materials: [],
+    paused: false,
 
     getCssColor(varName, fallbackHex) {
         try {
@@ -27,9 +28,22 @@ const WebGLEngine = {
             return new THREE.Color(fallbackHex);
         }
     },
-    
-    init() {
-        this.canvas = document.getElementById('webgl-canvas');
+
+    pause() {
+        this.paused = true;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+    },
+
+    resume() {
+        if (!this.paused) return;
+        this.paused = false;
+        this.animate();
+    },
+
+    init() {        this.canvas = document.getElementById('webgl-canvas');
         if (!this.canvas) return;
 
         // Set up WebGL renderer
@@ -612,10 +626,9 @@ const WebGLEngine = {
     },
 
     animate() {
-        if (!this.canvas || !this.scene || !this.camera) return;
-        
-        this.animationId = requestAnimationFrame(this.animate.bind(this));
-        
+        if (!this.canvas || !this.scene || !this.camera || this.paused) return;
+
+        this.animationId = requestAnimationFrame(this.animate.bind(this));        
         this.time += 0.01;
         
         // Smooth mouse following
