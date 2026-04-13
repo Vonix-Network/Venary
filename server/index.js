@@ -19,11 +19,9 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc:     ["'self'"],
-            scriptSrc:      ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
-            scriptSrcElem:  ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-            styleSrc:       ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            styleSrcElem:   ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            fontSrc:        ["'self'", "https://fonts.gstatic.com", "data:"],
+            scriptSrc:      ["'self'", "'unsafe-inline'"],   // SPA inline scripts; no external CDNs
+            styleSrc:       ["'self'", "'unsafe-inline'"],   // inline theme CSS; fonts served locally
+            fontSrc:        ["'self'", "data:"],
             imgSrc:         ["'self'", "data:", "https:", "http:"],
             connectSrc:     ["'self'", "wss:", "ws:"],
             frameSrc:       ["'self'", "https://www.youtube.com"],

@@ -7,11 +7,20 @@
   <meta name="description"
     content="Venary — Next Generation Gaming Social Platform. Connect, compete, and share with gamers worldwide.">
   <title>Venary — Gaming Social Platform</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-    rel="stylesheet">
+  <!-- Fonts served locally via @fontsource — no external requests needed -->
+  <link rel="stylesheet" href="/node_modules/@fontsource/orbitron/400.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/orbitron/500.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/orbitron/600.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/orbitron/700.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/orbitron/800.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/orbitron/900.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/inter/300.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/inter/400.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/inter/500.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/inter/600.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/inter/700.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/jetbrains-mono/400.css">
+  <link rel="stylesheet" href="/node_modules/@fontsource/jetbrains-mono/500.css">
   <script>
     // Set color scheme early to prevent flashing of incorrect theme
     const savedColor = localStorage.getItem('venary_color') || localStorage.getItem('venary_theme') || 'default';
@@ -288,8 +297,9 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
-  <!-- Three.js for WebGL Themes -->
+  <!-- emoji-picker-element served locally from node_modules -->
+  <script type="module" src="/node_modules/emoji-picker-element/index.js"></script>
+  <!-- Three.js for WebGL Themes — served locally from node_modules -->
   <!-- ===== Nav Overflow Side Panel (Top Nav, >5 items) ===== -->
   <div id="nav-overflow-panel" class="nav-overflow-panel" aria-hidden="true">
     <div class="nav-overflow-backdrop" onclick="OverflowNav.close()"></div>
@@ -304,7 +314,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+  <script src="/node_modules/three/build/three.min.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/particles.js"></script>
   <script src="/js/webgl-bg.js"></script>
