@@ -16,7 +16,9 @@ module.exports = function (db, { io } = {}) {
     }
 
     // Mount sub-routers, each receives db + ns for socket emissions
-    router.use('/', require('./routes/spaces')(db, ns));
+    // NOTE: spaces MUST be mounted at '/spaces' (not '/') to prevent its
+    // wildcard GET /:id route from swallowing /dm, /settings, /requests, etc.
+    router.use('/spaces', require('./routes/spaces')(db, ns));
     router.use('/', require('./routes/channels')(db, ns));
     router.use('/', require('./routes/messages')(db, ns));
     router.use('/', require('./routes/roles')(db, ns));
