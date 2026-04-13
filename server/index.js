@@ -20,6 +20,7 @@ app.use(helmet({
         directives: {
             defaultSrc:     ["'self'"],
             scriptSrc:      ["'self'", "'unsafe-inline'"],   // SPA inline scripts; no external CDNs
+            scriptSrcAttr:  ["'unsafe-inline'"],             // allow inline event handlers (onclick, onchange, etc.) in SPA templates
             styleSrc:       ["'self'", "'unsafe-inline'"],   // inline theme CSS; fonts served locally
             fontSrc:        ["'self'", "data:"],
             imgSrc:         ["'self'", "data:", "https:", "http:"],
