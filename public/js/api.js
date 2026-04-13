@@ -42,10 +42,10 @@ const API = {
 
             return data;
         } catch (err) {
-            if (err.status === 401 || err.status === 403) {
+            if (err.status === 401) {
+                // Token expired or invalid — clear session and redirect
                 this.setToken(null);
                 var currentPath = window.location.hash.split('?')[0];
-                // Treat empty hash (root visit) as feed — always public
                 if (!currentPath) currentPath = '#/feed';
                 var publicPaths = ['#/login', '#/register', '#/forgot-password', '#/reset-password', '#/donate', '#/feed'];
                 var isPublic = publicPaths.some(function(p) { return currentPath === p || currentPath.startsWith(p + '/'); });
