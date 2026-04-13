@@ -917,16 +917,20 @@ var MessengerPage = {
         var html = '';
         var lastAuthorId = null;
         var lastDate = null;
+        var lastTimeMs = 0;
 
         messages.forEach(msg => {
+            var msgTimeMs = new Date(msg.created_at).getTime();
             var date = new Date(msg.created_at).toLocaleDateString();
             if (date !== lastDate) {
                 html += `<div class="msn-date-divider">${date}</div>`;
                 lastDate = date;
                 lastAuthorId = null;
             }
-            var isNewAuthor = msg.author_id !== lastAuthorId || !!msg.reply_to_id;
+            var timeDiff = msgTimeMs - lastTimeMs;
+            var isNewAuthor = msg.author_id !== lastAuthorId || !!msg.reply_to_id || timeDiff > 5 * 60 * 1000;
             lastAuthorId = msg.author_id;
+            lastTimeMs = msgTimeMs;
             html += this._renderMessageGroup(msg, isNewAuthor);
         });
 
@@ -992,7 +996,7 @@ var MessengerPage = {
             </div>`;
         }
 
-        return `<div class="msn-msg-group ${isNewAuthor ? 'msn-msg-new-author' : ''}" data-msg-id="${msg.id}" data-author-id="${msg.author_id}"
+        return `<div class="msn-msg-group ${isNewAuthor ? 'msn-msg-new-author' : ''}" data-msg-id="${msg.id}" data-author-id="${msg.author_id}" data-created-at="${new Date(msg.created_at).getTime()}"
             oncontextmenu="event.preventDefault();MessengerPage._msgCtxMenu('${msg.id}','${isSelf}',event)">
             ${isNewAuthor
                 ? `<div class="msn-msg-avatar" onclick="MessengerPage._showUserPopout('${msg.author_id}',event)" title="${this._esc(authorName)}">
@@ -1006,10 +1010,7 @@ var MessengerPage = {
                     <span class="msn-msg-timestamp" title="${fullTime}">${time}</span>
                     ${msg.type === 'bot' || msg.type === 'webhook' ? '<span class="msn-badge-bot">BOT</span>' : ''}
                 </div>` : ''}
-                <div class="msn-msg-content ${msg.deleted ? 'msn-msg-deleted' : ''}">
-                    ${msg.deleted ? '<em>(message deleted)</em>' : this._renderMarkdown(msg.content || '')}
-                    ${msg.edited_at && !msg.deleted ? '<span class="msn-msg-edited">(edited)</span>' : ''}
-                </div>
+                <div class="msn-msg-content ${msg.deleted ? 'msn-msg-deleted' : ''}">${msg.deleted ? '<em>(message deleted)</em>' : this._renderMarkdown(msg.content || '')}${msg.edited_at && !msg.deleted ? '<span class="msn-msg-edited">(edited)</span>' : ''}</div>
                 ${attachHtml}
                 ${reactionsHtml ? `<div class="msn-msg-reactions">${reactionsHtml}</div>` : ''}
             </div>
@@ -1238,9 +1239,13 @@ var MessengerPage = {
             this._getMemberInfo(msg.author_id);
         }
 
-        // Determine grouping: only start a new author block when the author changes
+        // Determine grouping: only start a new author block when the author changes or time passed
         var lastGroup = msgsEl.querySelector('.msn-msg-group:last-of-type');
-        var isNewAuthor = !lastGroup || lastGroup.dataset.authorId !== msg.author_id;
+        var msgTimeMs = new Date(msg.created_at).getTime();
+        var lastGroupTimeStr = lastGroup ? lastGroup.dataset.createdAt : null;
+        var lastGroupTimeMs = lastGroupTimeStr ? parseInt(lastGroupTimeStr, 10) : 0;
+        var timeDiff = msgTimeMs - lastGroupTimeMs;
+        var isNewAuthor = !lastGroup || lastGroup.dataset.authorId !== msg.author_id || !!msg.reply_to_id || timeDiff > 5 * 60 * 1000;
 
         var div = document.createElement('div');
         div.innerHTML = this._renderMessageGroup(msg, isNewAuthor);

@@ -390,13 +390,14 @@
 .msn-msg-group {
     display: flex;
     gap: 16px;
-    padding: 2px 16px;
+    padding: 0 16px;
     border-radius: 4px;
     position: relative;
     align-items: flex-start;
+    margin-top: 0;
 }
 .msn-msg-group:hover { background: rgba(0,0,0,0.06); }
-.msn-msg-group.msn-msg-new-author { padding-top: 16px; }
+.msn-msg-group.msn-msg-new-author { padding-top: 2px; margin-top: 16px; }
 
 .msn-msg-avatar {
     width: 40px;
