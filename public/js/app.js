@@ -1036,30 +1036,58 @@ var App = {
             `;
 
             // Presets Pane
+            const presetCard = (id, bg, label) => `<div class="appearance-card preset-card" onclick="App.applyPreset('${id}')"><div class="card-preview" style="${bg}"></div><span>${label}</span></div>`;
             let presetsHtml = `
-                <div id="pane-presets" class="appearance-pane active">
-                    <p style="color:var(--text-secondary); margin-bottom:15px;">One-click templates that completely overhaul the layout and colors.</p>
-                    <div class="appearance-grid">
-                        <div class="appearance-card" onclick="App.applyPreset('default')">
-                            <div class="card-preview" style="background:#05060A; border-left:15px solid #29b6f6;"></div>
-                            <span>Venary Original</span>
-                        </div>
-                        <div class="appearance-card" onclick="App.applyPreset('obsidian')">
-                            <div class="card-preview" style="background:#0F0F11; border-left:15px solid #FF0033;"></div>
-                            <span>Obsidian (Esports)</span>
-                        </div>
-                        <div class="appearance-card" onclick="App.applyPreset('synthwave')">
-                            <div class="card-preview" style="background:#0B0C10; overflow:hidden;"><div style="width:100%;height:100%;margin:5px;background:#FF007F"></div></div>
-                            <span>Synthwave (Broadcast)</span>
-                        </div>
-                        <div class="appearance-card" onclick="App.applyPreset('toxic')">
-                            <div class="card-preview" style="background:#101210; border-left:15px solid #39FF14;"></div>
-                            <span>Toxic (Zombie)</span>
-                        </div>
-                        <div class="appearance-card" onclick="App.applyPreset('cyberpunk')">
-                            <div class="card-preview" style="background:#010A0B; border-top:15px solid #FCE205; border-radius:0;"></div>
-                            <span>Cyberpunk (NFT)</span>
-                        </div>
+                <div id="pane-presets" class="appearance-pane active" style="overflow-y:auto; max-height:420px; padding-right:4px;">
+                    <p style="color:var(--text-secondary); margin-bottom:12px; font-size:0.82rem;">One-click templates that set layout, colors, background &amp; style.</p>
+
+                    <h5 style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Originals</h5>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${presetCard('default',       'background:#05060A; border-left:14px solid #29b6f6',                                     'Venary Original')}
+                    </div>
+
+                    <h5 style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Gaming &amp; Esports</h5>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${presetCard('obsidian',      'background:#0F0F11; border-left:14px solid #FF0033',                                     'Obsidian')}
+                        ${presetCard('fps-warrior',   'background:#0F0F11; border-top:14px solid #FF0033; border-radius:0',                     'FPS Warrior')}
+                        ${presetCard('esports-arena', 'background:linear-gradient(135deg,#001122,#002244); border-left:14px solid #FF0033',     'Esports Arena')}
+                        ${presetCard('retro-gamer',   'background:#0B0C10; border-bottom:3px solid #FF007F; border-top:3px solid #00F0FF',      'Retro Gamer')}
+                    </div>
+
+                    <h5 style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Aesthetic &amp; Vibe</h5>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${presetCard('synthwave',     'background:#0B0C10; border-left:14px solid #FF007F',                                     'Synthwave')}
+                        ${presetCard('anime-vibes',   'background:#120A10; border-left:14px solid #FF70A6',                                     'Anime Vibes')}
+                        ${presetCard('midnight-sky',  'background:linear-gradient(180deg,#0D0814,#170E24); border-left:14px solid #00FFFF',     'Midnight Sky')}
+                        ${presetCard('firefly-night', 'background:#010308; border-left:14px solid #90ff70',                                     'Firefly Night')}
+                    </div>
+
+                    <h5 style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Tech &amp; Hacker</h5>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${presetCard('toxic',         'background:#101210; border-left:14px solid #39FF14',                                     'Toxic')}
+                        ${presetCard('hacker',        'background:#001100; border-left:14px solid #00ff41',                                     'Hacker')}
+                        ${presetCard('cyberpunk',     'background:#010A0B; border-top:14px solid #FCE205; border-radius:0',                     'Cyberpunk')}
+                        ${presetCard('network-node',  'background:#020408; border-left:14px solid #29b6f6',                                     'Network Node')}
+                    </div>
+
+                    <h5 style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Atmospheric</h5>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${presetCard('magma-core',    'background:linear-gradient(180deg,#140600,#240B00); border-left:14px solid #FF4500',     'Magma Core')}
+                        ${presetCard('hologram',      'background:#080114; border-left:14px solid #BF00FF',                                     'Hologram')}
+                        ${presetCard('winter-storm',  'background:linear-gradient(180deg,#000A14,#001830); border-left:14px solid #88FFFF',     'Winter Storm')}
+                        ${presetCard('solar-flare',   'background:#050505; border-bottom:3px solid #FFCC00; border-top:3px solid #FF6600',      'Solar Flare')}
+                    </div>
+
+                    <h5 style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Space &amp; Cosmic</h5>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${presetCard('deep-space',    'background:#010108; border-left:14px solid #00FFFF',                                     'Deep Space')}
+                        ${presetCard('nebula-drift',  'background:linear-gradient(135deg,#0D0814,#22053A); border-left:14px solid #FF00FF',     'Nebula Drift')}
+                    </div>
+
+                    <h5 style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Minimal &amp; Clean</h5>
+                    <div class="appearance-grid" style="margin-bottom:4px;">
+                        ${presetCard('minimal',       'background:#000; border-top:3px solid #555',                                             'Minimal')}
+                        ${presetCard('stealth-ops',   'background:#000; border-left:14px solid #445588',                                        'Stealth Ops')}
                     </div>
                 </div>
             `;
@@ -1165,40 +1193,47 @@ var App = {
             `;
 
             // Backgrounds Pane
+            const bgCard = (id, style, label, settingsId = null) => `
+                <div class="appearance-card ${bgId === id ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', '${id}', this)">
+                    <div class="card-preview" style="${style}"></div><span>${label}</span>
+                    ${settingsId ? `<button class="card-settings-btn" onclick="event.stopPropagation();App.openThemeSettings('${settingsId}')" title="Customize">⚙</button>` : ''}
+                </div>`;
             let bgsHtml = `
-                <div id="pane-background" class="appearance-pane">
-                    <h4 style="margin-bottom:10px; color:var(--text-secondary)">Static & 2D Environments</h4>
-                    <div class="appearance-grid" style="margin-bottom:20px">
-                        <div class="appearance-card ${bgId === 'none' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'none', this)">
-                            <div class="card-preview"></div><span>Solid Dark</span>
-                        </div>
-                        <div class="appearance-card ${bgId === 'default' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'default', this)">
-                            <div class="card-preview" style="background:#111; position:relative"><div style="position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;top:50%;left:50%;box-shadow: 10px 10px #fff, -10px -5px #fff"></div></div>
-                            <span>Classic Dust</span>
-                        </div>
-                        <div class="appearance-card ${bgId === 'pink' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'pink', this)">
-                            <div class="card-preview" style="background:linear-gradient(45deg, #2a0a18, #110008)"></div><span>Bubbles</span>
-                            <button class="card-settings-btn" onclick="event.stopPropagation(); App.openThemeSettings('pink')" title="Customize Bubbles">⚙</button>
-                        </div>
-                        <div class="appearance-card ${bgId === 'lavalamp' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'lavalamp', this)">
-                            <div class="card-preview" style="background:linear-gradient(180deg, #330000, #000)"></div><span>Lava Lamp</span>
-                            <button class="card-settings-btn" onclick="event.stopPropagation(); App.openThemeSettings('lavalamp')" title="Customize Lava Lamp">⚙</button>
-                        </div>
+                <div id="pane-background" class="appearance-pane" style="overflow-y:auto; max-height:420px; padding-right:4px;">
+                    <h4 style="margin-bottom:8px; color:var(--text-secondary); font-size:0.8rem;">Static</h4>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${bgCard('none',    '',                                                           'Solid Dark')}
+                        ${bgCard('default', 'background:#111; position:relative',                         'Classic Dust')}
+                        ${bgCard('pink',    'background:linear-gradient(45deg,#2a0a18,#110008)',           'Bubbles',  'pink')}
+                        ${bgCard('lavalamp','background:linear-gradient(180deg,#330000,#000)',             'Lava Lamp','lavalamp')}
                     </div>
-                    <h4 style="margin-bottom:10px; color:var(--neon-cyan)">3D WebGL Experiences</h4>
+
+                    <h4 style="margin-bottom:8px; color:var(--text-secondary); font-size:0.8rem;">Particle &amp; Canvas</h4>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${bgCard('fireflies','background:#010308; background-image:radial-gradient(circle at 30% 40%, rgba(255,240,100,0.25) 0%, transparent 50%), radial-gradient(circle at 70% 70%, rgba(100,220,100,0.2) 0%, transparent 40%)', 'Fireflies')}
+                        ${bgCard('snow',     'background:linear-gradient(180deg,#040810,#020510)',                                               'Snowfall')}
+                        ${bgCard('network',  'background:#020408; background-image:radial-gradient(circle at 50% 50%, rgba(41,182,246,0.15) 0%, transparent 60%)', 'Network')}
+                        ${bgCard('meteor',   'background:#010108; background-image:radial-gradient(circle at 80% 20%, rgba(180,220,255,0.12) 0%, transparent 40%)', 'Meteor Shower')}
+                        ${bgCard('warp',     'background:#020005',                                                                              'Warp Speed')}
+                        ${bgCard('galaxy',   'background:#050508; background-image:radial-gradient(ellipse at 50% 50%, rgba(77,124,255,0.2) 0%, transparent 70%)', 'Galaxy')}
+                    </div>
+
+                    <h4 style="margin-bottom:8px; color:var(--text-secondary); font-size:0.8rem;">Cinematic</h4>
+                    <div class="appearance-grid" style="margin-bottom:16px;">
+                        ${bgCard('neon-tunnel',     'background:linear-gradient(135deg,#000 0%,#001018 50%,#000 100%); border:1px solid rgba(0,220,255,0.3)', 'Neon Tunnel')}
+                        ${bgCard('particle-burst',  'background:radial-gradient(ellipse at 50% 50%,#1a0025 0%,#000 70%)',                                     'Particle Burst')}
+                        ${bgCard('light-streams',   'background:linear-gradient(135deg,#0d0500,#000818,#0a0400)',                                              'Light Streams')}
+                        ${bgCard('chromatic-vortex','background:radial-gradient(ellipse at 50% 50%,#080010 0%,#000 60%)',                                      'Chromatic Vortex')}
+                    </div>
+
+                    <h4 style="margin-bottom:8px; color:var(--neon-cyan); font-size:0.8rem;">3D WebGL</h4>
                     <div class="appearance-grid">
-                        <div class="appearance-card ${bgId === 'webgl-cyber' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-cyber', this)">
-                            <div class="card-preview" style="background:linear-gradient(180deg, #001122, #003344)"></div><span>Cyber Grid</span>
-                        </div>
-                        <div class="appearance-card ${bgId === 'webgl-matrix' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-matrix', this)">
-                            <div class="card-preview" style="background:#001100"></div><span>Matrix Rain</span>
-                        </div>
-                        <div class="appearance-card ${bgId === 'webgl-stars' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-stars', this)">
-                            <div class="card-preview" style="background:#000"></div><span>Hyperjump</span>
-                        </div>
-                        <div class="appearance-card ${bgId === 'webgl-fluid' ? 'selected' : ''}" onclick="App.selectAppearanceObj('bg', 'webgl-fluid', this)">
-                            <div class="card-preview" style="background:linear-gradient(45deg, #002233, #000)"></div><span>Fluid Waves</span>
-                        </div>
+                        ${bgCard('webgl-cyber',   'background:linear-gradient(180deg,#001122,#003344)',   'Cyber Grid')}
+                        ${bgCard('webgl-matrix',  'background:#001100',                                   'Matrix Rain')}
+                        ${bgCard('webgl-stars',   'background:#000',                                      'Hyperjump')}
+                        ${bgCard('webgl-fluid',   'background:linear-gradient(45deg,#002233,#000)',        'Fluid Waves')}
+                        ${bgCard('webgl-aurora',  'background:linear-gradient(180deg,#000a05,#001005)',    'Aurora')}
+                        ${bgCard('webgl-geometry','background:linear-gradient(135deg,#050010,#000)',       'Geometry')}
                     </div>
                 </div>
             `;
@@ -1289,35 +1324,51 @@ var App = {
     },
 
     applyPreset(presetId) {
-        let layout, color, bg, radius;
-        if (presetId === 'default') {
-            layout = 'default'; color = 'default'; bg = 'default'; radius = 'medium';
-        } else if (presetId === 'obsidian') {
-            layout = 'default'; color = 'obsidian'; bg = 'default'; radius = 'medium';
-        } else if (presetId === 'synthwave') {
-            layout = 'wide'; color = 'synthwave'; bg = 'none'; radius = 'round';
-        } else if (presetId === 'toxic') {
-            layout = 'compact'; color = 'toxic'; bg = 'none'; radius = 'sharp';
-        } else if (presetId === 'cyberpunk') {
-            layout = 'top-nav'; color = 'cyberpunk'; bg = 'webgl-matrix'; radius = 'sharp';
-        }
+        const PRESETS = {
+            // ── Originals ──────────────────────────────────────────────────────────
+            'default':       { layout:'default',     color:'default',    bg:'default',      radius:'medium', glass:'light',  border:'subtle', navStyle:'gradient' },
+            // ── Gaming & Esports ───────────────────────────────────────────────────
+            'obsidian':      { layout:'default',     color:'obsidian',   bg:'default',      radius:'medium', glass:'light',  border:'glow',   navStyle:'gradient' },
+            'fps-warrior':   { layout:'compact',     color:'obsidian',   bg:'none',         radius:'sharp',  glass:'solid',  border:'glow',   navStyle:'solid'    },
+            'esports-arena': { layout:'cyber-float', color:'obsidian',   bg:'webgl-cyber',  radius:'sharp',  glass:'light',  border:'glow',   navStyle:'gradient' },
+            'retro-gamer':   { layout:'neon-bar',    color:'synthwave',  bg:'webgl-matrix', radius:'sharp',  glass:'light',  border:'subtle', navStyle:'accent'   },
+            // ── Aesthetic & Vibe ───────────────────────────────────────────────────
+            'synthwave':     { layout:'wide',        color:'synthwave',  bg:'none',         radius:'round',  glass:'light',  border:'subtle', navStyle:'gradient' },
+            'anime-vibes':   { layout:'default',     color:'bubblegum',  bg:'pink',         radius:'pill',   glass:'light',  border:'subtle', navStyle:'accent'   },
+            'midnight-sky':  { layout:'wide',        color:'nebula',     bg:'webgl-stars',  radius:'round',  glass:'heavy',  border:'subtle', navStyle:'gradient' },
+            'firefly-night': { layout:'default',     color:'toxic',      bg:'fireflies',    radius:'round',  glass:'light',  border:'hidden', navStyle:'gradient' },
+            // ── Tech & Hacker ──────────────────────────────────────────────────────
+            'toxic':         { layout:'compact',     color:'toxic',      bg:'none',         radius:'sharp',  glass:'light',  border:'subtle', navStyle:'gradient' },
+            'hacker':        { layout:'compact',     color:'toxic',      bg:'webgl-matrix', radius:'sharp',  glass:'solid',  border:'glow',   navStyle:'solid'    },
+            'cyberpunk':     { layout:'top-nav',     color:'cyberpunk',  bg:'webgl-matrix', radius:'sharp',  glass:'light',  border:'glow',   navStyle:'gradient' },
+            'network-node':  { layout:'compact',     color:'glacier',    bg:'network',      radius:'sharp',  glass:'light',  border:'subtle', navStyle:'solid'    },
+            // ── Atmospheric ────────────────────────────────────────────────────────
+            'magma-core':    { layout:'default',     color:'magma',      bg:'lavalamp',     radius:'medium', glass:'light',  border:'glow',   navStyle:'gradient' },
+            'hologram':      { layout:'cyber-float', color:'hologram',   bg:'webgl-cyber',  radius:'medium', glass:'heavy',  border:'glow',   navStyle:'accent'   },
+            'winter-storm':  { layout:'wide',        color:'glacier',    bg:'snow',         radius:'round',  glass:'heavy',  border:'subtle', navStyle:'gradient' },
+            'solar-flare':   { layout:'neon-bar',    color:'solarflare', bg:'webgl-fluid',  radius:'medium', glass:'light',  border:'glow',   navStyle:'accent'   },
+            // ── Space & Cosmic ─────────────────────────────────────────────────────
+            'deep-space':    { layout:'wide',        color:'nebula',     bg:'meteor',       radius:'round',  glass:'heavy',  border:'subtle', navStyle:'gradient' },
+            'nebula-drift':  { layout:'default',     color:'nebula',     bg:'webgl-stars',  radius:'round',  glass:'heavy',  border:'glow',   navStyle:'gradient' },
+            // ── Minimal & Clean ────────────────────────────────────────────────────
+            'minimal':       { layout:'top-nav',     color:'stealth',    bg:'none',         radius:'sharp',  glass:'solid',  border:'hidden', navStyle:'solid'    },
+            'stealth-ops':   { layout:'compact',     color:'stealth',    bg:'none',         radius:'sharp',  glass:'solid',  border:'hidden', navStyle:'solid'    },
+        };
 
-        document.getElementById('sel-layout').value = layout;
-        document.getElementById('sel-color').value = color;
-        document.getElementById('sel-bg').value = bg;
-        document.getElementById('sel-radius').value = radius;
+        const p = PRESETS[presetId];
+        if (!p) return;
 
-        // Auto-update DOM to reflect preset changes
-        this.selectAppearanceObj('layout', layout, document.querySelector('#pane-layout .appearance-card:nth-child(' + (layout==='default'?1:layout==='compact'?2:layout==='wide'?3:4) + ')'));
-        this.selectAppearanceObj('color', color, document.querySelector('.color-swatch-wrapper[onclick*="'+color+'"]'));
-        let bgChild = 1;
-        if(bg==='none') bgChild=1; else if(bg==='default') bgChild=2; else if(bg==='webgl-matrix') bgChild=2;
-        if(bg==='webgl-matrix') {
-             this.selectAppearanceObj('bg', bg, document.querySelectorAll('#pane-background .appearance-grid')[1].children[1]);
-        } else {
-             this.selectAppearanceObj('bg', bg, document.querySelectorAll('#pane-background .appearance-grid')[0].children[bgChild-1]);
-        }
-        this.selectAppearanceObj('radius', radius, document.querySelector('#pane-style .appearance-card:nth-child(' + (radius==='sharp'?1:radius==='medium'?2:radius==='round'?3:4) + ')'));
+        const setInput = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        setInput('sel-layout',   p.layout);
+        setInput('sel-color',    p.color);
+        setInput('sel-bg',       p.bg);
+        setInput('sel-radius',   p.radius);
+        setInput('sel-glass',    p.glass);
+        setInput('sel-border',   p.border);
+        setInput('sel-navstyle', p.navStyle);
+
+        this.previewAppearance();
+        this.showToast('Preset applied — hit Save & Apply to keep it', 'success');
     },
 
     switchAppearanceTab(paneId, btnElem) {
@@ -1515,18 +1566,19 @@ var App = {
             if (bg === 'none') {
                 if (particleCanvas) particleCanvas.classList.add('hidden');
                 if (webglCanvas) webglCanvas.classList.add('hidden');
-                if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy();
+                if (typeof ParticleEngine !== 'undefined') ParticleEngine.pause();
                 if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
             } else if (isWebGL) {
                 if (particleCanvas) particleCanvas.classList.add('hidden');
                 if (webglCanvas) webglCanvas.classList.remove('hidden');
-                if (typeof ParticleEngine !== 'undefined') ParticleEngine.destroy();
+                if (typeof ParticleEngine !== 'undefined') ParticleEngine.pause();
                 if (typeof WebGLEngine !== 'undefined') WebGLEngine.refreshTheme(bg);
             } else {
                 if (particleCanvas) particleCanvas.classList.remove('hidden');
                 if (webglCanvas) webglCanvas.classList.add('hidden');
                 if (typeof WebGLEngine !== 'undefined') WebGLEngine.clearScene();
-                if (typeof ParticleEngine !== 'undefined') ParticleEngine.refreshTheme(bg);
+                // restart() handles resume + refreshTheme + restarts the loop if it was paused
+                if (typeof ParticleEngine !== 'undefined') ParticleEngine.restart(bg);
             }
         };
 
