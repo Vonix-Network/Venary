@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const Config = require('./config');
 const logger = require('./logger');
+const { hppProtection, authSlowDown, resetSlowDown, uploadSlowDown } = require('./middleware/security');
 
 const app = express();
 const server = http.createServer(app);
@@ -85,6 +86,7 @@ const friendRequestLimiter = rateLimit({
 
 // Middleware
 app.use(cors(corsOptions));
+app.use(hppProtection);                           // HTTP Parameter Pollution protection
 app.use(express.json({ limit: '100kb' }));
 
 async function start() {
@@ -154,42 +156,98 @@ async function start() {
             });
         }
 
-        // ── Auth rate limiting ──────────────────────────────────────────────────
-        app.use('/api/auth/login', authLimiter);
-        app.use('/api/auth/register', authLimiter);
-        app.use('/api/auth/forgot-password', authLimiter);
-        app.use('/api/auth/reset-password', authLimiter);
+        // ── Auth rate limiting + progressive slow-down ──────────────────────────
+        app.use('/api/auth/login',           authSlowDown,  authLimiter);
+        app.use('/api/auth/register',        authSlowDown,  authLimiter);
+        app.use('/api/auth/forgot-password', resetSlowDown, authLimiter);
+        app.use('/api/auth/reset-password',  resetSlowDown, authLimiter);
         // User enumeration protection
         app.use('/api/users/search', userEnumLimiter);
-        app.use('/api/users/:id', userEnumLimiter);
+        app.use('/api/users/:id',    userEnumLimiter);
         // Friend request spam protection
         app.use('/api/friends/request', friendRequestLimiter);
+        // Upload flood protection
+        app.use('/api/images/upload', uploadSlowDown);
         // General API rate limit
         app.use('/api/', apiLimiter);
 
-        // API Routes
-        app.use('/api/auth', require('./routes/auth'));
-        app.use('/api/users', require('./routes/users'));
-        app.use('/api/friends', require('./routes/friends'));
-        app.use('/api/messages', require('./routes/messages'));
-        app.use('/api/posts', require('./routes/posts'));
+        // API Routes — core
+        app.use('/api/auth',          require('./routes/auth'));
+        app.use('/api/users',         require('./routes/users'));
+        app.use('/api/friends',       require('./routes/friends'));
+        app.use('/api/messages',      require('./routes/messages'));
+        app.use('/api/posts',         require('./routes/posts'));
         app.use('/api/notifications', require('./routes/notifications'));
-        app.use('/api/admin', require('./routes/admin'));
-        app.use('/api/themes', require('./routes/themes'));
+        app.use('/api/admin',         require('./routes/admin'));
+        app.use('/api/themes',        require('./routes/themes'));
 
         // Public settings endpoint (no auth — used for theming on load)
         app.get('/api/settings', (req, res) => {
             res.json(Config.getPublicSettings());
         });
 
+        // ── Feature routes — dual-mounted for backward compatibility ─────────────
+        // Primary: /api/{feature}/   Compat alias: /api/ext/{feature}/
+
+        const features = Config.get('features', {});
+
+        if (features.images !== false) {
+            const imagesRouter = require('./routes/images');
+            app.use('/api/images',     imagesRouter);
+            app.use('/api/ext/images', imagesRouter);
+        }
+
+        if (features.forum !== false) {
+            const forumRouter = require('./routes/forum');
+            app.use('/api/forum',     forumRouter);
+            app.use('/api/ext/forum', forumRouter);
+        }
+
+        if (features.donations !== false) {
+            const donationsRouter = require('./routes/donations');
+            app.use('/api/donations',     donationsRouter);
+            app.use('/api/ext/donations', donationsRouter);
+        }
+
+        if (features.minecraft !== false) {
+            const minecraftRouter = require('./routes/minecraft');
+            app.use('/api/minecraft',     minecraftRouter);
+            app.use('/api/ext/minecraft', minecraftRouter); // mod backward compat
+        }
+
+        if (features.pterodactyl !== false) {
+            const pterodactylRouter = require('./routes/pterodactyl');
+            app.use('/api/pterodactyl',     pterodactylRouter);
+            app.use('/api/ext/pterodactyl', pterodactylRouter);
+            // Attach Socket.IO console namespace after io is initialised
+            app._pterodactylRouter = pterodactylRouter;
+        }
+
+        if (features.messenger !== false) {
+            // Messenger has sub-routers; mount via the index
+            try {
+                const messengerRouter = require('./routes/messenger');
+                app.use('/api/messenger',     messengerRouter);
+                app.use('/api/ext/messenger', messengerRouter);
+            } catch { /* messenger not yet migrated — extension-loader will handle */ }
+        }
+
         // Initialize Discord Bot ecosystem
         const discordBot = require('./discordBot');
         await discordBot.init();
 
-        // Make io available to extensions via app.get('io')
+        // Register feature-level Discord integrations
+        if (features.donations !== false) {
+            try { require('./services/donations-discord')(discordBot, require('./db')); } catch { /* optional */ }
+        }
+        if (features.minecraft !== false) {
+            try { require('./services/minecraft/discord')(discordBot, require('./db')); } catch { /* optional */ }
+        }
+
+        // Make io available globally
         app.set('io', io);
 
-        // Load extensions (PHPBB-style module system)
+        // Load remaining extensions that haven't been migrated yet (PHPBB fallback)
         const extensionLoader = require('./extension-loader');
         await extensionLoader.loadAll(app, dbConfig);
 
@@ -212,6 +270,11 @@ async function start() {
         // Initialize Socket.io
         const { initializeSocket } = require('./socket');
         initializeSocket(io);
+
+        // Attach Pterodactyl console namespace (needs io to be ready)
+        if (app._pterodactylRouter?.attachConsoleNamespace) {
+            app._pterodactylRouter.attachConsoleNamespace(io);
+        }
     }
 
     // Start server

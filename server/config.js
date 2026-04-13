@@ -48,7 +48,17 @@ const DEFAULTS = {
         digestEnabled: false
     },
     database: { type: 'sqlite' },
-    setupComplete: false
+    setupComplete: false,
+    // Feature flags — set any to false to disable the feature entirely.
+    // All default to enabled (true) so existing installs keep full functionality.
+    features: {
+        images:       true,  // Image hosting/upload
+        forum:        true,  // Community forum
+        donations:    true,  // Donations, crypto payments, balance ledger
+        minecraft:    true,  // Minecraft server pinger + linked accounts
+        pterodactyl:  true,  // Pterodactyl panel integration
+        messenger:    true,  // Private messaging spaces/channels
+    }
 };
 
 let configCache = null;
@@ -167,7 +177,8 @@ const Config = {
             xpPerComment: cfg.xpPerComment ?? DEFAULTS.xpPerComment,
             xpPerLike: cfg.xpPerLike ?? DEFAULTS.xpPerLike,
             levelThresholds: cfg.levelThresholds || DEFAULTS.levelThresholds,
-            smtpEnabled: !!(cfg.smtp && cfg.smtp.enabled && cfg.smtp.host)
+            smtpEnabled: !!(cfg.smtp && cfg.smtp.enabled && cfg.smtp.host),
+            features: Object.assign({}, DEFAULTS.features, cfg.features || {})
         };
     }
 };

@@ -7,7 +7,6 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const Config = require('../config');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
-const extensionLoader = require('../extension-loader');
 const logger = require('../logger');
 const Mailer = require('../mail');
 
@@ -15,19 +14,20 @@ function safeParseJSON(val) {
     try { return JSON.parse(val); } catch { return []; }
 }
 
-// Attach donation rank info to a user object (if donations extension is loaded)
+// Attach donation rank info to a user object (queries unified DB directly)
 async function enrichWithDonationRank(userObj) {
     try {
-        const donationsDb = extensionLoader.getExtensionDb('donations');
-        if (!donationsDb) return userObj;
-        const ur = await donationsDb.get(
+        const ur = await db.get(
             `SELECT ur.expires_at, r.name, r.color, r.icon FROM user_ranks ur
              LEFT JOIN donation_ranks r ON ur.rank_id = r.id
-             WHERE ur.user_id = ? AND ur.active = 1`, [userObj.id]);
+             WHERE ur.user_id = ? AND ur.active = 1
+             AND (ur.expires_at IS NULL OR ur.expires_at > ?)`,
+            [userObj.id, new Date().toISOString()]
+        );
         if (ur) {
             userObj.donation_rank = { name: ur.name, color: ur.color, icon: ur.icon, expires_at: ur.expires_at };
         }
-    } catch { /* extension not loaded */ }
+    } catch { /* donations tables may not exist yet */ }
     return userObj;
 }
 
@@ -84,13 +84,9 @@ router.post('/register', async (req, res) => {
 
         // Link any completed guest donations that used this email address
         try {
-            const extLoader = require('../extension-loader');
-            const extDb = extLoader.getExtensionDb('donations');
-            if (extDb) {
-                const guestLink = require('../../extensions/donations/server/guest-link');
-                await guestLink.linkByEmail(id, email, extDb);
-            }
-        } catch { /* donations extension may not be active */ }
+            const guestLink = require('../services/guest-link');
+            await guestLink.linkByEmail(id, email);
+        } catch { /* donations tables may not exist yet */ }
 
         res.status(201).json({
             token,
