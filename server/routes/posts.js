@@ -306,7 +306,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         // Ensure user is author, or an admin/moderator
         if (post.user_id !== req.user.id) {
             const currentUser = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
-            if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+            if (!currentUser || !['superadmin', 'admin', 'moderator'].includes(currentUser.role)) {
                 return res.status(403).json({ error: 'Not authorized' });
             }
         }
@@ -342,7 +342,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         // Ensure user is author, or an admin/moderator
         if (post.user_id !== req.user.id) {
             const currentUser = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
-            if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+            if (!currentUser || !['superadmin', 'admin', 'moderator'].includes(currentUser.role)) {
                 return res.status(403).json({ error: 'Not authorized' });
             }
         }
@@ -428,7 +428,7 @@ router.delete('/comments/:commentId', authenticateToken, async (req, res) => {
         
         if (comment.user_id !== req.user.id) {
             const currentUser = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
-            if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+            if (!currentUser || !['superadmin', 'admin', 'moderator'].includes(currentUser.role)) {
                 return res.status(403).json({ error: 'Not authorized' });
             }
         }

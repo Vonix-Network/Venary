@@ -134,14 +134,9 @@
             <span>Menu</span>
           </button>
 
-          <a href="#/messenger" class="nav-link" data-page="messenger" id="nav-messenger">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            <span>Messenger</span>
-            <span class="nav-badge hidden" id="unread-badge">0</span>
-          </a>
         </div>
+        <!-- unread-badge lives here so messenger.js can always find it regardless of nav injection order -->
+        <span class="nav-badge hidden" id="unread-badge" style="display:none">0</span>
         <div class="nav-links ext-nav" id="ext-nav-links">
           <!-- Extension nav links injected here dynamically -->
         </div>

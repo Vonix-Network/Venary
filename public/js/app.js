@@ -199,7 +199,7 @@ var App = {
             pages: [
                 { src: '/js/pages/messenger.js', global: 'MessengerPage', route: '/messenger' },
             ],
-            nav: [{ route: '/messenger', label: 'Messenger', icon: 'message-square', position: 10 }],
+            nav: [{ route: '/messenger', label: 'Messenger', icon: 'message-square', position: 10, badgeHtml: '<span class="nav-badge hidden" id="unread-badge">0</span>' }],
         },
     },
 
@@ -303,7 +303,7 @@ var App = {
             } else {
                 var page = nav.route ? nav.route.replace('/', '') : '';
                 html += '<a href="#' + nav.route + '" class="nav-link" data-page="' + page + '">' +
-                    iconSvg + '<span>' + nav.label + '</span></a>';
+                    iconSvg + '<span>' + nav.label + '</span>' + (nav.badgeHtml || '') + '</a>';
             }
         });
 
