@@ -903,7 +903,7 @@ var MessengerPage = {
                 lastDate = date;
                 lastAuthorId = null;
             }
-            var isNewAuthor = msg.author_id !== lastAuthorId;
+            var isNewAuthor = msg.author_id !== lastAuthorId || !!msg.reply_to_id;
             lastAuthorId = msg.author_id;
             html += this._renderMessageGroup(msg, isNewAuthor);
         });
@@ -964,9 +964,9 @@ var MessengerPage = {
         // Reply preview
         var replyHtml = '';
         if (msg.reply_to_id) {
-            replyHtml = `<div class="msn-msg-reply">
-                <span>↩</span>
-                <span class="msn-reply-author">Reply to message</span>
+            replyHtml = `<div class="msn-msg-reply" onclick="var el=document.querySelector('[data-msg-id=\\'${msg.reply_to_id}\\']');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.backgroundColor='var(--bg-hover,rgba(255,255,255,0.1))';setTimeout(()=>el.style.backgroundColor='',2000)}" title="Jump to original message">
+                <div class="msn-reply-spine"></div>
+                <span class="msn-reply-author">Replied to message</span>
             </div>`;
         }
 
@@ -976,15 +976,14 @@ var MessengerPage = {
                 ? `<div class="msn-msg-avatar" onclick="MessengerPage._showUserPopout('${msg.author_id}',event)" title="${this._esc(authorName)}">
                     ${authorAvatar ? `<img src="${this._esc(authorAvatar)}" alt="">` : avatarInitial}
                    </div>`
-                : `<div class="msn-msg-avatar-spacer" title="${fullTime}" style="cursor:default;font-size:0.65rem;display:flex;align-items:center;justify-content:center;color:transparent;transition:color .2s"
-                    onmouseover="this.style.color='var(--text-muted)'" onmouseout="this.style.color='transparent'">${time}</div>`}
+                : `<div class="msn-msg-avatar-spacer" title="${fullTime}">${time}</div>`}
             <div class="msn-msg-body">
+                ${replyHtml}
                 ${isNewAuthor ? `<div class="msn-msg-header">
                     <span class="msn-msg-author" onclick="MessengerPage._showUserPopout('${msg.author_id}',event)">${this._esc(authorName)}</span>
                     <span class="msn-msg-timestamp" title="${fullTime}">${time}</span>
                     ${msg.type === 'bot' || msg.type === 'webhook' ? '<span class="msn-badge-bot">BOT</span>' : ''}
                 </div>` : ''}
-                ${replyHtml}
                 <div class="msn-msg-content ${msg.deleted ? 'msn-msg-deleted' : ''}">
                     ${msg.deleted ? '<em>(message deleted)</em>' : this._renderMarkdown(msg.content || '')}
                     ${msg.edited_at && !msg.deleted ? '<span class="msn-msg-edited">(edited)</span>' : ''}

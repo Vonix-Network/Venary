@@ -393,6 +393,7 @@
     padding: 2px 16px;
     border-radius: 4px;
     position: relative;
+    align-items: flex-start;
 }
 .msn-msg-group:hover { background: rgba(0,0,0,0.06); }
 .msn-msg-group.msn-msg-new-author { padding-top: 16px; }
@@ -415,9 +416,21 @@
     cursor: pointer;
 }
 .msn-msg-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.msn-msg-avatar-spacer { width: 40px; flex-shrink: 0; }
+.msn-msg-avatar-spacer {
+    width: 40px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 0.68rem;
+    color: transparent;
+    padding-top: 4px;
+    line-height: 1.4;
+    user-select: none;
+    cursor: default;
+    transition: color 0.1s;
+}
+.msn-msg-group:hover .msn-msg-avatar-spacer { color: var(--text-muted, #8e9297); }
 
-.msn-msg-body { flex: 1; min-width: 0; }
+.msn-msg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .msn-msg-header {
     display: flex;
     align-items: baseline;
@@ -447,6 +460,36 @@
     font-size: 0.7rem;
     color: var(--text-muted);
     margin-left: 4px;
+}
+
+/* Reply reference */
+.msn-msg-reply {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    position: relative;
+    user-select: none;
+}
+.msn-reply-spine {
+    position: absolute;
+    left: -32px;
+    top: 50%;
+    width: 26px;
+    height: 16px;
+    border-left: 2px solid var(--border);
+    border-top: 2px solid var(--border);
+    border-top-left-radius: 6px;
+    transform: translateY(-100%);
+}
+.msn-msg-reply:hover .msn-reply-author, .msn-msg-reply:hover .msn-reply-snippet {
+    color: var(--text-primary);
+}
+.msn-msg-highlight {
+    background-color: var(--bg-hover, rgba(255,255,255,0.1)) !important;
+    transition: background-color 2s ease-out;
 }
 
 /* Reactions */
