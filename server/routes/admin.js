@@ -123,6 +123,10 @@ router.post('/users/:id/ban', authenticateToken, requireAdmin, async (req, res) 
             'UPDATE users SET banned = 1, ban_reason = ?, banned_until = ?, status = ? WHERE id = ?',
             [reason || 'No reason provided', bannedUntil, 'offline', req.params.id]
         );
+        await db.run(
+            'INSERT INTO admin_audit_log (actor_id, action, target_id, detail) VALUES (?, ?, ?, ?)',
+            [req.user.id, bannedUntil ? 'suspend_user' : 'ban_user', req.params.id, reason || 'No reason provided']
+        );
 
         res.json({ message: bannedUntil ? 'User suspended' : 'User banned' });
     } catch (err) {
@@ -135,6 +139,10 @@ router.post('/users/:id/ban', authenticateToken, requireAdmin, async (req, res) 
 router.post('/users/:id/unban', authenticateToken, requireAdmin, async (req, res) => {
     try {
         await db.run('UPDATE users SET banned = 0, ban_reason = NULL, banned_until = NULL WHERE id = ?', [req.params.id]);
+        await db.run(
+            'INSERT INTO admin_audit_log (actor_id, action, target_id) VALUES (?, ?, ?)',
+            [req.user.id, 'unban_user', req.params.id]
+        );
         res.json({ message: 'User unbanned' });
     } catch (err) {
         console.error('Unban user error:', err);
@@ -159,6 +167,10 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
         }
 
         await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
+        await db.run(
+            'INSERT INTO admin_audit_log (actor_id, action, target_id) VALUES (?, ?, ?)',
+            [req.user.id, 'delete_user', req.params.id]
+        );
         res.json({ message: 'User deleted successfully' });
     } catch (err) {
         console.error('Delete user error:', err);
@@ -187,6 +199,10 @@ router.post('/users/:id/role', authenticateToken, requireAdmin, async (req, res)
         }
 
         await db.run('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
+        await db.run(
+            'INSERT INTO admin_audit_log (actor_id, action, target_id, detail) VALUES (?, ?, ?, ?)',
+            [req.user.id, 'change_role', req.params.id, `new_role:${role}`]
+        );
         res.json({ message: 'Role updated' });
     } catch (err) {
         console.error('Change role error:', err);
@@ -446,7 +462,7 @@ router.post('/settings/test-email', authenticateToken, requireAdmin, async (req,
         res.json({ message: `Test email sent to ${to}` });
     } catch (err) {
         console.error('Test email error:', err);
-        res.status(500).json({ error: err.message || 'Failed to send test email' });
+        res.status(500).json({ error: 'Failed to send test email. Check SMTP settings in server logs.' });
     }
 });
 

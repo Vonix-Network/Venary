@@ -778,8 +778,13 @@ var App = {
         s = s.replace(/\[img\](.*?)\[\/img\]/gi, '<img src=\"$1\" style=\"max-width:100%\">');
         s = s.replace(/\[quote\](.*?)\[\/quote\]/gi, '<blockquote>$1</blockquote>');
         s = s.replace(/\[code\](.*?)\[\/code\]/gi, '<pre><code>$1</code></pre>');
-        s = s.replace(/\[color=(.*?)\](.*?)\[\/color\]/gi, '<span style=\"color:$1\">$2</span>');
-        s = s.replace(/\[size=(.*?)\](.*?)\[\/size\]/gi, '<span style=\"font-size:$1px\">$2</span>');
+        s = s.replace(/\[color=([\w#]{1,30}?)\](.*?)\[\/color\]/gi, function(_, c, t) {
+            return /^(#[0-9a-fA-F]{3,6}|[a-zA-Z]{2,30})$/.test(c) ? '<span style="color:' + c + '">' + t + '</span>' : t;
+        });
+        s = s.replace(/\[size=(\d{1,3}?)\](.*?)\[\/size\]/gi, function(_, sz, t) {
+            var n = parseInt(sz, 10);
+            return (n >= 1 && n <= 100) ? '<span style="font-size:' + n + 'px">' + t + '</span>' : t;
+        });
 
         // Handle newlines
         s = s.replace(/\n/g, '<br>');

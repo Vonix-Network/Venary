@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const Config = require('../config');
@@ -48,8 +49,8 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: `Username must be 3–${maxUsernameLength} characters` });
         }
 
-        if (password.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters and contain a letter and a number' });
         }
 
         // Check existing user
@@ -159,19 +160,21 @@ router.post('/forgot-password', async (req, res) => {
         const { email } = req.body;
         if (!email) return res.status(400).json({ error: 'Email is required' });
 
-        // Try both exact DB dialects (NOCASE is SQLite, ILIKE is Postgres, but we can do exact match or lower logic)
-        // Venary seems to use straight SELECT queries, so let's stick to standard parameter
-        const users = await db.all('SELECT * FROM users');
-        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
+        const user = await db.get('SELECT id, email FROM users WHERE LOWER(email) = LOWER(?)', [email]);
+
         if (!user) {
-            // Send 200 to prevent email enumeration
+            // Return 200 regardless to prevent email enumeration
             return res.status(200).json({ success: true });
         }
 
-        // Generate a token tied to the user's password hash so it invalidates on reset
-        const secret = JWT_SECRET + user.password;
-        const token = jwt.sign({ id: user.id }, secret, { expiresIn: '1h' });
+        // Generate a cryptographically random token, store it in DB with 1h expiry
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = Date.now() + 60 * 60 * 1000;
+        await db.run('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]);
+        await db.run(
+            'INSERT INTO password_reset_tokens (token, user_id, expires_at) VALUES (?, ?, ?)',
+            [token, user.id, expiresAt]
+        );
 
         const resetLink = `${req.protocol}://${req.get('host')}/#/reset-password?token=${token}&id=${user.id}`;
 
@@ -191,24 +194,21 @@ router.post('/reset-password', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        if (newPassword.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        if (newPassword.length < 8 || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters and contain a letter and a number' });
         }
 
-        const user = await db.get('SELECT * FROM users WHERE id = ?', [id]);
-        if (!user) {
-            return res.status(400).json({ error: 'Invalid reset link' });
-        }
-
-        const secret = JWT_SECRET + user.password;
-        try {
-            jwt.verify(token, secret);
-        } catch (err) {
+        const record = await db.get(
+            'SELECT * FROM password_reset_tokens WHERE token = ? AND user_id = ?',
+            [token, id]
+        );
+        if (!record || record.expires_at < Date.now()) {
             return res.status(400).json({ error: 'Invalid or expired reset link' });
         }
 
         const hashedPassword = bcrypt.hashSync(newPassword, 10);
         await db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id]);
+        await db.run('DELETE FROM password_reset_tokens WHERE user_id = ?', [id]);
 
         res.status(200).json({ success: true });
     } catch (err) {

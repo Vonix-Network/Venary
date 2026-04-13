@@ -6,6 +6,13 @@ var ForumPage = {
     currentThreadId: null,
     currentCategoryId: null,
 
+    // Escape a URL for safe use in src/href attributes — rejects non-http(s) schemes
+    _escSrc(url) {
+        const s = String(url || '');
+        if (!/^https?:\/\//i.test(s)) return '';
+        return s.replace(/"/g, '%22').replace(/'/g, '%27').replace(/</g, '%3C').replace(/>/g, '%3E');
+    },
+
     async render(container, params) {
         if (params && params[0] === 'thread') {
             this.currentView = 'thread';
@@ -142,11 +149,17 @@ var ForumPage = {
                         if (Array.isArray(media)) {
                             mediaHtml = '<div class=\"post-gallery four-plus-imgs\" style=\"margin-bottom:15px\">';
                             media.forEach(item => {
-                                const src = typeof item === 'string' ? item : item.url;
+                                const rawSrc = typeof item === 'string' ? item : item.url;
                                 const type = item.type || 'image';
-                                if (type === 'youtube') mediaHtml += `<div class=\"gallery-item youtube-embed\"><iframe src=\"https://www.youtube.com/embed/${src}\" frameborder=\"0\" allowfullscreen></iframe></div>`;
-                                else if (type === 'video') mediaHtml += `<div class=\"gallery-item\"><video src=\"${src}\" controls></video></div>`;
-                                else mediaHtml += `<div class=\"gallery-item\" onclick=\"window.open('${src}')\"><img src=\"${src}\"></div>`;
+                                if (type === 'youtube') {
+                                    // Extract only an 11-char video ID — reject everything else
+                                    const vidMatch = String(rawSrc).match(/^([a-zA-Z0-9_-]{11})$/);
+                                    if (vidMatch) mediaHtml += `<div class=\"gallery-item youtube-embed\"><iframe src=\"https://www.youtube.com/embed/${vidMatch[1]}\" frameborder=\"0\" allowfullscreen></iframe></div>`;
+                                } else if (type === 'video') {
+                                    if (/^https:\/\//i.test(rawSrc)) mediaHtml += `<div class=\"gallery-item\"><video src=\"${ForumPage._escSrc(rawSrc)}\" controls></video></div>`;
+                                } else {
+                                    if (/^https?:\/\//i.test(rawSrc)) mediaHtml += `<div class=\"gallery-item\" data-src=\"${ForumPage._escSrc(rawSrc)}\"><img src=\"${ForumPage._escSrc(rawSrc)}\"></div>`;
+                                }
                             });
                             mediaHtml += '</div>';
                         }
@@ -158,10 +171,10 @@ var ForumPage = {
                 if (App.currentUser && (App.currentUser.id === p.user_id || App.currentUser.role === 'admin' || App.currentUser.role === 'superadmin' || App.currentUser.role === 'moderator')) {
                     actionHtml = `
                         <div class=\"forum-post-actions\" style=\"display: flex; gap: 8px; margin-left: auto; align-items: center; opacity: 0.7; transition: opacity 0.2s;\">
-                            <button class=\"btn btn-ghost btn-sm\" onclick=\"ForumPage.editPost('${p.id}', this)\" style=\"padding: 2px 6px; font-size: 0.75rem;\">
+                            <button class=\"btn btn-ghost btn-sm js-forum-edit\" data-post-id=\"${App.escapeHtml(p.id)}\" style=\"padding: 2px 6px; font-size: 0.75rem;\">
                                 <i class=\"fas fa-edit\"></i> Edit
                             </button>
-                            <button class=\"btn btn-ghost btn-sm text-danger\" onclick=\"ForumPage.deletePost('${p.id}', ${p.is_op}, '${t.id}')\" style=\"padding: 2px 6px; font-size: 0.75rem; color: var(--neon-pink);\">
+                            <button class=\"btn btn-ghost btn-sm text-danger js-forum-delete\" data-post-id=\"${App.escapeHtml(p.id)}\" data-is-op=\"${p.is_op ? '1' : '0'}\" data-thread-id=\"${App.escapeHtml(t.id)}\" style=\"padding: 2px 6px; font-size: 0.75rem; color: var(--neon-pink);\">
                                 <i class=\"fas fa-trash\"></i> Delete
                             </button>
                         </div>
@@ -212,6 +225,16 @@ var ForumPage = {
 
             html += '</div></div>';
             container.innerHTML = html;
+
+            // Delegated listeners for edit/delete buttons (avoids inline onclick with user data)
+            container.addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.js-forum-edit');
+                if (editBtn) { ForumPage.editPost(editBtn.dataset.postId, editBtn); return; }
+                const delBtn = e.target.closest('.js-forum-delete');
+                if (delBtn) { ForumPage.deletePost(delBtn.dataset.postId, delBtn.dataset.isOp === '1', delBtn.dataset.threadId); return; }
+                const galleryItem = e.target.closest('.gallery-item[data-src]');
+                if (galleryItem) { window.open(galleryItem.dataset.src); }
+            }, { once: true });
         } catch (err) {
             container.innerHTML = '<div class=\"empty-state\"><h3>Thread not found</h3></div>';
         }

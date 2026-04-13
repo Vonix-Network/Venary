@@ -42,7 +42,8 @@ router.get('/conversations', authenticateToken, async (req, res) => {
 router.get('/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { before, limit = 50 } = req.query;
+    const { before } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 100);
 
     let query = `
           SELECT m.*,

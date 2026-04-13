@@ -199,9 +199,12 @@ const FeedPage = {
             const type = (typeof item === 'object' && item.type) || 'image';
 
             if (type === 'youtube') {
-              imageHtml += '<div class="gallery-item youtube-embed">' +
-                '<iframe src="https://www.youtube.com/embed/' + src + '" frameborder="0" allowfullscreen></iframe>' +
-                '</div>';
+              var ytMatch = String(src).match(/^([a-zA-Z0-9_-]{11})$/);
+              if (ytMatch) {
+                imageHtml += '<div class="gallery-item youtube-embed">' +
+                  '<iframe src="https://www.youtube.com/embed/' + ytMatch[1] + '" frameborder="0" allowfullscreen></iframe>' +
+                  '</div>';
+              }
             } else if (type === 'video') {
               imageHtml += '<div class="gallery-item">' +
                 '<video src="' + App.escapeHtml(src) + '" controls style="width:100%;height:100%;object-fit:cover"></video>' +

@@ -64,7 +64,8 @@ router.post('/complete', async (req, res) => {
             const schemaSql = fs.readFileSync(path.join(__dirname, '..', 'db', 'schema.sql'), 'utf-8');
             await adapter.init(schemaSql);
         } catch (err) {
-            return res.status(400).json({ error: 'Database connection failed: ' + err.message });
+            console.error('[setup] database connection error:', err);
+            return res.status(400).json({ error: 'Database connection failed. Check your connection string and try again.' });
         }
 
         // Create admin user
@@ -105,8 +106,8 @@ router.post('/complete', async (req, res) => {
         }, 1000);
 
     } catch (err) {
-        console.error('Setup error:', err);
-        res.status(500).json({ error: 'Setup failed: ' + err.message });
+        console.error('[setup] setup error:', err);
+        res.status(500).json({ error: 'Setup failed. Check server logs for details.' });
     }
 });
 
@@ -131,7 +132,8 @@ router.post('/test-db', async (req, res) => {
 
         res.json({ success: true, message: 'Connection successful!' });
     } catch (err) {
-        res.status(400).json({ success: false, message: 'Connection failed: ' + err.message });
+        console.error('[setup] test-db error:', err);
+        res.status(400).json({ success: false, message: 'Connection failed. Verify your settings and try again.' });
     }
 });
 

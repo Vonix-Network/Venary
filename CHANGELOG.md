@@ -5,6 +5,26 @@ All notable changes to Venary will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-04-13
+
+### Security
+- **JWT Secret Hardening** — Removed the hardcoded fallback secret. Server now refuses to start if `JWT_SECRET` environment variable is not set, preventing token forgery with the known default key.
+- **Password Reset Tokens** — Replaced JWT-based password reset tokens (derived from the user's password hash) with cryptographically random 32-byte tokens stored in a new `password_reset_tokens` DB table with a 1-hour expiry. Tokens are single-use and deleted on successful reset.
+- **Password Complexity** — Raised minimum password length from 6 to 8 characters and now require at least one letter and one number on both registration and password reset.
+- **XSS — BBCode CSS Injection** — `[color]` and `[size]` BBCode tags now validate their values against a strict whitelist (hex or named color; numeric 1–100) before injecting into style attributes. Arbitrary CSS expressions are rejected.
+- **XSS — Forum Media Rendering** — YouTube embeds now extract only the 11-character video ID via regex before inserting into iframe src, rejecting `javascript:` and other malicious schemes. Video and image src values are validated to begin with `https://`. All media gallery items replaced inline `onclick` strings with `data-*` attributes and a delegated event listener.
+- **XSS — Feed YouTube Embeds** — Same YouTube video ID extraction applied to the social feed media renderer.
+- **Security Headers** — Added `helmet` middleware with a Content Security Policy, `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`, and other OWASP-recommended headers.
+- **Rate Limiting** — Added `express-rate-limit` with strict limits on `/api/auth/login`, `/api/auth/register`, and `/api/auth/forgot-password` (20 req / 15 min) and a general API limit (300 req / min).
+- **CORS** — Restricted CORS origin from wildcard `*` to the configured `siteUrl`. Socket.io inherits the same policy.
+- **Pagination Limits** — Notifications and messages endpoints now clamp the `limit` query parameter to a maximum of 100, preventing memory exhaustion via `?limit=999999`.
+- **Post Content Length** — Feed posts are capped at 10,000 characters server-side.
+- **Socket.io DM Validation** — `send_message` events now verify the receiver exists in the database and that message content does not exceed 4,000 characters before persisting.
+- **Error Message Sanitization** — Setup and admin routes no longer return raw `err.message` in API responses. Errors are logged server-side and generic messages are returned to the client.
+- **Admin Audit Log** — Destructive admin actions (ban, unban, delete user, role change) are now recorded in a new `admin_audit_log` table with actor, target, and timestamp.
+- **Parameterized Forgot-Password Query** — Replaced a full `SELECT * FROM users` + JS `.find()` with a single parameterized `WHERE LOWER(email) = LOWER(?)` query.
+- **npm Audit** — Patched all 9 known vulnerabilities (4 moderate, 5 high) in `brace-expansion`, `lodash`, `nodemailer`, `path-to-regexp`, `picomatch`, `socket.io-parser`, and `undici` via `npm audit fix`.
+
 ## [Unreleased]
 
 ### Added

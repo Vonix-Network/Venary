@@ -114,6 +114,22 @@ CREATE TABLE IF NOT EXISTS post_subscriptions (
     UNIQUE(post_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target_id TEXT,
+    detail TEXT,
+    created_at INTEGER DEFAULT (strftime('%s','now'))
+);
+
 -- Indices for performance
 CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);

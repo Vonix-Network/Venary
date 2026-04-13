@@ -26,6 +26,9 @@ router.post('/', authenticateToken, async (req, res) => {
         if (!content || content.trim().length === 0) {
             return res.status(400).json({ error: 'Content is required' });
         }
+        if (content.length > 10000) {
+            return res.status(400).json({ error: 'Post content cannot exceed 10,000 characters' });
+        }
 
         const id = uuidv4();
         const now = new Date().toISOString();

@@ -32,7 +32,7 @@ async function createNotification(userId, type, actorId, referenceId, message) {
 // Returns recent notifications + unread counts for notifications & chat
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const { limit = 30 } = req.query;
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 30, 1), 100);
 
         const notifications = await db.all(
             `SELECT n.*, u.username as actor_username, u.display_name as actor_display_name, u.avatar as actor_avatar
@@ -41,7 +41,7 @@ router.get('/', authenticateToken, async (req, res) => {
              WHERE n.user_id = ?
              ORDER BY n.created_at DESC
              LIMIT ?`,
-            [req.user.id, parseInt(limit)]
+            [req.user.id, limit]
         );
 
         const [unreadNotifs] = await db.all(

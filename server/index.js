@@ -2,21 +2,59 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const Config = require('./config');
 
 const app = express();
 const server = http.createServer(app);
+
+// ── Security headers ────────────────────────────────────────────────────────
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],   // SPA uses inline scripts
+            styleSrc:  ["'self'", "'unsafe-inline'"],   // inline theme CSS
+            imgSrc:    ["'self'", "data:", "https:"],
+            connectSrc:["'self'", "wss:", "ws:"],
+            frameSrc:  ["'self'", "https://www.youtube.com"],
+            objectSrc: ["'none'"],
+        }
+    },
+    crossOriginEmbedderPolicy: false   // keep Socket.io compatible
+}));
+
+// ── CORS — restrict to configured site URL ──────────────────────────────────
+const allowedOrigin = Config.isSetupComplete()
+    ? (Config.get('siteUrl') || '*')
+    : '*';  // allow any during setup wizard
+const corsOptions = { origin: allowedOrigin, credentials: true };
+
 const io = new Server(server, {
-    cors: {
-        origin: '*',
-        methods: ['GET', 'POST', 'PUT', 'DELETE']
-    }
+    cors: corsOptions
+});
+
+// ── Rate limiting ───────────────────────────────────────────────────────────
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many attempts. Please wait 15 minutes before trying again.' }
+});
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests. Please slow down.' }
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '100kb' }));
 
 async function start() {
     // Always mount setup routes (they self-guard against re-running)
@@ -74,6 +112,13 @@ async function start() {
             }
             next();
         });
+
+        // ── Auth rate limiting ──────────────────────────────────────────────────
+        app.use('/api/auth/login', authLimiter);
+        app.use('/api/auth/register', authLimiter);
+        app.use('/api/auth/forgot-password', authLimiter);
+        // General API rate limit
+        app.use('/api/', apiLimiter);
 
         // API Routes
         app.use('/api/auth', require('./routes/auth'));

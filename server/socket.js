@@ -50,6 +50,11 @@ function initializeSocket(io) {
                 const { receiver_id, content } = data;
                 if (!receiver_id || !content) return;
 
+                // Validate receiver exists and content is within bounds
+                const receiver = await db.get('SELECT id FROM users WHERE id = ?', [receiver_id]);
+                if (!receiver) return socket.emit('error', { message: 'Recipient not found' });
+                if (typeof content !== 'string' || content.length > 4000) return socket.emit('error', { message: 'Invalid message' });
+
                 const id = uuidv4();
                 const now = new Date().toISOString();
                 await db.run(
