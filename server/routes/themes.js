@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../logger');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
@@ -56,7 +57,7 @@ router.get('/', (req, res) => {
 
         res.json(themes);
     } catch (err) {
-        console.error('Failed to load themes:', err);
+        logger.error('Failed to load themes:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Failed to load themes' });
     }
 });

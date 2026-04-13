@@ -31,7 +31,9 @@
     "socket.io": "^4.8.1",
     "stripe": "^20.4.1",
     "tiny-secp256k1": "^2.2.3",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "fast-check": "^4.6.0",

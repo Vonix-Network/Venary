@@ -25,6 +25,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Parameterized Forgot-Password Query** — Replaced a full `SELECT * FROM users` + JS `.find()` with a single parameterized `WHERE LOWER(email) = LOWER(?)` query.
 - **npm Audit** — Patched all 9 known vulnerabilities (4 moderate, 5 high) in `brace-expansion`, `lodash`, `nodemailer`, `path-to-regexp`, `picomatch`, `socket.io-parser`, and `undici` via `npm audit fix`.
 
+## [1.8.1] - 2026-04-13
+
+### Added
+- **Centralized Logger (`server/logger.js`)** — Replaced all `console.error/warn/log` calls across the entire server codebase with a structured Winston-based logger. Outputs to:
+  - Console (colorized in dev, JSON in prod)
+  - `logs/combined-YYYY-MM-DD.log` — all levels, 14-day rotation
+  - `logs/error-YYYY-MM-DD.log` — errors only, 30-day retention
+  - `logs/security-YYYY-MM-DD.log` — auth and admin audit events, 90-day retention
+- **Security Event Logging** — Authentication events now emit structured security log entries: `login_success`, `login_failed` (with reason: user_not_found / wrong_password), `login_blocked_banned`, `password_reset_requested`, `password_reset_invalid_token`, `password_reset_success`.
+- **IP Logging on Auth Events** — Client IP address is captured and included in all security log entries for login and password reset flows.
+- **Log File Rotation** — `winston-daily-rotate-file` provides daily rotation with gzip archiving and automatic cleanup by retention period.
+
+### Changed
+- `logs/` directory added to `.gitignore` — log files are never committed.
+
 ## [Unreleased]
 
 ### Added

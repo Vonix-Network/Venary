@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../logger');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
@@ -43,7 +44,7 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
             total_messages: totalMessages
         });
     } catch (err) {
-        console.error('Admin stats error:', err);
+        logger.error('Admin stats error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -85,7 +86,7 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
 
         res.json(users);
     } catch (err) {
-        console.error('Admin get users error:', err);
+        logger.error('Admin get users error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -130,7 +131,7 @@ router.post('/users/:id/ban', authenticateToken, requireAdmin, async (req, res) 
 
         res.json({ message: bannedUntil ? 'User suspended' : 'User banned' });
     } catch (err) {
-        console.error('Ban user error:', err);
+        logger.error('Ban user error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -145,7 +146,7 @@ router.post('/users/:id/unban', authenticateToken, requireAdmin, async (req, res
         );
         res.json({ message: 'User unbanned' });
     } catch (err) {
-        console.error('Unban user error:', err);
+        logger.error('Unban user error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -173,7 +174,7 @@ router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) =>
         );
         res.json({ message: 'User deleted successfully' });
     } catch (err) {
-        console.error('Delete user error:', err);
+        logger.error('Delete user error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -205,7 +206,7 @@ router.post('/users/:id/role', authenticateToken, requireAdmin, async (req, res)
         );
         res.json({ message: 'Role updated' });
     } catch (err) {
-        console.error('Change role error:', err);
+        logger.error('Change role error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -228,7 +229,7 @@ router.get('/reports', authenticateToken, requireAdmin, async (req, res) => {
 
         res.json(reports);
     } catch (err) {
-        console.error('Get reports error:', err);
+        logger.error('Get reports error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -245,7 +246,7 @@ router.post('/reports/:id/resolve', authenticateToken, requireAdmin, async (req,
 
         res.json({ message: 'Report resolved' });
     } catch (err) {
-        console.error('Resolve report error:', err);
+        logger.error('Resolve report error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -266,7 +267,7 @@ router.get('/posts', authenticateToken, requireAdmin, async (req, res) => {
         );
         res.json(posts);
     } catch (err) {
-        console.error('Get mod posts error:', err);
+        logger.error('Get mod posts error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -278,7 +279,7 @@ router.delete('/posts/:id', authenticateToken, requireAdmin, async (req, res) =>
         await db.run('DELETE FROM posts WHERE id = ?', [req.params.id]);
         res.json({ message: 'Post deleted' });
     } catch (err) {
-        console.error('Delete post error:', err);
+        logger.error('Delete post error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -353,7 +354,7 @@ router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('Get settings error:', err);
+        logger.error('Get settings error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -447,7 +448,7 @@ router.post('/settings', authenticateToken, requireAdmin, async (req, res) => {
 
         res.json({ message: 'Settings updated', settings: Config.getPublicSettings() });
     } catch (err) {
-        console.error('Update settings error:', err);
+        logger.error('Update settings error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -461,7 +462,7 @@ router.post('/settings/test-email', authenticateToken, requireAdmin, async (req,
         await Mailer.sendTest(to);
         res.json({ message: `Test email sent to ${to}` });
     } catch (err) {
-        console.error('Test email error:', err);
+        logger.error('Test email error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Failed to send test email. Check SMTP settings in server logs.' });
     }
 });

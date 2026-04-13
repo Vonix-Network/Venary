@@ -8,6 +8,7 @@ const db = require('../db');
 const Config = require('../config');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
 const extensionLoader = require('../extension-loader');
+const logger = require('../logger');
 const Mailer = require('../mail');
 
 function safeParseJSON(val) {
@@ -86,7 +87,7 @@ router.post('/register', async (req, res) => {
             user: { id, username, display_name: display_name || username, email }
         });
     } catch (err) {
-        console.error('Register error:', err);
+        logger.error('Register error', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -95,6 +96,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
+        const ip = req.ip || req.socket?.remoteAddress;
 
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required' });
@@ -102,11 +104,13 @@ router.post('/login', async (req, res) => {
 
         const user = await db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, username]);
         if (!user) {
+            logger.security('login_failed', { reason: 'user_not_found', username, ip });
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         const valid = bcrypt.compareSync(password, user.password);
         if (!valid) {
+            logger.security('login_failed', { reason: 'wrong_password', userId: user.id, username: user.username, ip });
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
@@ -117,6 +121,7 @@ router.post('/login', async (req, res) => {
                 await db.run('UPDATE users SET banned = 0, ban_reason = NULL, banned_until = NULL WHERE id = ?', [user.id]);
                 user.banned = 0;
             } else {
+                logger.security('login_blocked_banned', { userId: user.id, username: user.username, ip });
                 let msg = 'Your account has been banned.';
                 if (user.banned_until) {
                     const expiry = new Date(user.banned_until).toLocaleString();
@@ -131,6 +136,8 @@ router.post('/login', async (req, res) => {
         await db.run("UPDATE users SET last_seen = ?, status = ? WHERE id = ?", [new Date().toISOString(), 'online', user.id]);
 
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+
+        logger.security('login_success', { userId: user.id, username: user.username, ip });
 
         const userObj = {
             id: user.id,
@@ -149,7 +156,7 @@ router.post('/login', async (req, res) => {
 
         res.json({ token, user: userObj });
     } catch (err) {
-        console.error('Login error:', err);
+        logger.error('Login error', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -158,6 +165,7 @@ router.post('/login', async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
+        const ip = req.ip || req.socket?.remoteAddress;
         if (!email) return res.status(400).json({ error: 'Email is required' });
 
         const user = await db.get('SELECT id, email FROM users WHERE LOWER(email) = LOWER(?)', [email]);
@@ -176,12 +184,14 @@ router.post('/forgot-password', async (req, res) => {
             [token, user.id, expiresAt]
         );
 
+        logger.security('password_reset_requested', { userId: user.id, ip });
+
         const resetLink = `${req.protocol}://${req.get('host')}/#/reset-password?token=${token}&id=${user.id}`;
 
         await Mailer.notifyPasswordReset(user.email, resetLink);
         res.status(200).json({ success: true });
     } catch (err) {
-        console.error('Forgot password error:', err);
+        logger.error('Forgot password error', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -190,6 +200,7 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
     try {
         const { id, token, newPassword } = req.body;
+        const ip = req.ip || req.socket?.remoteAddress;
         if (!id || !token || !newPassword) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
@@ -203,6 +214,7 @@ router.post('/reset-password', async (req, res) => {
             [token, id]
         );
         if (!record || record.expires_at < Date.now()) {
+            logger.security('password_reset_invalid_token', { userId: id, ip });
             return res.status(400).json({ error: 'Invalid or expired reset link' });
         }
 
@@ -210,9 +222,10 @@ router.post('/reset-password', async (req, res) => {
         await db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id]);
         await db.run('DELETE FROM password_reset_tokens WHERE user_id = ?', [id]);
 
+        logger.security('password_reset_success', { userId: id, ip });
         res.status(200).json({ success: true });
     } catch (err) {
-        console.error('Reset password error:', err);
+        logger.error('Reset password error', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -244,7 +257,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         await enrichWithDonationRank(userObj);
         res.json(userObj);
     } catch (err) {
-        console.error('Get me error:', err);
+        logger.error('Get me error', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });

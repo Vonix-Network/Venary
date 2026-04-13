@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits, Partials, REST, Routes } = require('discord.js');
+const logger = require('./logger');
 const Config = require('./config');
 
 const client = new Client({
@@ -17,7 +18,7 @@ const commands = new Map();
 
 client.once('ready', () => {
     isReady = true;
-    console.log(`[Discord] Central Bot logged in as ${client.user.tag}`);
+    logger.info("[Discord] bot ready", { tag: client.user.tag });
 });
 
 client.on('interactionCreate', async interaction => {
@@ -29,7 +30,7 @@ client.on('interactionCreate', async interaction => {
     try {
         await command.handler(interaction);
     } catch (error) {
-        console.error(`[Discord] Error executing command ${interaction.commandName}:`, error);
+        logger.error('[Discord] command execution error', { command: interaction.commandName, err: error && error.message });
         if (interaction.replied || interaction.deferred) {
             await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
         } else {
@@ -43,14 +44,14 @@ async function init() {
     const token = cfg.discord?.botToken;
 
     if (!token || token === '••••••••') {
-        console.log('[Discord] No valid bot token found in settings. Bot inactive.');
+        logger.info('[Discord] No valid bot token found in settings. Bot inactive.');
         return;
     }
 
     try {
         await client.login(token);
     } catch (err) {
-        console.error('[Discord] Failed to start bot:', err.message);
+        logger.error('[Discord] Failed to start bot', { err: err.message });
     }
 }
 
@@ -61,7 +62,7 @@ async function init() {
  */
 function registerCommand(commandData, handler) {
     commands.set(commandData.name, { data: commandData, handler });
-    console.log(`[Discord] Registered command: /${commandData.name}`);
+    logger.info("[Discord] command registered", { command: commandData.name });
 }
 
 /**
@@ -71,7 +72,7 @@ function registerCommand(commandData, handler) {
  */
 function registerListener(event, handler) {
     client.on(event, handler);
-    console.log(`[Discord] Registered listener for event: ${event}`);
+    logger.info("[Discord] listener registered", { event });
 }
 
 /**
@@ -85,7 +86,7 @@ async function deployCommands() {
     const guildId = cfg.discord?.guildId;
 
     if (!token || !clientId || !guildId) {
-        console.warn('[Discord] Skipping command deployment: Missing token, clientId, or guildId.');
+        logger.warn('[Discord] Skipping command deployment: Missing token, clientId, or guildId.');
         return;
     }
 
@@ -93,14 +94,14 @@ async function deployCommands() {
     const body = Array.from(commands.values()).map(c => c.data);
 
     try {
-        console.log(`[Discord] Started refreshing ${body.length} application (/) commands.`);
+        logger.info(`[Discord] deploying ${body.length} slash commands`);
         await rest.put(
             Routes.applicationGuildCommands(clientId, guildId),
             { body }
         );
-        console.log('[Discord] Successfully reloaded application (/) commands.');
+        logger.info('[Discord] Successfully reloaded application (/) commands.');
     } catch (error) {
-        console.error('[Discord] Failed to deploy commands:', error);
+        logger.error('[Discord] Failed to deploy commands', { err: error && error.message });
     }
 }
 
@@ -124,12 +125,12 @@ async function dmMembersByRole(guildId, roleId, messageContent) {
                 await member.send(messageContent);
                 sentCount++;
             } catch (dmErr) {
-                console.error(`[Discord] Could not DM user ${id}:`, dmErr.message);
+                logger.warn("[Discord] DM failed", { userId: id, err: dmErr.message });
             }
         }
         return sentCount > 0;
     } catch (err) {
-        console.error('[Discord] dmMembersByRole error:', err);
+        logger.error('[Discord] dmMembersByRole error', { err: err && err.message });
         return false;
     }
 }

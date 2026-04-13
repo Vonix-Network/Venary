@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const Config = require('./config');
+const logger = require('./logger');
 
 const app = express();
 const server = http.createServer(app);
@@ -64,7 +65,7 @@ async function start() {
         // =====================================
         // SETUP MODE — serve wizard only
         // =====================================
-        console.log('  ⚡ First run detected — starting setup wizard');
+        logger.info('  ⚡ First run detected — starting setup wizard');
 
         // Serve setup.html for everything
         app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -182,6 +183,6 @@ async function start() {
 }
 
 start().catch(err => {
-    console.error('Failed to start Venary:', err);
+    logger.error('Failed to start Venary:', { err: err.message, stack: err.stack });
     process.exit(1);
 });

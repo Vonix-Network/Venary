@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../logger');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
@@ -36,7 +37,7 @@ router.post('/request/:id', authenticateToken, async (req, res) => {
 
         res.status(201).json({ message: 'Friend request sent', id });
     } catch (err) {
-        console.error('Friend request error:', err);
+        logger.error('Friend request error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -60,7 +61,7 @@ router.post('/accept/:id', authenticateToken, async (req, res) => {
 
         res.json({ message: 'Friend request accepted' });
     } catch (err) {
-        console.error('Accept friend error:', err);
+        logger.error('Accept friend error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -82,7 +83,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
         res.json({ message: 'Friend removed' });
     } catch (err) {
-        console.error('Remove friend error:', err);
+        logger.error('Remove friend error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -104,7 +105,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
         res.json(friends);
     } catch (err) {
-        console.error('List friends error:', err);
+        logger.error('List friends error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -132,7 +133,7 @@ router.get('/requests', authenticateToken, async (req, res) => {
 
         res.json({ incoming, outgoing });
     } catch (err) {
-        console.error('List requests error:', err);
+        logger.error('List requests error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });

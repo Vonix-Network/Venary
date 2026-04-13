@@ -4,6 +4,7 @@
    Each extension gets its own isolated database.
    ======================================= */
 const fs = require('fs');
+const logger = require('./logger');
 const path = require('path');
 const express = require('express');
 const { createDatabase } = require('./db/factory');
@@ -39,7 +40,7 @@ class ExtensionLoader {
     async loadAll(app, dbConfig = {}) {
         if (!fs.existsSync(EXT_DIR)) {
             fs.mkdirSync(EXT_DIR, { recursive: true });
-            console.log('  📁 Created extensions/ directory');
+            logger.info('  📁 Created extensions/ directory');
             return;
         }
 
@@ -75,7 +76,7 @@ class ExtensionLoader {
                     console.log('  ⏸️  Extension disabled: ' + manifest.name);
                 }
             } catch (err) {
-                console.error('  ❌ Failed to load extension ' + entry.name + ':', err.message);
+                logger.error('  ❌ Failed to load extension ' + entry.name + ':', err.message);
             }
         }
 
@@ -110,7 +111,7 @@ class ExtensionLoader {
         if (!manifest.name) throw new Error('Missing "name" in manifest');
         if (!manifest.version) throw new Error('Missing "version" in manifest');
         if (manifest.id !== dirName) {
-            console.warn('  ⚠️  Extension id "' + manifest.id + '" does not match directory "' + dirName + '"');
+            logger.warn('[extension-loader] id mismatch', { manifestId: manifest.id, directory: dirName });
         }
     }
 
@@ -159,7 +160,7 @@ class ExtensionLoader {
                     console.log('    🤖 Discord integration loaded for: ' + manifest.id);
                 }
             } catch (err) {
-                console.error('    ❌ Failed to load Discord integration for ' + manifest.id + ':', err.message);
+                logger.error('    ❌ Failed to load Discord integration for ' + manifest.id + ':', err.message);
             }
         }
 

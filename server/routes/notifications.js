@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../logger');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
@@ -24,7 +25,7 @@ async function createNotification(userId, type, actorId, referenceId, message) {
             io.to(`user:${userId}`).emit('new_notification');
         }
     } catch (err) {
-        console.error('createNotification error:', err);
+        logger.error('createNotification error:', { err: err.message, stack: err.stack });
     }
 }
 
@@ -60,7 +61,7 @@ router.get('/', authenticateToken, async (req, res) => {
             unread_messages: unreadMessages?.count || 0
         });
     } catch (err) {
-        console.error('Get notifications error:', err);
+        logger.error('Get notifications error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -82,7 +83,7 @@ router.get('/counts', authenticateToken, async (req, res) => {
             unread_messages: unreadMessages?.count || 0
         });
     } catch (err) {
-        console.error('Counts error:', err);
+        logger.error('Counts error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -105,7 +106,7 @@ router.post('/read', authenticateToken, async (req, res) => {
         }
         res.json({ ok: true });
     } catch (err) {
-        console.error('Mark read error:', err);
+        logger.error('Mark read error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -119,7 +120,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         );
         res.json({ ok: true });
     } catch (err) {
-        console.error('Delete notification error:', err);
+        logger.error('Delete notification error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });

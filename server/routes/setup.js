@@ -3,6 +3,7 @@
    Handles first-run setup wizard API.
    ======================================= */
 const express = require('express');
+const logger = require('../logger');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
@@ -64,7 +65,7 @@ router.post('/complete', async (req, res) => {
             const schemaSql = fs.readFileSync(path.join(__dirname, '..', 'db', 'schema.sql'), 'utf-8');
             await adapter.init(schemaSql);
         } catch (err) {
-            console.error('[setup] database connection error:', err);
+            logger.error('[setup] database connection error:', { err: err.message, stack: err.stack });
             return res.status(400).json({ error: 'Database connection failed. Check your connection string and try again.' });
         }
 
@@ -101,12 +102,12 @@ router.post('/complete', async (req, res) => {
 
         // Graceful restart after a short delay to let the response send
         setTimeout(() => {
-            console.log('  🔄 Setup complete, restarting server...');
+            logger.info('  🔄 Setup complete, restarting server...');
             process.exit(0);
         }, 1000);
 
     } catch (err) {
-        console.error('[setup] setup error:', err);
+        logger.error('[setup] setup error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Setup failed. Check server logs for details.' });
     }
 });
@@ -132,7 +133,7 @@ router.post('/test-db', async (req, res) => {
 
         res.json({ success: true, message: 'Connection successful!' });
     } catch (err) {
-        console.error('[setup] test-db error:', err);
+        logger.error('[setup] test-db error:', { err: err.message, stack: err.stack });
         res.status(400).json({ success: false, message: 'Connection failed. Verify your settings and try again.' });
     }
 });

@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../logger');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
@@ -66,7 +67,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
         res.status(201).json(post);
     } catch (err) {
-        console.error('Create post error:', err);
+        logger.error('Create post error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -140,7 +141,7 @@ router.get('/feed', optionalAuth, async (req, res) => {
 
         res.json(posts);
     } catch (err) {
-        console.error('Get feed error:', err);
+        logger.error('Get feed error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -182,7 +183,7 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
             res.json({ liked: true });
         }
     } catch (err) {
-        console.error('Toggle like error:', err);
+        logger.error('Toggle like error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -236,7 +237,7 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
                     [uuidv4(), postId, req.user.id, now]
                 );
             }
-        } catch (subErr) { console.error('Sub/notify error:', subErr); }
+        } catch (subErr) { logger.error('Sub/notify error:', { err: subErr && subErr.message }); }
 
         const comment = await db.get(
             `SELECT c.*, u.username, u.display_name, u.avatar, u.level
@@ -248,7 +249,7 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
 
         res.status(201).json(comment);
     } catch (err) {
-        console.error('Add comment error:', err);
+        logger.error('Add comment error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -288,7 +289,7 @@ router.get('/:id/comments', optionalAuth, async (req, res) => {
 
         res.json(comments);
     } catch (err) {
-        console.error('Get comments error:', err);
+        logger.error('Get comments error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -317,7 +318,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         await db.run('DELETE FROM posts WHERE id = ?', [req.params.id]);
         res.json({ message: 'Post deleted' });
     } catch (err) {
-        console.error('Delete post error:', err);
+        logger.error('Delete post error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -346,7 +347,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         
         res.json({ message: 'Post updated' });
     } catch (err) {
-        console.error('Update post error:', err);
+        logger.error('Update post error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -374,7 +375,7 @@ router.post('/:id/subscribe', authenticateToken, async (req, res) => {
             res.json({ subscribed: true });
         }
     } catch (err) {
-        console.error('Subscribe toggle error:', err);
+        logger.error('Subscribe toggle error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -392,7 +393,7 @@ router.post('/:id/report', authenticateToken, async (req, res) => {
         );
         res.json({ message: 'Report submitted' });
     } catch (err) {
-        console.error('Report post error:', err);
+        logger.error('Report post error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -429,7 +430,7 @@ router.delete('/comments/:commentId', authenticateToken, async (req, res) => {
         await db.run('DELETE FROM comments WHERE id = ?', [req.params.commentId]);
         res.json({ message: 'Comment deleted' });
     } catch (err) {
-        console.error('Delete comment error:', err);
+        logger.error('Delete comment error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -447,7 +448,7 @@ router.post('/comments/:commentId/report', authenticateToken, async (req, res) =
         );
         res.json({ message: 'Report submitted' });
     } catch (err) {
-        console.error('Report comment error:', err);
+        logger.error('Report comment error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });

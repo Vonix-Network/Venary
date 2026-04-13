@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../logger');
 const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
@@ -33,7 +34,7 @@ router.get('/conversations', authenticateToken, async (req, res) => {
 
     res.json(conversations);
   } catch (err) {
-    console.error('Get conversations error:', err);
+    logger.error('Get conversations error:', { err: err.message, stack: err.stack });
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -73,7 +74,7 @@ router.get('/:userId', authenticateToken, async (req, res) => {
 
     res.json(messages.reverse());
   } catch (err) {
-    console.error('Get messages error:', err);
+    logger.error('Get messages error:', { err: err.message, stack: err.stack });
     res.status(500).json({ error: 'Server error' });
   }
 });

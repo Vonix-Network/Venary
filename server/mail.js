@@ -4,6 +4,7 @@
    transactional emails via Nodemailer.
    ======================================= */
 const nodemailer = require('nodemailer');
+const logger = require('./logger');
 const Config = require('./config');
 
 const Mailer = {

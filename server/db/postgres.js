@@ -4,6 +4,7 @@
    interface identical to the SQLite adapter.
    ======================================= */
 const { Pool } = require('pg');
+const logger = require('../logger');
 
 class PostgresAdapter {
     constructor(connectionString, schemaName = 'public') {
@@ -19,7 +20,7 @@ class PostgresAdapter {
         if (this.schemaName && this.schemaName !== 'public') {
             this.pool.on('connect', client => {
                 client.query(`SET search_path TO "${this.schemaName}", public`).catch(err => {
-                    console.error(`[Postgres] Failed to set search_path for schema ${this.schemaName}:`, err.message);
+                    logger.error("[Postgres] Failed to set search_path", { schema: this.schemaName, err: err.message });
                 });
             });
         }

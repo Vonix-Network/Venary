@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../logger');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
@@ -45,7 +46,7 @@ router.get('/search', authenticateToken, async (req, res) => {
 
         res.json(users);
     } catch (err) {
-        console.error('Search users error:', err);
+        logger.error('Search users error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -123,7 +124,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
         res.json(user);
     } catch (err) {
-        console.error('Get user error:', err);
+        logger.error('Get user error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -189,7 +190,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
             status: user.status
         });
     } catch (err) {
-        console.error('Update profile error:', err);
+        logger.error('Update profile error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });

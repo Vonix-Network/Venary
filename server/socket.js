@@ -5,6 +5,7 @@
    the centralized event bus.
    ======================================= */
 const jwt = require('jsonwebtoken');
+const logger = require('./logger');
 const { v4: uuidv4 } = require('uuid');
 const { JWT_SECRET } = require('./middleware/auth');
 const db = require('./db');
@@ -32,14 +33,14 @@ function initializeSocket(io) {
 
     io.on('connection', (socket) => {
         const userId = socket.user.id;
-        console.log(`User connected: ${socket.user.username} (${userId})`);
+        logger.info('socket_connected', { username: socket.user.username, userId });
 
         // Track online status
         if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
         onlineUsers.get(userId).add(socket.id);
 
         db.run("UPDATE users SET status = 'online', last_seen = ? WHERE id = ?", [new Date().toISOString(), userId])
-            .catch(err => console.error('Status update error:', err));
+            .catch(err => logger.error('Status update error:', { err: err.message, stack: err.stack }));
 
         broadcastPresence(io, userId, 'online');
         socket.join(`user:${userId}`);
@@ -76,7 +77,7 @@ function initializeSocket(io) {
                 io.to(`user:${receiver_id}`).emit('new_message', message);
                 socket.emit('message_sent', message);
             } catch (err) {
-                console.error('Send message error:', err);
+                logger.error('Send message error:', { err: err.message, stack: err.stack });
                 socket.emit('error', { message: 'Failed to send message' });
             }
         });
@@ -104,14 +105,14 @@ function initializeSocket(io) {
 
         // ── Disconnect ───────────────────────────────────────────
         socket.on('disconnect', () => {
-            console.log(`User disconnected: ${socket.user.username}`);
+            logger.info('socket_disconnected', { username: socket.user.username });
             const userSockets = onlineUsers.get(userId);
             if (userSockets) {
                 userSockets.delete(socket.id);
                 if (userSockets.size === 0) {
                     onlineUsers.delete(userId);
                     db.run("UPDATE users SET status = 'offline', last_seen = ? WHERE id = ?", [new Date().toISOString(), userId])
-                        .catch(err => console.error('Status update error:', err));
+                        .catch(err => logger.error('Status update error:', { err: err.message, stack: err.stack }));
                     broadcastPresence(io, userId, 'offline');
                 }
             }
