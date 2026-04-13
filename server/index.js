@@ -12,28 +12,26 @@ const app = express();
 const server = http.createServer(app);
 
 // ── Security headers ────────────────────────────────────────────────────────
+// Note: upgradeInsecureRequests is intentionally omitted — it breaks HTTP
+// deployments by silently blocking all sub-resource loads. HSTS is sent
+// only when the app is behind HTTPS (via the HTTPS redirect middleware below).
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
-            defaultSrc:      ["'self'"],
-            scriptSrc:       ["'self'", "'unsafe-inline'"],   // SPA uses inline scripts
-            styleSrc:        ["'self'", "'unsafe-inline'"],   // inline theme CSS
-            imgSrc:          ["'self'", "data:", "https:"],
-            connectSrc:      ["'self'", "wss:", "ws:"],
-            frameSrc:        ["'self'", "https://www.youtube.com"],
-            objectSrc:       ["'none'"],
-            baseUri:         ["'self'"],
-            formAction:      ["'self'"],
-            frameAncestors:  ["'self'"],
-            upgradeInsecureRequests: [],
+            defaultSrc:     ["'self'"],
+            scriptSrc:      ["'self'", "'unsafe-inline'"],   // SPA uses inline scripts
+            styleSrc:       ["'self'", "'unsafe-inline'"],   // inline theme CSS
+            imgSrc:         ["'self'", "data:", "https:", "http:"],
+            connectSrc:     ["'self'", "wss:", "ws:"],
+            frameSrc:       ["'self'", "https://www.youtube.com"],
+            objectSrc:      ["'none'"],
+            baseUri:        ["'self'"],
+            formAction:     ["'self'"],
+            frameAncestors: ["'self'"],
         }
     },
     crossOriginEmbedderPolicy: false,   // keep Socket.io compatible
-    hsts: {
-        maxAge: 31536000,               // 1 year
-        includeSubDomains: true,
-        preload: true
-    },
+    hsts: false,                        // only enable HSTS when TLS is confirmed (set via reverse proxy)
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     permittedCrossDomainPolicies: { permittedPolicies: 'none' },
     noSniff: true,
