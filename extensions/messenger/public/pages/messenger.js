@@ -301,8 +301,9 @@ var MessengerPage = {
                 </svg>
             </button>
         </div>
-        <input class="msn-search-input" id="msn-dm-filter" placeholder="Find or start a conversation"
-            oninput="MessengerPage._filterDMs(this.value)">`;
+        <button class="msn-search-input" style="text-align:left;color:var(--text-muted);cursor:pointer;display:block" onclick="MessengerPage._showNewDMSearch()">
+            Find or start a conversation
+        </button>`;
 
         // Render the Friends button at the top of the scroll area
         var friendsBtnHtml = `
