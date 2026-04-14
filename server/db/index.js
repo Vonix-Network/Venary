@@ -88,7 +88,7 @@ const db = {
                 reviewed_at TEXT,
                 cooldown_until TEXT,
                 previous_appeal_id TEXT,
-                created_at TEXT DEFAULT NOW(),
+                created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
                 FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (reviewed_by) REFERENCES users(id),
                 FOREIGN KEY (previous_appeal_id) REFERENCES ban_appeals(id)

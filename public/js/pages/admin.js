@@ -1054,7 +1054,7 @@ var AdminPage = {
       var tableHtml = '<div class="admin-table-container animate-fade-up" style="animation-delay:0.1s">' +
         '<table class="admin-table">' +
         '<thead><tr><th>User</th><th>Status</th><th>Submitted</th><th style="text-align:right">Actions</th></tr></thead>' +
-        '<tbody>' + (tableRows || '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">No appeals found</td></tr>') + '</tbody>' +
+        '<tbody>' + (tableRows.join('') || '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">No appeals found</td></tr>') + '</tbody>' +
         '</table>' +
         '</div>';
 

@@ -93,6 +93,9 @@ router.post('/', authenticateToken, async (req, res) => {
         if (!appeal_message || appeal_message.trim().length < 50) {
             return res.status(400).json({ error: 'Appeal message must be at least 50 characters' });
         }
+        if (appeal_message.trim().length > 2000) {
+            return res.status(400).json({ error: 'Appeal message must not exceed 2000 characters' });
+        }
 
         // Check for active appeal
         const activeAppeal = await getUserActiveAppeal(userId);
@@ -269,7 +272,8 @@ router.get('/admin/appeals', authenticateToken, requireAdminAuth, async (req, re
 // Get appeal statistics (admin) — must be defined BEFORE /:id to avoid shadowing
 router.get('/admin/appeals/stats', authenticateToken, requireAdminAuth, async (req, res) => {
     try {
-        const todayStr = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+        // UTC midnight as full ISO string so comparison is consistent with reviewed_at storage format
+        const todayStr = new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z';
         const stats = await db.get(`
             SELECT
                 COUNT(CASE WHEN status = 'submitted' THEN 1 END) as pending,
@@ -373,25 +377,33 @@ router.post('/admin/appeals/:id/review', authenticateToken, requireAdminAuth, as
         const now = new Date().toISOString();
 
         if (action === 'approve') {
-            // Unban the user
-            await db.run(
-                'UPDATE users SET banned = 0, ban_reason = NULL, banned_until = NULL WHERE id = ?',
-                [appeal.user_id]
-            );
+            await db.run('BEGIN');
+            try {
+                // Unban the user
+                await db.run(
+                    'UPDATE users SET banned = 0, ban_reason = NULL, banned_until = NULL WHERE id = ?',
+                    [appeal.user_id]
+                );
 
-            // Update appeal status
-            await db.run(
-                `UPDATE ban_appeals 
-                 SET status = 'approved', reviewed_by = ?, reviewed_at = ? 
-                 WHERE id = ?`,
-                [adminId, now, appealId]
-            );
+                // Update appeal status
+                await db.run(
+                    `UPDATE ban_appeals
+                     SET status = 'approved', reviewed_by = ?, reviewed_at = ?
+                     WHERE id = ?`,
+                    [adminId, now, appealId]
+                );
 
-            // Log to audit
-            await db.run(
-                'INSERT INTO admin_audit_log (actor_id, action, target_id, detail) VALUES (?, ?, ?, ?)',
-                [adminId, 'approve_appeal', appealId, admin_note || 'Appeal approved, user unbanned']
-            );
+                // Log to audit
+                await db.run(
+                    'INSERT INTO admin_audit_log (actor_id, action, target_id, detail) VALUES (?, ?, ?, ?)',
+                    [adminId, 'approve_appeal', appealId, admin_note || 'Appeal approved, user unbanned']
+                );
+
+                await db.run('COMMIT');
+            } catch (txErr) {
+                await db.run('ROLLBACK');
+                throw txErr;
+            }
 
             // TODO: Send notification to user
 
@@ -413,23 +425,31 @@ router.post('/admin/appeals/:id/review', authenticateToken, requireAdminAuth, as
             cooldownDate.setDate(cooldownDate.getDate() + COOLDOWN_DAYS);
             const cooldownUntil = cooldownDate.toISOString();
 
-            // Update appeal status
-            await db.run(
-                `UPDATE ban_appeals 
-                 SET status = 'declined', 
-                     decline_reason = ?, 
-                     reviewed_by = ?, 
-                     reviewed_at = ?,
-                     cooldown_until = ?
-                 WHERE id = ?`,
-                [decline_reason.trim(), adminId, now, cooldownUntil, appealId]
-            );
+            await db.run('BEGIN');
+            try {
+                // Update appeal status
+                await db.run(
+                    `UPDATE ban_appeals
+                     SET status = 'declined',
+                         decline_reason = ?,
+                         reviewed_by = ?,
+                         reviewed_at = ?,
+                         cooldown_until = ?
+                     WHERE id = ?`,
+                    [decline_reason.trim(), adminId, now, cooldownUntil, appealId]
+                );
 
-            // Log to audit
-            await db.run(
-                'INSERT INTO admin_audit_log (actor_id, action, target_id, detail) VALUES (?, ?, ?, ?)',
-                [adminId, 'decline_appeal', appealId, decline_reason]
-            );
+                // Log to audit
+                await db.run(
+                    'INSERT INTO admin_audit_log (actor_id, action, target_id, detail) VALUES (?, ?, ?, ?)',
+                    [adminId, 'decline_appeal', appealId, decline_reason]
+                );
+
+                await db.run('COMMIT');
+            } catch (txErr) {
+                await db.run('ROLLBACK');
+                throw txErr;
+            }
 
             // TODO: Send notification to user
 

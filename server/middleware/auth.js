@@ -65,12 +65,23 @@ async function requireNonBanned(req, res, next) {
     }
 }
 
-// Middleware to allow only admin/moderator roles
-function requireAdmin(req, res, next) {
-    if (!req.userRole || !['admin', 'superadmin', 'moderator'].includes(req.userRole)) {
-        return res.status(403).json({ error: 'Admin access required' });
+// Middleware to allow only admin/moderator roles.
+// Performs its own DB lookup so it can be used standalone on any route
+// that already has authenticateToken applied.
+async function requireAdmin(req, res, next) {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: 'Authentication required' });
     }
-    next();
+    try {
+        const user = await db.get('SELECT role FROM users WHERE id = ?', [req.user.id]);
+        if (!user || !['admin', 'superadmin', 'moderator'].includes(user.role)) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        req.userRole = user.role;
+        next();
+    } catch (err) {
+        return res.status(500).json({ error: 'Server error' });
+    }
 }
 
 module.exports = { authenticateToken, optionalAuth, requireNonBanned, requireAdmin, JWT_SECRET };
