@@ -66,7 +66,7 @@ var MinecraftPage = {
     async renderServers(container) {
         container.innerHTML = '<div class="loading-spinner" style="text-align:center;padding:3rem">Loading servers...</div>';
         try {
-            const res = await API.get('/api/minecraft/servers');
+            const res = await API.get('/api/ext/minecraft/servers');
             this.servers = res;
         } catch { this.servers = []; }
 
@@ -97,41 +97,90 @@ var MinecraftPage = {
                 ? `<img class="mc-server-icon" src="${s.icon}" alt="${s.name}">`
                 : `<div class="mc-server-icon-placeholder">\u26CF</div>`;
 
+            const playerList = (s.players?.list || []).slice(0, 10);
+            const morePlayers = (s.players?.online || 0) - playerList.length;
+
             html += `
                 <div class="mc-server-card" data-server-id="${s.id}">
                     <div class="status-bar ${s.online ? 'online' : 'offline'}"></div>
-                    <div class="mc-server-header">
-                        ${iconHtml}
-                        <div style="flex:1">
-                            <div class="mc-server-name">${this._esc(s.name)}</div>
-                            <div class="mc-server-version">${s.version || 'Unknown'}</div>
+                    <div class="mc-server-card-main">
+                        <div class="mc-server-card-left">
+                            ${iconHtml}
+                            <div>
+                                <div class="mc-server-name">${this._esc(s.name)}</div>
+                                <div class="mc-server-version">${s.version || 'Unknown'}</div>
+                            </div>
                         </div>
-                        <span class="mc-badge ${s.online ? 'online' : 'offline'}">
-                            <span class="dot"></span>${s.online ? 'Online' : 'Offline'}
-                        </span>
+                        <div class="mc-server-card-center">
+                            ${s.description ? `<p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin:0">${this._esc(s.description)}</p>` : ''}
+                            ${s.motd ? `<div class="mc-server-motd" style="margin:4px 0 0 0">${this._esc(s.motd)}</div>` : ''}
+                            <div class="mc-server-stats" style="margin-top:8px">
+                                <div class="mc-stat">\uD83D\uDC64 <span class="value">${s.players?.online || 0}</span>/<span>${s.players?.max || 0}</span></div>
+                                ${s.modpack_name ? `<div class="mc-stat">\uD83D\uDCE6 ${this._esc(s.modpack_name)}</div>` : ''}
+                                ${s.is_bedrock ? `<div class="mc-stat">\uD83D\uDCF1 Bedrock</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="mc-server-card-right">
+                            <span class="mc-badge ${s.online ? 'online' : 'offline'}">
+                                <span class="dot"></span>${s.online ? 'Online' : 'Offline'}
+                            </span>
+                            <div class="mc-server-card-actions">
+                                <div class="mc-ip-bar" style="margin:0;padding:6px 12px">
+                                    <code style="font-size:0.75rem">${address}</code>
+                                    <button class="mc-btn mc-btn-copy" style="padding:4px 8px;font-size:0.7rem" onclick="MinecraftPage.copyIP('${address}', this)">\uD83D\uDCCB Copy</button>
+                                </div>
+                                ${s.curseforge_url ? `<a href="${s.curseforge_url}" target="_blank" class="mc-btn mc-btn-curseforge" style="padding:6px 10px"><img src="https://www.curseforge.com/favicon.ico" alt="CF"></a>` : ''}
+                                ${s.modrinth_url ? `<a href="${s.modrinth_url}" target="_blank" class="mc-btn mc-btn-modrinth" style="padding:6px 10px"><img src="https://modrinth.com/favicon.ico" alt="MR"></a>` : ''}
+                                ${s.bluemap_url ? `<a href="${s.bluemap_url}" target="_blank" class="mc-btn mc-btn-map" style="padding:6px 10px">\uD83D\uDDFA\uFE0F</a>` : ''}
+                                <button class="mc-details-toggle" onclick="MinecraftPage.toggleDetails('${s.id}', this)">
+                                    <span>Details</span> <span class="arrow">\u25BC</span>
+                                </button>
+                                <a href="#/servers/${s.id}" target="_blank" class="mc-btn" style="padding:6px 10px" title="Open in new page">\u2197</a>
+                            </div>
+                        </div>
                     </div>
-                    ${s.description ? `<p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:8px">${this._esc(s.description)}</p>` : ''}
-                    ${s.motd ? `<div class="mc-server-motd">${this._esc(s.motd)}</div>` : ''}
-                    <div class="mc-server-stats">
-                        <div class="mc-stat">\uD83D\uDC64 <span class="value">${s.players?.online || 0}</span>/<span>${s.players?.max || 0}</span></div>
-                        ${s.modpack_name ? `<div class="mc-stat">\uD83D\uDCE6 ${this._esc(s.modpack_name)}</div>` : ''}
-                    </div>
-                    <div class="mc-ip-bar">
-                        <span>\uD83C\uDF10</span>
-                        <code style="flex:1">${address}</code>
-                        <button class="mc-btn mc-btn-copy" onclick="MinecraftPage.copyIP('${address}', this)">\uD83D\uDCCB Copy</button>
-                    </div>
-                    <div class="mc-btn-group" style="align-items:center">
-                        ${s.curseforge_url ? `<a href="${s.curseforge_url}" target="_blank" class="mc-btn mc-btn-curseforge"><img src="https://www.curseforge.com/favicon.ico" alt="CF">CurseForge</a>` : ''}
-                        ${s.modrinth_url ? `<a href="${s.modrinth_url}" target="_blank" class="mc-btn mc-btn-modrinth"><img src="https://modrinth.com/favicon.ico" alt="MR">Modrinth</a>` : ''}
-                        ${s.bluemap_url ? `<a href="${s.bluemap_url}" target="_blank" class="mc-btn mc-btn-map">\uD83D\uDDFA\uFE0F Map</a>` : ''}
-                        <button class="mc-btn" onclick="MinecraftPage.viewServer('${s.id}')" style="margin-left:auto">View Details \u2192</button>
+                    <div class="mc-server-details" id="details-${s.id}">
+                        <div class="mc-details-grid">
+                            <div class="mc-details-section">
+                                <h4>\uD83D\uDC65 Online Players (${s.players?.online || 0})</h4>
+                                <div class="mc-player-list">
+                                    ${playerList.length > 0 ? playerList.map(p => `
+                                        <div class="mc-player-pill">
+                                            <img class="mc-player-head" src="https://mc-heads.net/avatar/${p.uuid || p.name}/20" alt="${p.name}">
+                                            ${this._esc(p.name)}
+                                        </div>
+                                    `).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:0.85rem">No players online</p>'}
+                                    ${morePlayers > 0 ? `<div class="mc-player-pill" style="opacity:0.6">+${morePlayers} more</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="mc-details-section">
+                                <h4>\u2139\uFE0F Server Info</h4>
+                                <div style="font-size:0.85rem;color:rgba(255,255,255,0.7);display:flex;flex-direction:column;gap:6px">
+                                    <div>Address: <code style="color:var(--neon-cyan)">${address}</code></div>
+                                    <div>Port: <span style="color:#fff">${s.port}</span></div>
+                                    <div>Ping: <span style="color:#fff">${s.responseTimeMs || '\u2014'}ms</span></div>
+                                    ${s.bluemap_url ? `<div><a href="${s.bluemap_url}" target="_blank" style="color:var(--neon-cyan)">\uD83D\uDDFA\uFE0F View Live Map</a></div>` : ''}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         }
         html += '</div>';
         container.innerHTML = html;
+    },
+
+    toggleDetails(serverId, btn) {
+        const details = document.getElementById('details-' + serverId);
+        const isOpen = details.classList.contains('open');
+        if (isOpen) {
+            details.classList.remove('open');
+            btn.classList.remove('open');
+        } else {
+            details.classList.add('open');
+            btn.classList.add('open');
+        }
     },
 
     copyIP(ip, btn) {
@@ -154,7 +203,7 @@ var MinecraftPage = {
 
         let server;
         try {
-            server = await API.get('/api/minecraft/servers/' + serverId);
+            server = await API.get('/api/ext/minecraft/servers/' + serverId);
         } catch {
             container.innerHTML = '<div class="minecraft-page"><p>Server not found.</p></div>';
             return;
@@ -286,7 +335,7 @@ var MinecraftPage = {
 
         let data;
         try {
-            data = await API.get(`/api/minecraft/servers/${serverId}/history?range=${range}`);
+            data = await API.get(`/api/ext/minecraft/servers/${serverId}/history?range=${range}`);
         } catch { data = { records: [], stats: {} }; }
 
         const records = data.records || [];
@@ -347,7 +396,7 @@ var MinecraftPage = {
     async renderLeaderboard(container) {
         // Always refresh metadata so server dropdown is up-to-date
         try {
-            this.leaderboardMeta = await API.get('/api/minecraft/leaderboard/meta');
+            this.leaderboardMeta = await API.get('/api/ext/minecraft/leaderboard/meta');
         } catch {
             if (!this.leaderboardMeta) this.leaderboardMeta = { categories: {}, servers: [] };
         }
@@ -357,7 +406,7 @@ var MinecraftPage = {
         const offset = (this.leaderboardPage - 1) * this.leaderboardLimit;
         let data;
         try {
-            data = await API.get(`/api/minecraft/leaderboard?stat=${this.leaderboardStat}&server_id=${this.leaderboardServer}&limit=${this.leaderboardLimit}&offset=${offset}`);
+            data = await API.get(`/api/ext/minecraft/leaderboard?stat=${this.leaderboardStat}&server_id=${this.leaderboardServer}&limit=${this.leaderboardLimit}&offset=${offset}`);
         } catch (err) {
             console.error('[MC] Leaderboard fetch error:', err);
             data = { entries: [], total: 0 };
@@ -493,7 +542,7 @@ var MinecraftPage = {
         // Check existing link
         let link;
         try {
-            link = await API.get('/api/minecraft/account/' + user.id);
+            link = await API.get('/api/ext/minecraft/account/' + user.id);
         } catch { link = { linked: false }; }
 
         // If username is missing or is just the UUID, try to fetch it from Ashcon (Mojang API proxy)
@@ -566,7 +615,7 @@ var MinecraftPage = {
             return;
         }
         try {
-            const res = await API.post('/api/minecraft/link', { code });
+            const res = await API.post('/api/ext/minecraft/link', { code });
             resultEl.innerHTML = '<span style="color:var(--neon-green)">\u2713 ' + (res.message || 'Linked!') + '</span>';
             setTimeout(() => this.renderLink(document.getElementById('mc-page-content')), 1500);
         } catch (err) {
@@ -602,7 +651,7 @@ var MinecraftPage = {
     async unlinkAccount() {
         if (!confirm('Are you sure you want to unlink your Minecraft account?')) return;
         try {
-            await API.delete('/api/minecraft/link');
+            await API.delete('/api/ext/minecraft/link');
             App.showToast('Minecraft account unlinked', 'success');
             this.renderLink(document.getElementById('mc-page-content'));
         } catch (err) {
