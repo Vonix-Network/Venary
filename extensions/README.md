@@ -8,11 +8,10 @@ All extension code has been migrated into the main codebase:
 
 | What | Old location | Live location |
 |---|---|---|
-| Frontend pages | `extensions/*/public/pages/` | `public/js/pages/` |
-| Frontend CSS | `extensions/*/public/css/` | `public/css/` |
 | API routes | `extensions/*/server/routes.js` | `server/routes/*.js` |
 | Services | `extensions/*/server/discord.js` etc. | `server/services/` |
 | DB schema | `extensions/*/server/schema.sql` | `server/db/schema.sql` |
+| Frontend pages | ~~`extensions/*/public/`~~ removed | `public/js/pages/`, `public/css/` |
 
 `server/index.js` mounts all routes directly from `server/routes/` — no extension loader is called.
 
