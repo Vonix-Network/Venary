@@ -266,6 +266,28 @@ router.get('/admin/appeals', authenticateToken, requireAdminAuth, async (req, re
     }
 });
 
+// Get appeal statistics (admin) — must be defined BEFORE /:id to avoid shadowing
+router.get('/admin/appeals/stats', authenticateToken, requireAdminAuth, async (req, res) => {
+    try {
+        const todayStr = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+        const stats = await db.get(`
+            SELECT
+                COUNT(CASE WHEN status = 'submitted' THEN 1 END) as pending,
+                COUNT(CASE WHEN status = 'under_review' THEN 1 END) as under_review,
+                COUNT(CASE WHEN status = 'approved' AND reviewed_at >= ? THEN 1 END) as approved_today,
+                COUNT(CASE WHEN status = 'declined' AND reviewed_at >= ? THEN 1 END) as declined_today,
+                COUNT(CASE WHEN status = 'approved' THEN 1 END) as total_approved,
+                COUNT(CASE WHEN status = 'declined' THEN 1 END) as total_declined
+            FROM ban_appeals
+        `, [todayStr, todayStr]);
+
+        res.json(stats);
+    } catch (err) {
+        logger.error('Get appeal stats error:', { err: err.message, stack: err.stack });
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // Get single appeal details (admin)
 router.get('/admin/appeals/:id', authenticateToken, requireAdminAuth, async (req, res) => {
     try {
@@ -453,27 +475,6 @@ router.post('/admin/appeals/:id/start-review', authenticateToken, requireAdminAu
         res.json({ message: 'Review started', status: 'under_review' });
     } catch (err) {
         logger.error('Start review error:', { err: err.message, stack: err.stack });
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Get appeal statistics (admin)
-router.get('/admin/appeals/stats', authenticateToken, requireAdminAuth, async (req, res) => {
-    try {
-        const stats = await db.get(`
-            SELECT 
-                COUNT(CASE WHEN status = 'submitted' THEN 1 END) as pending,
-                COUNT(CASE WHEN status = 'under_review' THEN 1 END) as under_review,
-                COUNT(CASE WHEN status = 'approved' AND reviewed_at >= date('now', 'start of day') THEN 1 END) as approved_today,
-                COUNT(CASE WHEN status = 'declined' AND reviewed_at >= date('now', 'start of day') THEN 1 END) as declined_today,
-                COUNT(CASE WHEN status = 'approved' THEN 1 END) as total_approved,
-                COUNT(CASE WHEN status = 'declined' THEN 1 END) as total_declined
-            FROM ban_appeals
-        `);
-
-        res.json(stats);
-    } catch (err) {
-        logger.error('Get appeal stats error:', { err: err.message, stack: err.stack });
         res.status(500).json({ error: 'Server error' });
     }
 });
