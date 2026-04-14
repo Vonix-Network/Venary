@@ -1,4 +1,5 @@
-/* =======================================
+/* ARCHIVED — NOT LOADED BY THE SERVER. Live file: server/routes/pterodactyl.js
+ * =======================================
    Pterodactyl Panel Extension - API Routes
    Factory pattern: receives ext db instance.
    ======================================= */

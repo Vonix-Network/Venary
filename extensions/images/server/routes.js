@@ -1,3 +1,4 @@
+/* ARCHIVED — NOT LOADED BY THE SERVER. Live file: server/routes/images.js */
 /**
  * Media & Embeds Extension — Routes
  */

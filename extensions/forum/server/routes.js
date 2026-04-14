@@ -1,4 +1,5 @@
-/* =======================================
+/* ARCHIVED — NOT LOADED BY THE SERVER. Live file: server/routes/forum.js
+ * =======================================
    Venary Extension: Forum — Backend Routes
    Uses its own isolated database (injected).
    Accesses core DB for user lookups.

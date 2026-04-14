@@ -1,4 +1,9 @@
-/* =======================================
+/* ARCHIVED — NOT LOADED BY THE SERVER.
+ * Live file: server/routes/minecraft.js
+ * Backward-compat API (/api/ext/minecraft/*) is served by server/routes/minecraft.js,
+ * which is mounted at both /api/minecraft and /api/ext/minecraft in server/index.js.
+ * This file is kept as a reference for old Minecraft mod API shape only.
+ * =======================================
    Minecraft Extension — API Routes
    Factory pattern: receives ext db instance.
    ======================================= */

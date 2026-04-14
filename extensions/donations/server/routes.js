@@ -1,4 +1,5 @@
-/* =======================================
+/* ARCHIVED — NOT LOADED BY THE SERVER. Live file: server/routes/donations.js
+ * =======================================
    Donations & Ranks Extension — API Routes
    ======================================= */
 const express = require('express');

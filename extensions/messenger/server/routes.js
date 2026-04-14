@@ -1,4 +1,5 @@
-/* =======================================
+/* ARCHIVED — NOT LOADED BY THE SERVER. Live file: server/routes/messenger/
+ * =======================================
    Messenger — Route Factory
    Mounts all sub-routers and attaches
    the /messenger Socket.IO namespace.
