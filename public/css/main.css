@@ -20,6 +20,7 @@
   --neon-orange: #ffa726;
   --neon-yellow: #ffee58;
   --neon-blue: #42a5f5;
+  --status-online: #39FF14;
 
   /* Gradient Combos */
   --gradient-primary: linear-gradient(135deg, #29b6f6 0%, #ab47bc 100%);

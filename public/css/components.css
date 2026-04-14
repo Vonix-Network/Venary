@@ -237,7 +237,7 @@
 }
 
 .status-dot.online {
-    background: var(--neon-green);
+    background: var(--status-online, #39FF14);
 }
 
 .status-dot.offline {

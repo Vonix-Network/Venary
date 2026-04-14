@@ -103,7 +103,7 @@
     min-width: 80px;
 }
 
-.status-dot {
+.status-step .status-dot {
     width: 28px;
     height: 28px;
     border-radius: 50%;
