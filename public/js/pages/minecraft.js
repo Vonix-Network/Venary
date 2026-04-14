@@ -14,6 +14,44 @@ var MinecraftPage = {
     leaderboardServer: 'all',
     leaderboardMeta: null,
 
+    // Minecraft color code map
+    colorCodes: {
+        '0': '#000000',
+        '1': '#0000AA',
+        '2': '#00AA00',
+        '3': '#00AAAA',
+        '4': '#AA0000',
+        '5': '#AA00AA',
+        '6': '#FFAA00',
+        '7': '#AAAAAA',
+        '8': '#555555',
+        '9': '#5555FF',
+        'a': '#55FF55',
+        'b': '#55FFFF',
+        'c': '#FF5555',
+        'd': '#FF55FF',
+        'e': '#FFFF55',
+        'f': '#FFFFFF'
+    },
+
+    // Convert Minecraft color codes to HTML
+    formatMOTD(text) {
+        if (!text) return '';
+        let result = '';
+        let parts = text.split('&');
+        result += parts[0]; // First part has no color code
+        for (let i = 1; i < parts.length; i++) {
+            const code = parts[i].charAt(0).toLowerCase();
+            const content = parts[i].slice(1);
+            if (this.colorCodes[code]) {
+                result += `<span style="color:${this.colorCodes[code]}">${this._esc(content)}</span>`;
+            } else {
+                result += this._esc('&' + parts[i]);
+            }
+        }
+        return result;
+    },
+
     async render(container, params) {
         if (params && params.length > 0 && !window.location.hash.includes('leaderboard') && !window.location.hash.includes('link')) {
             return this.renderServerDetail(container, params[0]);
@@ -113,7 +151,7 @@ var MinecraftPage = {
                         </div>
                         <div class="mc-server-card-center">
                             ${s.description ? `<p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin:0">${this._esc(s.description)}</p>` : ''}
-                            ${s.motd ? `<div class="mc-server-motd" style="margin:4px 0 0 0">${this._esc(s.motd)}</div>` : ''}
+                            ${s.motd ? `<div class="mc-server-motd" style="margin:4px 0 0 0">${this.formatMOTD(s.motd)}</div>` : ''}
                             <div class="mc-server-stats" style="margin-top:8px">
                                 <div class="mc-stat">\uD83D\uDC64 <span class="value">${s.players?.online || 0}</span>/<span>${s.players?.max || 0}</span></div>
                                 ${s.modpack_name ? `<div class="mc-stat">\uD83D\uDCE6 ${this._esc(s.modpack_name)}</div>` : ''}
