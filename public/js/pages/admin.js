@@ -11,6 +11,7 @@ var AdminPage = {
     donations: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
     settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
     forum: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+    minecraft: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path fill="currentColor" stroke="none" d="M6 6h4v4H6zM14 6h4v4h-4zM10 10h4v2h2v6h-2v-2h-4v2H8v-6h2v-2z"/></svg>',
     discord: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 12h4M8 10v4M15 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path></svg>',
     appeals: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>'
   },
@@ -29,9 +30,10 @@ var AdminPage = {
     container.classList.add('full-width', 'admin-fullscreen');
 
     const isAdmin = App.currentUser.role === 'admin' || App.currentUser.role === 'superadmin';
-    const isDonationsEnabled = App.extensions.some(e => e.id === 'donations' && e.enabled);
-    const isForumEnabled = App.extensions.some(e => e.id === 'forum' && e.enabled);
-    const isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);
+    const _features = (App.siteSettings && App.siteSettings.features) || {};
+    const isDonationsEnabled = _features.donations !== false;
+    const isForumEnabled = _features.forum !== false;
+    const isMinecraftEnabled = _features.minecraft !== false;
 
     var backIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>';
 
@@ -48,6 +50,7 @@ var AdminPage = {
       (isAdmin ? '<button class="admin-nav-item desktop-only-tab" data-tab="extensions">' + this.icons.extensions + ' <span>Extensions</span></button>' : '') +
       (isAdmin && isDonationsEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="donations">' + this.icons.donations + ' <span>Donations</span></button>' : '') +
       (isAdmin && isForumEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="forum">' + this.icons.forum + ' <span>Forum</span></button>' : '') +
+      (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="minecraft">' + this.icons.minecraft + ' <span>Minecraft</span></button>' : '') +
       (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="discord">' + this.icons.discord + ' <span>Discord</span></button>' : '') +
       (isAdmin ? '<button class="admin-nav-item desktop-only-tab" data-tab="appeals">' + this.icons.appeals + ' <span>Ban Appeals</span></button>' : '') +
       '    <button class="admin-nav-item admin-more-btn" onclick="AdminPage.showMoreMenu()">' + moreIcon + ' <span>More</span></button>' +
@@ -81,14 +84,16 @@ var AdminPage = {
 
   showMoreMenu() {
     const isAdmin = App.currentUser.role === 'admin' || App.currentUser.role === 'superadmin';
-    const isDonationsEnabled = App.extensions.some(e => e.id === 'donations' && e.enabled);
-    const isForumEnabled = App.extensions.some(e => e.id === 'forum' && e.enabled);
-    const isMinecraftEnabled = App.extensions.some(e => e.id === 'minecraft' && e.enabled);
+    const _feats = (App.siteSettings && App.siteSettings.features) || {};
+    const isDonationsEnabled = _feats.donations !== false;
+    const isForumEnabled = _feats.forum !== false;
+    const isMinecraftEnabled = _feats.minecraft !== false;
 
     var html = '<div style="display:flex;flex-direction:column;gap:10px">';
     if (isAdmin) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=extensions]\').click()">' + this.icons.extensions + ' Extensions</button>';
     if (isAdmin && isDonationsEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=donations]\').click()">' + this.icons.donations + ' Donations</button>';
     if (isAdmin && isForumEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=forum]\').click()">' + this.icons.forum + ' Forum Settings</button>';
+    if (isAdmin && isMinecraftEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=minecraft]\').click()">' + this.icons.minecraft + ' Minecraft Servers</button>';
     if (isAdmin && isMinecraftEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=discord]\').click()">' + this.icons.discord + ' Discord Settings</button>';
     html += '<button class="btn btn-danger" onclick="App.closeModal(); window.location.hash=\'#/feed\'">Exit Admin Dashboard</button>';
     html += '</div>';
@@ -144,6 +149,14 @@ var AdminPage = {
           titleEl.innerText = 'Forum Categories';
           subtitleEl.innerText = 'Organize and manage discussion boards';
           self.loadForumConfig();
+        } else if (tab === 'minecraft') {
+          titleEl.innerText = 'Minecraft Servers';
+          subtitleEl.innerText = 'Manage server listings, API keys, and external links';
+          if (window.MinecraftAdminPage) {
+            window.MinecraftAdminPage.render(document.getElementById('admin-content'));
+          } else {
+            App.showToast('Minecraft script not loaded.', 'error');
+          }
         } else if (tab === 'discord') {
           titleEl.innerText = 'Discord Settings';
           subtitleEl.innerText = 'Manage Discord webhooks and bot integration';
@@ -205,8 +218,9 @@ var AdminPage = {
     try {
       var users = await API.getAdminUsers(this.userFilters.page, this.userFilters);
 
-      // Fetch pterodactyl panel access state (if extension enabled)
-      var isPteroEnabled = App.extensions.some(function(e) { return e.id === 'pterodactyl-panel' && e.enabled; });
+      // Fetch pterodactyl panel access state (if feature enabled)
+      var _uf = (App.siteSettings && App.siteSettings.features) || {};
+      var isPteroEnabled = _uf.pterodactyl !== false;
       var isSuperadmin = App.currentUser && App.currentUser.role === 'superadmin';
       var pteroGrantedSet = new Set();
       if (isPteroEnabled) {
@@ -216,7 +230,7 @@ var AdminPage = {
         } catch { /* ignore if not configured */ }
       }
 
-      var isMinecraftEnabled = App.extensions.some(function(e) { return e.id === 'minecraft' && e.enabled; });
+      var isMinecraftEnabled = _uf.minecraft !== false;
 
       var filterBarHtml = '<div class="admin-filters animate-fade-up" style="flex-wrap:wrap;gap:8px;">' +
         '<div style="flex:1;min-width:200px;position:relative;">' +
