@@ -37,6 +37,7 @@ var App = {
         Router.register('/chat', function () { window.location.hash = '#/messenger'; });
         Router.register('/admin', function (c) { AdminPage.render(c); });
         Router.register('/mod', function (c) { ModPage.render(c); });
+        Router.register('/appeal', function (c) { AppealPage.render(c); });
 
         // Check auth
         if (API.token) {
@@ -350,6 +351,12 @@ var App = {
         if (document.getElementById('guest-actions')) document.getElementById('guest-actions').classList.add('hidden');
         if (document.getElementById('mbn-login')) document.getElementById('mbn-login').classList.add('hidden');
 
+        // Check if user is banned - if so, restrict to appeal page only
+        if (this.currentUser && this.currentUser.banned) {
+            this._onBannedLogin();
+            return;
+        }
+
         ['mbn-friends', 'mbn-chat', 'mbn-profile'].forEach(id => {
             var el = document.getElementById(id);
             if (el) el.classList.remove('hidden');
@@ -397,6 +404,51 @@ var App = {
         SocketClient.on('new_notification', function () { App.updateUnreadBadge(); });
         this.updateUnreadBadge();
         this.updateFriendRequestBadge();
+    },
+
+    // ===========================================
+    // Banned User Handling
+    // ===========================================
+    _onBannedLogin() {
+        var nav = document.getElementById('main-nav');
+        var page = document.getElementById('page-container');
+        if (nav) nav.classList.remove('hidden');
+        if (page) page.classList.remove('full-width');
+
+        // Hide guest actions
+        if (document.getElementById('guest-actions')) document.getElementById('guest-actions').classList.add('hidden');
+        if (document.getElementById('mbn-login')) document.getElementById('mbn-login').classList.add('hidden');
+
+        // Show only logout button
+        var logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+
+        // Hide all navigation except appeal-related
+        document.querySelectorAll('.nav-links .nav-link').forEach(function(el) {
+            var href = el.getAttribute('href') || '';
+            // Keep only appeal, settings, and logout visible
+            if (!href.includes('appeal') && !href.includes('settings')) {
+                el.classList.add('hidden');
+            }
+        });
+
+        // Hide extension nav links
+        var extNav = document.getElementById('ext-nav-links');
+        if (extNav) extNav.classList.add('hidden');
+
+        // Hide mobile navigation elements
+        ['mbn-friends', 'mbn-chat', 'mbn-profile'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+
+        // Show notification for banned status
+        App.showToast('Your account is banned. Redirecting to appeal page...', 'error');
+
+        // Redirect to appeal page
+        setTimeout(function() {
+            window.location.hash = '#/appeal';
+        }, 500);
     },
 
     // ===========================================

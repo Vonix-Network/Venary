@@ -11,7 +11,8 @@ var AdminPage = {
     donations: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
     settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
     forum: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
-    discord: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 12h4M8 10v4M15 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path></svg>'
+    discord: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 12h4M8 10v4M15 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path></svg>',
+    appeals: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>'
   },
 
   async render(container) {
@@ -48,6 +49,7 @@ var AdminPage = {
       (isAdmin && isDonationsEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="donations">' + this.icons.donations + ' <span>Donations</span></button>' : '') +
       (isAdmin && isForumEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="forum">' + this.icons.forum + ' <span>Forum</span></button>' : '') +
       (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="discord">' + this.icons.discord + ' <span>Discord</span></button>' : '') +
+      (isAdmin ? '<button class="admin-nav-item desktop-only-tab" data-tab="appeals">' + this.icons.appeals + ' <span>Ban Appeals</span></button>' : '') +
       '    <button class="admin-nav-item admin-more-btn" onclick="AdminPage.showMoreMenu()">' + moreIcon + ' <span>More</span></button>' +
       '  </nav>' +
       '  <div class="admin-sidebar-footer">' +
@@ -146,6 +148,10 @@ var AdminPage = {
           titleEl.innerText = 'Discord Settings';
           subtitleEl.innerText = 'Manage Discord webhooks and bot integration';
           self.loadDiscordSettings();
+        } else if (tab === 'appeals') {
+          titleEl.innerText = 'Ban Appeals';
+          subtitleEl.innerText = 'Review and manage user ban appeals';
+          self.loadAppeals();
         }
       });
     });
@@ -958,5 +964,198 @@ var AdminPage = {
       await API.post('/api/admin/settings', payload);
       App.showToast('Discord settings saved', 'success');
     } catch (err) { App.showToast(err.message, 'error'); }
+  },
+
+  // ==========================================
+  // BAN APPEALS
+  // ==========================================
+  appealFilters: { page: 1, status: 'all', search: '' },
+
+  async loadAppeals() {
+    var content = document.getElementById('admin-content');
+    content.innerHTML = '<div class="loading-spinner"></div>';
+    try {
+      var stats = await API.getAppealStats();
+      var data = await API.getAdminAppeals(this.appealFilters.page, this.appealFilters);
+      var appeals = data.appeals || [];
+
+      // Stats cards
+      var statsHtml = '<div class="admin-stats" style="margin-bottom:1.5rem">' +
+        '<div class="admin-stat-card animate-fade-up">' +
+        '  <div class="stat-label">Pending Appeals</div>' +
+        '  <div class="stat-value" style="color:var(--neon-orange)">' + (stats.pending || 0) + '</div>' +
+        '  <div class="stat-trend" style="color:var(--text-muted)">Awaiting review</div>' +
+        '</div>' +
+        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.05s">' +
+        '  <div class="stat-label">Under Review</div>' +
+        '  <div class="stat-value" style="color:var(--neon-cyan)">' + (stats.under_review || 0) + '</div>' +
+        '  <div class="stat-trend" style="color:var(--text-muted)">In progress</div>' +
+        '</div>' +
+        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.1s">' +
+        '  <div class="stat-label">Approved Today</div>' +
+        '  <div class="stat-value" style="color:var(--neon-green)">' + (stats.approved_today || 0) + '</div>' +
+        '  <div class="stat-trend" style="color:var(--text-muted)">Users unbanned</div>' +
+        '</div>' +
+        '<div class="admin-stat-card animate-fade-up" style="animation-delay:0.15s">' +
+        '  <div class="stat-label">Declined Today</div>' +
+        '  <div class="stat-value" style="color:var(--neon-red)">' + (stats.declined_today || 0) + '</div>' +
+        '  <div class="stat-trend" style="color:var(--text-muted)">Rejected appeals</div>' +
+        '</div>' +
+        '</div>';
+
+      // Filter bar
+      var filterHtml = '<div class="admin-filters" style="margin-bottom:1rem">' +
+        '<select class="input-field" id="appeal-status-filter" onchange="AdminPage.appealFilters.status = this.value; AdminPage.appealFilters.page = 1; AdminPage.loadAppeals();" style="width:auto">' +
+        '  <option value="all"' + (this.appealFilters.status === 'all' ? ' selected' : '') + '>All Statuses</option>' +
+        '  <option value="submitted"' + (this.appealFilters.status === 'submitted' ? ' selected' : '') + '>Submitted</option>' +
+        '  <option value="under_review"' + (this.appealFilters.status === 'under_review' ? ' selected' : '') + '>Under Review</option>' +
+        '  <option value="approved"' + (this.appealFilters.status === 'approved' ? ' selected' : '') + '>Approved</option>' +
+        '  <option value="declined"' + (this.appealFilters.status === 'declined' ? ' selected' : '') + '>Declined</option>' +
+        '</select>' +
+        '<input type="text" class="input-field" id="appeal-search" placeholder="Search by username..." value="' + App.escapeHtml(this.appealFilters.search) + '" onkeydown="if(event.key===\'Enter\'){AdminPage.appealFilters.search=this.value;AdminPage.appealFilters.page=1;AdminPage.loadAppeals();}" style="flex:1;min-width:200px">' +
+        '<button class="btn btn-primary" onclick="AdminPage.appealFilters.search=document.getElementById(\'appeal-search\').value;AdminPage.appealFilters.page=1;AdminPage.loadAppeals();">Filter</button>' +
+        '</div>';
+
+      // Appeals table
+      var tableRows = appeals.map(function(a) {
+        var statusClass = 'badge-' + a.status;
+        var statusText = a.status.replace('_', ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+        var init = (a.display_name || a.username || '?').charAt(0).toUpperCase();
+        return '<tr>' +
+          '<td>' +
+          '  <div class="auc-identity" style="gap:10px">' +
+          '    <div class="avatar" style="width:32px;height:32px;font-size:0.8rem">' + init + '</div>' +
+          '    <div>' +
+          '      <div style="font-weight:600;font-size:0.9rem">' + App.escapeHtml(a.display_name || a.username) + '</div>' +
+          '      <div style="font-size:0.75rem;color:var(--text-muted)">@' + App.escapeHtml(a.username) + '</div>' +
+          '    </div>' +
+          '  </div>' +
+          '</td>' +
+          '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
+          '<td>' + new Date(a.created_at).toLocaleDateString() + '</td>' +
+          '<td style="text-align:right"><button class="btn btn-sm btn-primary" onclick="AdminPage.viewAppeal(\'' + a.id + '\')">Review</button></td>' +
+          '</tr>';
+      }).join('');
+
+      var tableHtml = '<div class="admin-table-container animate-fade-up" style="animation-delay:0.1s">' +
+        '<table class="admin-table">' +
+        '<thead><tr><th>User</th><th>Status</th><th>Submitted</th><th style="text-align:right">Actions</th></tr></thead>' +
+        '<tbody>' + (tableRows || '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">No appeals found</td></tr>') + '</tbody>' +
+        '</table>' +
+        '</div>';
+
+      content.innerHTML = statsHtml + filterHtml + tableHtml;
+    } catch (err) {
+      console.error('Load appeals error:', err);
+      content.innerHTML = '<div class="empty-state"><h3>Error</h3><p>Failed to load appeals. Please try again.</p></div>';
+    }
+  },
+
+  async viewAppeal(id) {
+    try {
+      var appeal = await API.getAdminAppeal(id);
+      var modalContent = '<div class="appeal-detail">' +
+        '<div class="appeal-detail-header">' +
+        '  <div class="user-info">' +
+        '    <div class="avatar" style="width:48px;height:48px;font-size:1.2rem">' + (appeal.display_name || appeal.username || '?').charAt(0).toUpperCase() + '</div>' +
+        '    <div>' +
+        '      <div style="font-weight:700;font-size:1.1rem">' + App.escapeHtml(appeal.display_name || appeal.username) + '</div>' +
+        '      <div style="color:var(--text-muted)">@' + App.escapeHtml(appeal.username) + '</div>' +
+        '    </div>' +
+        '  </div>' +
+        '  <span class="badge badge-' + appeal.status + '">' + appeal.status.replace('_', ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); }) + '</span>' +
+        '</div>' +
+        '<div class="appeal-detail-section">' +
+        '  <h4>Ban Reason</h4>' +
+        '  <p>' + App.escapeHtml(appeal.ban_reason_display || 'No reason provided') + '</p>' +
+        '</div>' +
+        '<div class="appeal-detail-section">' +
+        '  <h4>Appeal Message</h4>' +
+        '  <p style="white-space:pre-wrap">' + App.escapeHtml(appeal.appeal_message) + '</p>' +
+        '</div>' +
+        '<div class="appeal-detail-section">' +
+        '  <h4>Submitted</h4>' +
+        '  <p>' + new Date(appeal.created_at).toLocaleString() + '</p>' +
+        '</div>';
+
+      if (appeal.status === 'submitted' || appeal.status === 'under_review') {
+        modalContent += '<div class="appeal-actions" style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">' +
+          '<button class="btn btn-ghost" onclick="App.closeModal()">Close</button>' +
+          (appeal.status === 'submitted' ? '<button class="btn btn-secondary" onclick="AdminPage.startAppealReview(\'' + id + '\')">Start Review</button>' : '') +
+          '<button class="btn btn-danger" onclick="AdminPage.showDeclineModal(\'' + id + '\')">Decline</button>' +
+          '<button class="btn btn-primary" onclick="AdminPage.approveAppeal(\'' + id + '\')">Approve</button>' +
+          '</div>';
+      } else {
+        modalContent += '<div class="appeal-detail-section">' +
+          '  <h4>Reviewed</h4>' +
+          '  <p>By ' + (appeal.reviewer_username || 'Unknown') + ' on ' + new Date(appeal.reviewed_at).toLocaleString() + '</p>' +
+          '</div>';
+        if (appeal.decline_reason) {
+          modalContent += '<div class="appeal-detail-section">' +
+            '  <h4>Decline Reason</h4>' +
+            '  <p>' + App.escapeHtml(appeal.decline_reason) + '</p>' +
+            '</div>';
+        }
+        modalContent += '<div class="appeal-actions" style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">' +
+          '<button class="btn btn-primary" onclick="App.closeModal()">Close</button>' +
+          '</div>';
+      }
+
+      modalContent += '</div>';
+      App.showModal('Review Appeal', modalContent);
+    } catch (err) {
+      App.showToast(err.message || 'Failed to load appeal details', 'error');
+    }
+  },
+
+  async startAppealReview(id) {
+    try {
+      await API.startAppealReview(id);
+      App.showToast('Review started', 'success');
+      App.closeModal();
+      this.loadAppeals();
+    } catch (err) {
+      App.showToast(err.message, 'error');
+    }
+  },
+
+  async approveAppeal(id) {
+    if (!confirm('Are you sure you want to approve this appeal? The user will be unbanned immediately.')) return;
+    try {
+      await API.reviewAppeal(id, 'approve');
+      App.showToast('Appeal approved and user unbanned', 'success');
+      App.closeModal();
+      this.loadAppeals();
+    } catch (err) {
+      App.showToast(err.message, 'error');
+    }
+  },
+
+  showDeclineModal(id) {
+    var content = '<div class="form-group">' +
+      '<label>Reason for declining (required)</label>' +
+      '<textarea id="decline-reason" class="input-field" rows="3" placeholder="Explain why this appeal is being declined..."></textarea>' +
+      '</div>' +
+      '<div style="margin-top:15px;display:flex;gap:10px;justify-content:flex-end">' +
+      '<button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>' +
+      '<button class="btn btn-danger" onclick="AdminPage.declineAppeal(\'' + id + '\')">Decline Appeal</button>' +
+      '</div>';
+    App.showModal('Decline Appeal', content);
+  },
+
+  async declineAppeal(id) {
+    var reason = document.getElementById('decline-reason').value.trim();
+    if (reason.length < 10) {
+      App.showToast('Please provide a reason with at least 10 characters', 'error');
+      return;
+    }
+    try {
+      await API.reviewAppeal(id, 'decline', reason);
+      App.showToast('Appeal declined', 'success');
+      App.closeModal();
+      this.loadAppeals();
+    } catch (err) {
+      App.showToast(err.message, 'error');
+    }
   }
 };

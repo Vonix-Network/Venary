@@ -43,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Ban Appeal System** — Complete ban appeal application allowing banned users to submit appeals and track their status with a visual progress tracker (Submitted → Under Review → Approved/Declined).
+  - Banned users can log in with restricted access (appeal page + settings only)
+  - Visual status tracker similar to Walmart order tracking with animated progress dots
+  - 7-day cooldown period between declined appeals
+  - Full admin dashboard for managing appeals with approve/decline workflow
+  - Appeal history tracking and audit logging
+  - Responsive design with mobile support
 - **Messenger — UI & Mobile Polish** — Full structural and visual rebuild of the messenger UI to achieve Discord/Fluxer-parity. The Friends list has been integrated directly into the main message view via a "Friends" button in the sidebar. Fully implemented mobile responsive design featuring a slide-in sidebar (toggleable via hamburger menu), adjusted touch targets (44px minimum), safe-area insets for notches/keyboards, and long-press touch support for context menus. Fixed markdown underline rendering.
 
 ### Fixed

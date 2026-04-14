@@ -121,21 +121,18 @@ router.post('/login', async (req, res) => {
         }
 
         // Check if user is banned
-        if (user.banned) {
-            // Check if suspension has expired
-            if (user.banned_until && new Date(user.banned_until) < new Date()) {
-                await db.run('UPDATE users SET banned = 0, ban_reason = NULL, banned_until = NULL WHERE id = ?', [user.id]);
-                user.banned = 0;
-            } else {
-                logger.security('login_blocked_banned', { userId: user.id, username: user.username, ip });
-                let msg = 'Your account has been banned.';
-                if (user.banned_until) {
-                    const expiry = new Date(user.banned_until).toLocaleString();
-                    msg = `Your account is suspended until ${expiry}.`;
-                }
-                if (user.ban_reason) msg += ` Reason: ${user.ban_reason}`;
-                return res.status(403).json({ error: msg });
-            }
+        let isBanned = user.banned;
+        let banExpired = false;
+        if (isBanned && user.banned_until && new Date(user.banned_until) < new Date()) {
+            // Ban has expired, auto-unban
+            await db.run('UPDATE users SET banned = 0, ban_reason = NULL, banned_until = NULL WHERE id = ?', [user.id]);
+            isBanned = 0;
+            banExpired = true;
+        }
+
+        // If still banned, log security event but allow login with restricted flag
+        if (isBanned) {
+            logger.security('login_banned_user', { userId: user.id, username: user.username, ip, banned_until: user.banned_until });
         }
 
         // Update last seen
@@ -156,7 +153,10 @@ router.post('/login', async (req, res) => {
             level: user.level,
             xp: user.xp,
             role: user.role,
-            status: 'online'
+            status: 'online',
+            banned: isBanned ? 1 : 0,
+            ban_reason: isBanned ? user.ban_reason : null,
+            banned_until: isBanned ? user.banned_until : null
         };
         await enrichWithDonationRank(userObj);
 
@@ -244,6 +244,13 @@ router.get('/me', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
+        // Check if ban has expired
+        let isBanned = user.banned;
+        if (isBanned && user.banned_until && new Date(user.banned_until) < new Date()) {
+            await db.run('UPDATE users SET banned = 0, ban_reason = NULL, banned_until = NULL WHERE id = ?', [user.id]);
+            isBanned = 0;
+        }
+
         const userObj = {
             id: user.id,
             username: user.username,
@@ -258,7 +265,10 @@ router.get('/me', authenticateToken, async (req, res) => {
             achievements: user.achievements,
             role: user.role,
             status: user.status,
-            created_at: user.created_at
+            created_at: user.created_at,
+            banned: isBanned ? 1 : 0,
+            ban_reason: isBanned ? user.ban_reason : null,
+            banned_until: isBanned ? user.banned_until : null
         };
         await enrichWithDonationRank(userObj);
         res.json(userObj);

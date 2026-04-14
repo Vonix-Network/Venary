@@ -115,4 +115,23 @@ const API = {
     deleteAdminUser(id) { return this.delete(`/api/admin/users/${id}`); },
     resolveReport(id, note) { return this.post(`/api/admin/reports/${id}/resolve`, { note }); },
     promoteUser(id, role) { return this.post(`/api/admin/users/${id}/role`, { role }); },
+
+    // Appeals
+    getMyAppeal() { return this.get('/api/appeals/me'); },
+    submitAppeal(message) { return this.post('/api/appeals', { appeal_message: message }); },
+    getAppealHistory() { return this.get('/api/appeals/history'); },
+
+    // Admin Appeals
+    getAdminAppeals(page, filters = {}) {
+        let qs = `page=${page || 1}`;
+        if (filters.status) qs += `&status=${encodeURIComponent(filters.status)}`;
+        if (filters.search) qs += `&search=${encodeURIComponent(filters.search)}`;
+        return this.get(`/api/appeals/admin/appeals?${qs}`);
+    },
+    getAdminAppeal(id) { return this.get(`/api/appeals/admin/appeals/${id}`); },
+    reviewAppeal(id, action, declineReason) {
+        return this.post(`/api/appeals/admin/appeals/${id}/review`, { action, decline_reason: declineReason });
+    },
+    startAppealReview(id) { return this.post(`/api/appeals/admin/appeals/${id}/start-review`); },
+    getAppealStats() { return this.get('/api/appeals/admin/appeals/stats'); },
 };

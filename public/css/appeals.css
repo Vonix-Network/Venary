@@ -1,0 +1,462 @@
+/* ========================================
+   VENARY — Ban Appeal Page Styles
+   Status tracker similar to Walmart order tracking
+   ======================================== */
+
+/* Appeal Container */
+.appeal-container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+.appeal-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.appeal-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    color: var(--neon-red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.appeal-icon {
+    font-size: 2rem;
+}
+
+.appeal-subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+/* Ban Info Card */
+.appeal-ban-info {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.ban-info-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.ban-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.ban-label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    min-width: 80px;
+}
+
+.ban-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.ban-value.permanent {
+    color: var(--neon-red);
+}
+
+/* Status Tracker */
+.appeal-status-tracker {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.appeal-status-tracker h3 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+}
+
+.status-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.status-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 80px;
+}
+
+.status-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    border: 3px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    transition: all var(--transition-normal);
+}
+
+/* Completed step */
+.status-step.completed .status-dot {
+    background: var(--neon-green);
+    border-color: var(--neon-green);
+    color: var(--bg-primary);
+}
+
+/* Active step */
+.status-step.active .status-dot {
+    background: var(--bg-primary);
+    border-color: var(--neon-cyan);
+    position: relative;
+}
+
+.status-pulse {
+    width: 12px;
+    height: 12px;
+    background: var(--neon-cyan);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(0, 212, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
+}
+
+/* Approved step */
+.status-step.approved .status-dot {
+    background: var(--neon-green);
+    border-color: var(--neon-green);
+    color: var(--bg-primary);
+}
+
+/* Declined step */
+.status-step.declined .status-dot {
+    background: var(--neon-red);
+    border-color: var(--neon-red);
+    color: var(--bg-primary);
+}
+
+.status-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-step.completed .status-label,
+.status-step.active .status-label {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.status-step.approved .status-label {
+    color: var(--neon-green);
+    font-weight: 600;
+}
+
+.status-step.declined .status-label {
+    color: var(--neon-red);
+    font-weight: 600;
+}
+
+.status-result {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    margin-top: -4px;
+}
+
+.status-result.approved {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--neon-green);
+}
+
+.status-result.declined {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--neon-red);
+}
+
+/* Connector Line */
+.status-line {
+    flex: 1;
+    max-width: 60px;
+    height: 3px;
+    background: var(--border-subtle);
+    border-radius: 2px;
+    transition: all var(--transition-normal);
+}
+
+.status-line.completed {
+    background: var(--neon-green);
+}
+
+/* Status Description */
+.status-description {
+    text-align: center;
+    padding: 15px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--neon-cyan);
+}
+
+.status-description p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* Active Appeal Card */
+.active-appeal-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.active-appeal-card h4 {
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    font-family: var(--font-display);
+}
+
+.appeal-message-preview {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 15px;
+}
+
+.appeal-label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+}
+
+.appeal-text {
+    color: var(--text-primary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.appeal-date {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 10px;
+}
+
+/* Appeal Result */
+.appeal-result {
+    text-align: center;
+    padding: 20px;
+}
+
+.result-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
+.appeal-result h4 {
+    font-family: var(--font-display);
+    margin-bottom: 10px;
+}
+
+.appeal-result.approved h4 {
+    color: var(--neon-green);
+}
+
+.appeal-result.declined h4 {
+    color: var(--neon-red);
+}
+
+.appeal-result p {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+/* Decline Reason */
+.decline-reason {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.reason-label {
+    color: var(--neon-red);
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 5px;
+}
+
+.reason-text {
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.cooldown-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Cooldown Section */
+.appeal-cooldown {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 30px;
+    text-align: center;
+}
+
+.cooldown-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
+.appeal-cooldown h3 {
+    color: var(--neon-orange);
+    font-family: var(--font-display);
+    margin-bottom: 10px;
+}
+
+.appeal-cooldown p {
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.cooldown-date {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Appeal Form */
+.appeal-form-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 25px;
+}
+
+.appeal-form-container h3 {
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    margin-bottom: 10px;
+}
+
+.appeal-instructions {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.appeal-form-container .form-group {
+    margin-bottom: 20px;
+}
+
+.appeal-form-container label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+}
+
+.appeal-form-container .required {
+    color: var(--neon-red);
+}
+
+.appeal-form-container textarea {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+}
+
+.char-count {
+    display: block;
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-top: 2px;
+    accent-color: var(--neon-cyan);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+.form-actions .btn {
+    min-width: 150px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .appeal-container {
+        padding: 15px;
+    }
+
+    .appeal-header h1 {
+        font-size: 1.4rem;
+    }
+
+    .status-tracker {
+        gap: 4px;
+    }
+
+    .status-step {
+        min-width: 60px;
+    }
+
+    .status-label {
+        font-size: 0.65rem;
+    }
+
+    .status-line {
+        max-width: 30px;
+    }
+}
