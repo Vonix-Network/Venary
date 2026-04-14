@@ -1245,7 +1245,7 @@ var MessengerPage = {
         var lastGroupTimeStr = lastGroup ? lastGroup.dataset.createdAt : null;
         var lastGroupTimeMs = lastGroupTimeStr ? parseInt(lastGroupTimeStr, 10) : 0;
         var timeDiff = msgTimeMs - lastGroupTimeMs;
-        var isNewAuthor = !lastGroup || lastGroup.dataset.authorId !== msg.author_id || !!msg.reply_to_id || timeDiff > 5 * 60 * 1000;
+        var isNewAuthor = !lastGroup || lastGroup.dataset.authorId !== msg.author_id || !!msg.reply_to_id || (lastGroupTimeMs > 0 && timeDiff > 5 * 60 * 1000);
 
         var div = document.createElement('div');
         div.innerHTML = this._renderMessageGroup(msg, isNewAuthor);

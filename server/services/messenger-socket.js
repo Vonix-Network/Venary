@@ -106,7 +106,7 @@ module.exports = function attachMessengerNamespace(io) {
                     sender_avatar:       socket.user.avatar       || null,
                 };
 
-                ns.to(`channel:${channelId}`).emit('channel:message', enriched);
+                socket.to(`channel:${channelId}`).emit('channel:message', enriched);
 
                 // Mark read for sender
                 await db.run(
@@ -195,7 +195,11 @@ module.exports = function attachMessengerNamespace(io) {
                 };
 
                 const members = await db.all('SELECT user_id FROM dm_members WHERE dm_channel_id = ?', [dmChannelId]);
-                members.forEach(m => ns.to(`user:${m.user_id}`).emit('dm:message', enriched));
+                members.forEach(m => {
+                    if (m.user_id !== userId) {
+                        ns.to(`user:${m.user_id}`).emit('dm:message', enriched);
+                    }
+                });
             } catch (err) {
                 console.error('[Messenger] dm:send_message error:', err);
                 socket.emit('error', { message: 'Failed to send DM' });
