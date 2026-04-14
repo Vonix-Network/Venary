@@ -1148,6 +1148,11 @@ textarea.input-field {
     font-size: 0.8rem;
 }
 
+.mobile-header-avatar .status-dot {
+    width: 8px;
+    height: 8px;
+}
+
 /* ── Mobile Bottom Nav (Tab Bar) ── */
 .mobile-bottom-nav {
     display: none;
