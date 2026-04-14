@@ -571,13 +571,113 @@
 
 /* ── Server Grid ── */
 .mc-server-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
-@media (max-width: 500px) {
-    .mc-server-grid {
+/* ── Wide Server Card ── */
+.mc-server-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mc-server-card-main {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.mc-server-card-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mc-server-card-center {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mc-server-card-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.mc-server-card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* ── Accordion Dropdown ── */
+.mc-server-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s ease;
+    border-top: 1px solid transparent;
+}
+
+.mc-server-details.open {
+    max-height: 500px;
+    padding-top: 12px;
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.mc-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.mc-details-section h4 {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.mc-details-toggle {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.mc-details-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--neon-cyan);
+}
+
+.mc-details-toggle .arrow {
+    transition: transform 0.2s;
+}
+
+.mc-details-toggle.open .arrow {
+    transform: rotate(180deg);
+}
+
+@media (max-width: 768px) {
+    .mc-server-card-main {
+        grid-template-columns: 1fr;
+        align-items: flex-start;
+    }
+    .mc-server-card-right {
+        align-items: flex-start;
+    }
+    .mc-details-grid {
         grid-template-columns: 1fr;
     }
 }

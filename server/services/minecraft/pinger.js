@@ -167,13 +167,30 @@ async function pingServerAPI(address, port = 25565, isBedrock = false) {
 
 /**
  * Smart ping: try native first, fall back to API.
+ * For Geyser/hybrid servers (is_bedrock=true), try Java first then Bedrock fallback.
  */
 async function smartPing(address, port = 25565, isBedrock = false) {
-    if (isBedrock) return pingServerAPI(address, port, true);
-    const result = await pingServer(address, port);
-    if (result.online) return result;
-    // Fallback to API
-    return pingServerAPI(address, port, false);
+    // Try Java ping first (native then API)
+    const javaResult = await pingServer(address, port);
+    if (javaResult.online) {
+        // Java server is online - return it
+        return javaResult;
+    }
+
+    // Java ping failed - try Java via API fallback
+    const javaApiResult = await pingServerAPI(address, port, false);
+    if (javaApiResult.online) {
+        return javaApiResult;
+    }
+
+    // Java completely offline - try Bedrock as fallback (for Geyser/hybrid servers)
+    if (isBedrock || port === 19132) {
+        const bedrockResult = await pingServerAPI(address, port, true);
+        if (bedrockResult.online) return bedrockResult;
+    }
+
+    // Both Java and Bedrock are offline
+    return javaApiResult;
 }
 
 module.exports = { pingServer, pingServerAPI, smartPing };
