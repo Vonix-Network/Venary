@@ -35,8 +35,8 @@ window.DonationsPage = {
                     <div class="donate-onetime-header">
                         <span class="donate-onetime-icon">&#128157;</span>
                         <div>
-                            <div class="donate-onetime-title">One Time Donation</div>
-                            <div class="donate-onetime-sub">Support the server without a rank</div>
+                            <div class="donate-onetime-title">Custom Amount</div>
+                            <div class="donate-onetime-sub">Choose any amount to support the server</div>
                         </div>
                     </div>
                     <div class="donate-preset-row" id="donate-preset-row"></div>
@@ -58,7 +58,7 @@ window.DonationsPage = {
                         <input type="email" id="donate-guest-email" class="input-field" placeholder="your@email.com" style="max-width:280px">
                         <small style="display:block;margin-top:4px;font-size:0.72rem;color:var(--text-muted)">Optional — used to send your receipt and link donations if you register later</small>
                     </div>
-                    <button class="donate-onetime-btn" id="donate-onetime-submit" onclick="DonationsPage.submitOneTime()">Donate Now</button>
+                    <button class="donate-onetime-btn" id="donate-onetime-submit" onclick="DonationsPage.submitOneTime()">Continue</button>
                 </div>
                 <div class="donate-recent-section">
                     <h2 class="donate-section-label">Recent Donations</h2>
@@ -496,7 +496,7 @@ window.DonationsPage = {
             if (result.url) { window.location.href = result.url; return; }
             App.showToast('Could not create checkout session', 'error');
         } catch (err) { App.showToast(err.message || 'Payment error', 'error'); }
-        if (btn) { btn.disabled = false; btn.textContent = 'Donate Now'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
     },
 
 
