@@ -344,6 +344,24 @@ router.post('/custom-checkout', optionalAuth, async (req, res) => {
             if (!user) return res.status(401).json({ error: 'User not found' });
         }
 
+        // Handle balance application for logged-in users
+        let confirmedBalanceApply = 0;
+        if (!isGuest && req.body.balance_apply) {
+            const requestedApply = parseFloat(req.body.balance_apply) || 0;
+            if (requestedApply > 0) {
+                const actualBalance = await balanceMgr.getBalance(req.user.id);
+                confirmedBalanceApply = Math.min(requestedApply, actualBalance, amount);
+                confirmedBalanceApply = Math.round(confirmedBalanceApply * 100) / 100;
+            }
+        }
+
+        const chargedAmount = Math.max(amount - confirmedBalanceApply, 0);
+        // If balance covers full amount, use balance spend endpoint instead
+        if (chargedAmount === 0) {
+            return res.status(400).json({ error: 'Use the balance spend endpoint for fully covered purchases' });
+        }
+        const stripeAmount = Math.max(chargedAmount, 0.50);
+
         const siteUrl = Config.get('siteUrl', 'http://localhost:3000');
         const displayName = isGuest ? guestMcUsername : user.username;
 
@@ -354,9 +372,11 @@ router.post('/custom-checkout', optionalAuth, async (req, res) => {
                     currency: 'usd',
                     product_data: {
                         name: 'Custom Donation',
-                        description: 'Thank you for supporting the server, ' + displayName + '!',
+                        description: confirmedBalanceApply > 0
+                            ? `Custom donation — $${confirmedBalanceApply.toFixed(2)} credit applied`
+                            : ('Thank you for supporting the server, ' + displayName + '!'),
                     },
-                    unit_amount: Math.round(amount * 100),
+                    unit_amount: Math.round(stripeAmount * 100),
                 },
                 quantity: 1,
             }],
@@ -378,11 +398,11 @@ router.post('/custom-checkout', optionalAuth, async (req, res) => {
 
         const donationId = uuidv4();
         await db.run(
-            `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_username, expires_at, guest_email)
-             VALUES (?, ?, NULL, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?)`,
+            `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_session_id, status, minecraft_username, expires_at, guest_email, balance_applied)
+             VALUES (?, ?, NULL, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?, ?)`,
             [donationId, isGuest ? null : req.user.id, amount, session.id,
                 isGuest ? guestMcUsername : null,
-                new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), guestEmailC]
+                new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), guestEmailC, confirmedBalanceApply]
         );
 
         res.json({ url: session.url, sessionId: session.id });

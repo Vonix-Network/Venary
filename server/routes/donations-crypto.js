@@ -149,6 +149,26 @@ router.post('/crypto/intent', intentLimiter, optionalAuth, async (req, res) => {
         const isGuest = !req.user;
         if (isGuest && !mc_username?.trim()) return res.status(400).json({ error: 'Minecraft username required for guest donations' });
 
+        // Handle balance application for logged-in users
+        let confirmedBalanceApply = 0;
+        if (!isGuest && req.body.balance_apply) {
+            const requestedApply = parseFloat(req.body.balance_apply) || 0;
+            if (requestedApply > 0) {
+                const actualBalance = await balanceMgr.getBalance(req.user.id);
+                confirmedBalanceApply = Math.min(requestedApply, actualBalance, usdAmount);
+                confirmedBalanceApply = Math.round(confirmedBalanceApply * 100) / 100;
+            }
+        }
+
+        const chargedAmount = Math.max(usdAmount - confirmedBalanceApply, 0);
+        // If balance covers full amount, tell client to use balance spend endpoint
+        if (chargedAmount === 0) {
+            return res.status(400).json({ error: 'Balance covers full amount. Use /crypto/balance/spend endpoint instead.' });
+        }
+
+        // Use the charged amount (after balance deduction) for the crypto payment
+        usdAmount = chargedAmount;
+
         if (req.user) {
             const activeCount = await db.get(
                 `SELECT COUNT(*) as c FROM crypto_payment_intents WHERE user_id = ? AND status IN ('pending','detected')`,
@@ -179,10 +199,10 @@ router.post('/crypto/intent', intentLimiter, optionalAuth, async (req, res) => {
             await db.run(
                 `INSERT INTO crypto_payment_intents
                  (id, user_id, rank_id, coin, amount_usd, locked_crypto_amount, locked_exchange_rate,
-                  status, minecraft_username, expires_at, created_at, provider, provider_payment_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+                  status, minecraft_username, expires_at, created_at, provider, provider_payment_id, balance_applied)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
                 [intentId, req.user?.id || null, rank_id || null, coin, usdAmount, crypto_amount, rate_used,
-                    isGuest ? mc_username.trim() : null, expiresAt, new Date().toISOString(), activeProvider, result.provider_payment_id]
+                    isGuest ? mc_username.trim() : null, expiresAt, new Date().toISOString(), activeProvider, result.provider_payment_id, confirmedBalanceApply]
             );
 
             return res.json({
@@ -214,12 +234,12 @@ router.post('/crypto/intent', intentLimiter, optionalAuth, async (req, res) => {
         await db.run(
             `INSERT INTO crypto_payment_intents
              (id, user_id, rank_id, coin, sol_address, ltc_address, amount_usd, locked_crypto_amount,
-              locked_exchange_rate, status, minecraft_username, expires_at, created_at, provider)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'manual')`,
+              locked_exchange_rate, status, minecraft_username, expires_at, created_at, provider, balance_applied)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'manual', ?)`,
             [intentId, req.user?.id || null, rank_id || null, coin,
                 coin === 'sol' ? address : null, coin === 'ltc' ? address : null,
                 usdAmount, crypto_amount, rate_used, isGuest ? mc_username.trim() : null,
-                expiresAt, new Date().toISOString()]
+                expiresAt, new Date().toISOString(), confirmedBalanceApply]
         );
 
         const qrData    = coin === 'sol' ? `solana:${address}?amount=${crypto_amount}` : `litecoin:${address}?amount=${crypto_amount}`;
@@ -337,41 +357,72 @@ router.post('/crypto/balance/currency', authenticateToken, async (req, res) => {
 
 router.post('/crypto/balance/spend', authenticateToken, async (req, res) => {
     try {
-        const { rank_id } = req.body;
-        if (!rank_id) return res.status(400).json({ error: 'rank_id required' });
+        const { rank_id, amount } = req.body;
 
-        const rank = await db.get('SELECT * FROM donation_ranks WHERE id = ? AND active = 1', [rank_id]);
-        if (!rank) return res.status(404).json({ error: 'Rank not found' });
+        // Support both rank purchases and custom donations
+        let spendAmount = 0;
+        let description = '';
+        let donationType = '';
+
+        if (rank_id) {
+            const rank = await db.get('SELECT * FROM donation_ranks WHERE id = ? AND active = 1', [rank_id]);
+            if (!rank) return res.status(404).json({ error: 'Rank not found' });
+            spendAmount = rank.price;
+            description = `Purchased ${rank.name} rank`;
+            donationType = 'rank';
+        } else if (amount) {
+            spendAmount = parseFloat(amount);
+            if (!Number.isFinite(spendAmount) || spendAmount < 0.01) {
+                return res.status(400).json({ error: 'Invalid amount' });
+            }
+            description = `Custom donation $${spendAmount.toFixed(2)}`;
+            donationType = 'custom';
+        } else {
+            return res.status(400).json({ error: 'rank_id or amount required' });
+        }
 
         const balance = await balanceMgr.getBalance(req.user.id);
-        if (balance < rank.price) {
-            return res.status(400).json({ error: 'Insufficient balance', balance, required: rank.price, shortfall: Math.round((rank.price - balance) * 100) / 100 });
+        if (balance < spendAmount) {
+            return res.status(400).json({ error: 'Insufficient balance', balance, required: spendAmount, shortfall: Math.round((spendAmount - balance) * 100) / 100 });
         }
 
         const donationId = uuidv4();
-        await balanceMgr.debit(req.user.id, rank.price, 'rank_purchase', `Purchased ${rank.name} rank`, donationId);
+        await balanceMgr.debit(req.user.id, spendAmount, donationType === 'rank' ? 'rank_purchase' : 'custom_donation', description, donationId);
 
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-        const existing = await db.get('SELECT * FROM user_ranks WHERE user_id = ?', [req.user.id]);
-        if (existing) {
-            let newExpiry = expiresAt;
-            if (existing.rank_id === rank_id && existing.expires_at && new Date(existing.expires_at) > new Date()) {
-                newExpiry = new Date(new Date(existing.expires_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        // For rank purchases, grant the rank
+        if (donationType === 'rank') {
+            const rank = await db.get('SELECT * FROM donation_ranks WHERE id = ? AND active = 1', [rank_id]);
+            const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            const existing = await db.get('SELECT * FROM user_ranks WHERE user_id = ?', [req.user.id]);
+            if (existing) {
+                let newExpiry = expiresAt;
+                if (existing.rank_id === rank_id && existing.expires_at && new Date(existing.expires_at) > new Date()) {
+                    newExpiry = new Date(new Date(existing.expires_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                }
+                await db.run('UPDATE user_ranks SET rank_id = ?, active = 1, expires_at = ?, started_at = ? WHERE user_id = ?',
+                    [rank_id, newExpiry, new Date().toISOString(), req.user.id]);
+            } else {
+                await db.run('INSERT INTO user_ranks (id, user_id, rank_id, active, expires_at) VALUES (?, ?, ?, 1, ?)',
+                    [uuidv4(), req.user.id, rank_id, expiresAt]);
             }
-            await db.run('UPDATE user_ranks SET rank_id = ?, active = 1, expires_at = ?, started_at = ? WHERE user_id = ?',
-                [rank_id, newExpiry, new Date().toISOString(), req.user.id]);
+
+            await db.run(
+                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, status, expires_at, created_at)
+                 VALUES (?, ?, ?, ?, 'usd', 'balance', 'completed', ?, ?)`,
+                [donationId, req.user.id, rank_id, spendAmount, expiresAt, new Date().toISOString()]
+            );
+
+            return res.json({ success: true, rank: rank.name, expires_at: expiresAt, new_balance: balance - spendAmount });
         } else {
-            await db.run('INSERT INTO user_ranks (id, user_id, rank_id, active, expires_at) VALUES (?, ?, ?, 1, ?)',
-                [uuidv4(), req.user.id, rank_id, expiresAt]);
+            // Custom donation - no rank, just record the donation
+            await db.run(
+                `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, status, created_at)
+                 VALUES (?, ?, NULL, ?, 'usd', 'balance', 'completed', ?)`,
+                [donationId, req.user.id, spendAmount, new Date().toISOString()]
+            );
+
+            return res.json({ success: true, amount: spendAmount, new_balance: balance - spendAmount });
         }
-
-        await db.run(
-            `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, status, expires_at, created_at)
-             VALUES (?, ?, ?, ?, 'usd', 'balance', 'completed', ?, ?)`,
-            [donationId, req.user.id, rank_id, rank.price, expiresAt, new Date().toISOString()]
-        );
-
-        res.json({ success: true, rank: rank.name, expires_at: expiresAt, new_balance: balance - rank.price });
     } catch (err) {
         if (err instanceof InsufficientBalanceError)
             return res.status(400).json({ error: 'Insufficient balance', shortfall: err.required - err.available });

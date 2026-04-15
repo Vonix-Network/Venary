@@ -670,10 +670,11 @@ window.DonationsPage = {
                 <span class="ppm-sub" id="ppm-stripe-sub">Powered by Stripe</span>
             </button>` : '';
 
+        const safeBalanceApply = 'DonationsPage._getBalanceApply()';
         const coinBtns = coins.map(c => {
             const m = this._COIN_META[c] || { name: c.toUpperCase(), icon: '◈', color: '#888' };
             return `<button class="mc-btn ppm-option" style="background:${m.color}12;border-color:${m.color}44;color:${m.color}"
-                onclick="App.closeModal?.();DonationsPage.startCryptoCheckout(${safeRank},${safeAmt},'${c}','${safeMcUser}')">
+                onclick="App.closeModal?.();DonationsPage.startCryptoCheckout(${safeRank},${safeAmt},'${c}','${safeMcUser}',${safeBalanceApply})">
                 <span class="ppm-icon" style="font-size:1.4rem">${m.icon}</span>
                 <span class="ppm-label">${App.escapeHtml(m.name)}</span>
                 <span class="ppm-sub">${c.toUpperCase()}</span>
@@ -732,13 +733,23 @@ window.DonationsPage = {
         if (sub) sub.textContent = cb.checked ? `$${remainder.toFixed(2)} after credit` : 'Powered by Stripe';
     },
 
-    /** Full balance spend — rank fully covered, no Stripe needed. */
-    async _pickBalanceFree(rankId) {
-        if (!rankId) return;
+    /** Full balance spend — rank or custom amount fully covered, no payment needed. */
+    async _pickBalanceFree(rankId, amount) {
         try {
             App.showToast('Applying balance…', 'info');
-            await API.post('/api/donations/crypto/balance/spend', { rank_id: rankId });
-            App.showToast('Rank granted! Your balance has been deducted.', 'success');
+            const payload = {};
+            if (rankId) payload.rank_id = rankId;
+            else if (amount) payload.amount = amount;
+            else return;
+
+            const result = await API.post('/api/donations/crypto/balance/spend', payload);
+
+            if (rankId) {
+                App.showToast('Rank granted! Your balance has been deducted.', 'success');
+            } else {
+                App.showToast(`Donation of $${amount.toFixed(2)} completed! Your balance has been deducted.`, 'success');
+            }
+
             this._userBalance = 0;
             await this.loadCurrentRank();
             this.loadRanks();
@@ -751,14 +762,24 @@ window.DonationsPage = {
             ? (document.getElementById('ppm-guest-email')?.value?.trim() || document.getElementById('donate-guest-email')?.value?.trim() || '')
             : '';
         try {
+            const totalPrice = rankId ? (this.allRanks.find(r => r.id === rankId)?.price ?? 0) : (amount || 0);
+            const totalApply = Math.min(balanceApply || 0, totalPrice);
+            const remainder = totalPrice - totalApply;
+
+            // If balance covers full amount, use balance spend instead
+            if (remainder <= 0) {
+                return this._pickBalanceFree(rankId, amount);
+            }
+
             if (rankId) {
                 const body = { rank_id: rankId };
-                if (balanceApply > 0) body.balance_apply = balanceApply;
+                if (totalApply > 0) body.balance_apply = totalApply;
                 if (guestEmail) body.guest_email = guestEmail;
                 const r = await API.post('/api/donations/checkout', body);
                 if (r?.url) window.location.href = r.url;
             } else {
                 const body = { amount };
+                if (totalApply > 0) body.balance_apply = totalApply;
                 if (guestEmail) body.guest_email = guestEmail;
                 const r = await API.post('/api/donations/custom-checkout', body);
                 if (r?.url) window.location.href = r.url;
@@ -766,10 +787,20 @@ window.DonationsPage = {
         } catch (e) { App.showToast(e.message || 'Payment error', 'error'); }
     },
 
-    async startCryptoCheckout(rankId, amount, coin, mcUsername) {
+    async startCryptoCheckout(rankId, amount, coin, mcUsername, balanceApply) {
         const guestEmail = !App.currentUser
             ? (document.getElementById('ppm-guest-email')?.value?.trim() || document.getElementById('donate-guest-email')?.value?.trim() || '')
             : '';
+
+        const totalPrice = rankId ? (this.allRanks.find(r => r.id === rankId)?.price ?? 0) : (amount || 0);
+        const totalApply = Math.min(balanceApply || 0, totalPrice);
+        const remainder = totalPrice - totalApply;
+
+        // If balance covers full amount, use balance spend instead
+        if (remainder <= 0) {
+            return this._pickBalanceFree(rankId, amount);
+        }
+
         App.showToast('Creating payment…', 'info');
         try {
             const payload = { coin };
@@ -777,6 +808,7 @@ window.DonationsPage = {
             if (amount)    payload.amount  = amount;
             if (mcUsername) payload.mc_username = mcUsername;
             if (guestEmail) payload.guest_email = guestEmail;
+            if (totalApply > 0) payload.balance_apply = totalApply;
 
             const result = await API.post('/api/donations/crypto/intent', payload);
 

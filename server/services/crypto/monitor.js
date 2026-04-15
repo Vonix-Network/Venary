@@ -339,6 +339,23 @@ async function completeCryptoIntent(intentId, txHash, confirmedAmount, Config) {
         }
     }
 
+    // Handle partial balance deduction if applicable
+    const balanceApplied = intent.balance_applied || 0;
+    if (balanceApplied > 0 && intent.user_id) {
+        try {
+            await balanceMgr.debit(
+                intent.user_id,
+                balanceApplied,
+                'crypto_partial_payment',
+                `Partial payment for ${intent.rank_id ? 'rank' : 'donation'} via ${intent.coin.toUpperCase()}`,
+                donationId
+            );
+        } catch (err) {
+            console.error(`[Donations/Crypto] ❌ Failed to deduct balance for intent ${intentId}:`, err.message);
+            // Continue with completion even if balance deduction fails (will be handled manually)
+        }
+    }
+
     if (intent.rank_id && intent.user_id) {
         await _grantRank(intent.user_id, intent.rank_id);
     } else if (intent.user_id) {
