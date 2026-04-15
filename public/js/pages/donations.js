@@ -249,8 +249,19 @@ window.DonationsPage = {
         if (!area) return;
         if (!App.currentUser) { area.innerHTML = ''; return; }
         try {
-            const rank = await API.get('/api/donations/my-rank');
+            const [rank, balance] = await Promise.all([
+                API.get('/api/donations/my-rank'),
+                API.get('/api/donations/crypto/balance').catch(() => ({ usd_balance: 0 }))
+            ]);
             this.currentRank = rank;
+            const usdBalance = parseFloat(balance?.usd_balance) || 0;
+            const balanceHtml = usdBalance > 0
+                ? '<div class="donate-dashboard-balance" style="text-align:right;margin-left:auto;padding-left:1rem;">' +
+                    '<div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Credit Balance</div>' +
+                    '<div style="font-size:1.25rem;font-weight:800;color:#10b981;line-height:1.2">$' + usdBalance.toFixed(2) + '</div>' +
+                    '<div style="font-size:0.72rem;color:var(--text-secondary);margin-top:2px">Use at checkout</div>' +
+                  '</div>'
+                : '';
             if (!rank || !rank.active || !rank.rank_name) {
                 area.innerHTML =
                     '<div class="donate-dashboard" style="--rank-accent:var(--text-muted)">' +
@@ -263,6 +274,7 @@ window.DonationsPage = {
                                 '<div class="donate-dashboard-bar-wrap"><div class="donate-dashboard-bar" style="width:0%;background:var(--text-muted)"></div></div>' +
                             '</div>' +
                         '</div>' +
+                        balanceHtml +
                     '</div>';
                 return;
             }
@@ -282,6 +294,7 @@ window.DonationsPage = {
                             '<div class="donate-dashboard-bar-wrap"><div class="donate-dashboard-bar" style="width:' + pct + '%;background:' + App.escapeHtml(rank.rank_color) + '"></div></div>' +
                         '</div>' +
                     '</div>' +
+                    balanceHtml +
                 '</div>';
         } catch { area.innerHTML = ''; }
     },
