@@ -771,9 +771,10 @@ input[type="range"]::-moz-range-thumb {
     padding: var(--space-md) var(--space-lg);
     padding-left: 48px;
     background: rgba(10, 12, 20, 0.65);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-size: 0.95rem;
     transition: all var(--transition-fast);
 }
 
