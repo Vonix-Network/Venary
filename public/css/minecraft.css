@@ -2,6 +2,12 @@
    Minecraft Extension — Styles
    ======================================= */
 
+/* ── Page Container ── */
+.minecraft-page {
+    width: 100%;
+    max-width: 100%;
+}
+
 /* ── Page Header ── */
 .mc-page-header {
     position: relative;
