@@ -28,6 +28,7 @@ window.DonationsPage = {
             <div class="minecraft-page donate-page-wrap">
                 <h1 class="donate-page-title">Donation Ranks</h1>
                 <p class="donate-page-sub">Purchase rank time to unlock exclusive perks!</p>
+                <p class="donate-page-note" style="text-align:center;font-size:0.78rem;color:var(--text-muted);margin-top:-1.5rem;margin-bottom:1.5rem;max-width:600px;margin-left:auto;margin-right:auto;">All rank purchases are <strong style="color:var(--neon-cyan)">one-time payments</strong> — not subscriptions. Extend or switch ranks anytime.</p>
                 <div id="donate-rank-dashboard"></div>
                 <div id="donate-ranks-area"><div class="loading-spinner" style="text-align:center;padding:3rem">Loading ranks...</div></div>
                 <div class="donate-onetimebox">
@@ -299,7 +300,7 @@ window.DonationsPage = {
                 html += '<div class="donate-rank-card" style="--rank-accent:' + App.escapeHtml(rank.color) + ';--rank-glow:' + App.escapeHtml(rank.color) + '33">' +
                     '<div class="donate-rank-icon">' + (rank.icon || '&#11088;') + '</div>' +
                     '<div class="donate-rank-name">' + App.escapeHtml(rank.name) + '</div>' +
-                    '<div class="donate-rank-price">$' + rank.price.toFixed(2) + '<span>/month</span></div>' +
+                    '<div class="donate-rank-price">$' + rank.price.toFixed(2) + '<span>/30 days</span></div>' +
                     '<div class="donate-rank-desc">' + App.escapeHtml(rank.description || '') + '</div>' +
                     '<ul class="donate-rank-perks">' + perks.map(p => '<li>' + App.escapeHtml(p) + '</li>').join('') + '</ul>' +
                     this._renderBtn(rank, isCurrent) +
