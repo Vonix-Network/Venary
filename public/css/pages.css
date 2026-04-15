@@ -95,12 +95,60 @@
 
 /* ========== Feed Page ========== */
 .feed-page {
-    max-width: 680px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
 }
 
 .feed-page .page-header {
-    margin-bottom: var(--space-xl);
+    position: relative;
+    margin-bottom: 2rem;
+    padding: 1.5rem 0;
+    overflow: hidden;
+}
+
+.feed-page .page-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: 2px;
+}
+
+.feed-page .page-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--neon-yellow) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 0.5px;
+    padding-left: 1.25rem;
+}
+
+.feed-page .page-header p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin: 0;
+    font-weight: 400;
+    padding-left: 1.25rem;
+}
+
+.feed-page .page-header::after {
+    content: '';
+    position: absolute;
+    left: -50px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 191, 36, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
 }
 
 .page-header h1 {
@@ -657,8 +705,60 @@ input[type="range"]::-moz-range-thumb {
 
 /* ========== Friends Page ========== */
 .friends-page {
-    max-width: 900px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+}
+
+.friends-page .page-header {
+    position: relative;
+    margin-bottom: 2rem;
+    padding: 1.5rem 0;
+    overflow: hidden;
+}
+
+.friends-page .page-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: 2px;
+}
+
+.friends-page .page-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--neon-pink) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 0.5px;
+    padding-left: 1.25rem;
+}
+
+.friends-page .page-header p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin: 0;
+    font-weight: 400;
+    padding-left: 1.25rem;
+}
+
+.friends-page .page-header::after {
+    content: '';
+    position: absolute;
+    left: -50px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 45, 120, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
 }
 
 .search-bar {
