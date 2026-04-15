@@ -2,6 +2,45 @@
    Donations Extension — Styles
    ======================================= */
 
+/* ── Primary Nav Link (Donate Button) ── */
+.nav-link-primary {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(99, 102, 241, 0.15)) !important;
+    border: 1px solid rgba(236, 72, 153, 0.4) !important;
+    border-radius: var(--radius-md) !important;
+    color: #ec4899 !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    padding: 8px 14px !important;
+    margin: 0 2px !important;
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.2) !important;
+    transition: all 0.25s ease !important;
+}
+
+.nav-link-primary:hover {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(99, 102, 241, 0.25)) !important;
+    border-color: rgba(236, 72, 153, 0.6) !important;
+    color: #f472b6 !important;
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.35), 0 0 40px rgba(99, 102, 241, 0.15) !important;
+    transform: translateY(-1px) !important;
+}
+
+.nav-link-primary svg {
+    stroke: #ec4899 !important;
+    filter: drop-shadow(0 0 4px rgba(236, 72, 153, 0.5));
+}
+
+.nav-link-primary:hover svg {
+    stroke: #f472b6 !important;
+}
+
+/* Mobile nav primary styling */
+.mobile-nav .nav-link-primary {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(99, 102, 241, 0.2)) !important;
+    border-radius: var(--radius-lg) !important;
+    margin: 4px 8px !important;
+}
+
 /* ── Page Layout ── */
 .donate-page-wrap {
     max-width: 1100px;

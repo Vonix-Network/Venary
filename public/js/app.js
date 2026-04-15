@@ -166,7 +166,7 @@ var App = {
                 { src: '/js/pages/donations.js',       global: 'DonationsPage',      route: '/donate' },
                 { src: '/js/pages/donations-admin.js', global: 'DonationsAdminPage', route: '/donations-admin' },
             ],
-            nav: [{ route: '/donate', label: 'Donate', icon: 'heart', position: 40 }],
+            nav: [{ route: '/donate', label: 'Donate', icon: 'heart', position: 40, primary: true }],
         },
         minecraft: {
             css: ['/css/minecraft.css'],
@@ -303,8 +303,10 @@ var App = {
                 html += '</div></div>';
             } else {
                 var page = nav.route ? nav.route.replace('/', '') : '';
-                html += '<a href="#' + nav.route + '" class="nav-link" data-page="' + page + '">' +
-                    iconSvg + '<span>' + nav.label + '</span>' + (nav.badgeHtml || '') + '</a>';
+                var primaryClass = nav.primary ? ' nav-link-primary' : '';
+                var primaryIcon = nav.primary ? '<span style="margin-right:4px">💖</span>' : '';
+                html += '<a href="#' + nav.route + '" class="nav-link' + primaryClass + '" data-page="' + page + '">' +
+                    primaryIcon + iconSvg + '<span>' + nav.label + '</span>' + (nav.badgeHtml || '') + '</a>';
             }
         });
 
