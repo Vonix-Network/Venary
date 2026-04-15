@@ -14,6 +14,10 @@
     margin-bottom: 2rem;
     padding: 1.5rem 0;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
 }
 
 .mc-header-accent {
@@ -66,7 +70,6 @@
 .mc-status-header {
     display: flex;
     gap: 1rem;
-    margin-bottom: 1.5rem;
     flex-wrap: wrap;
 }
 
@@ -188,18 +191,41 @@
 @media (max-width: 768px) {
     .mc-page-header {
         padding: 1rem 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
     }
 
     .mc-page-header .mc-title {
         font-size: 1.5rem;
     }
 
+    .mc-header-status {
+        width: 100%;
+    }
+
     .mc-status-header {
-        flex-direction: column;
+        flex-direction: row;
+        gap: 0.75rem;
     }
 
     .mc-status-card {
-        width: 100%;
+        flex: 1;
+        min-width: 0;
+        padding: 0.875rem 1rem;
+    }
+
+    .mc-status-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .mc-status-value {
+        font-size: 1.25rem;
+    }
+
+    .mc-status-label {
+        font-size: 0.75rem;
     }
 }
 
