@@ -2,6 +2,201 @@
    Minecraft Extension — Styles
    ======================================= */
 
+/* ── Page Header ── */
+.mc-page-header {
+    position: relative;
+    margin-bottom: 2rem;
+    padding: 1.5rem 0;
+    overflow: hidden;
+}
+
+.mc-header-accent {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: 2px;
+}
+
+.mc-header-content {
+    position: relative;
+    padding-left: 1.25rem;
+}
+
+.mc-page-header .mc-title {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--neon-cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 0.5px;
+}
+
+.mc-page-header .mc-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin: 0;
+    font-weight: 400;
+}
+
+.mc-header-glow {
+    position: absolute;
+    left: -50px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* ── Status Header Cards ── */
+.mc-status-header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.mc-status-card {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    position: relative;
+    overflow: hidden;
+    transition: all var(--transition-fast);
+    min-width: 180px;
+}
+
+.mc-status-card:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-neon);
+}
+
+.mc-status-card.players {
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.08) 0%, var(--bg-card) 100%);
+    border-color: rgba(0, 240, 255, 0.2);
+}
+
+.mc-status-card.players:hover {
+    border-color: rgba(0, 240, 255, 0.4);
+}
+
+.mc-status-card.servers.all-online {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, var(--bg-card) 100%);
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.mc-status-card.servers.all-online:hover {
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+.mc-status-card.servers.partial {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, var(--bg-card) 100%);
+    border-color: rgba(251, 191, 36, 0.2);
+}
+
+.mc-status-card.servers.partial:hover {
+    border-color: rgba(251, 191, 36, 0.4);
+}
+
+.mc-status-card.servers.offline {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, var(--bg-card) 100%);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.mc-status-card.servers.offline:hover {
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.mc-status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    color: var(--neon-cyan);
+}
+
+.mc-status-card.servers.all-online .mc-status-icon {
+    color: #22c55e;
+}
+
+.mc-status-card.servers.partial .mc-status-icon {
+    color: #fbbf24;
+}
+
+.mc-status-card.servers.offline .mc-status-icon {
+    color: #ef4444;
+}
+
+.mc-status-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mc-status-value {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.mc-status-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.mc-status-pulse {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+@media (max-width: 768px) {
+    .mc-page-header {
+        padding: 1rem 0;
+    }
+
+    .mc-page-header .mc-title {
+        font-size: 1.5rem;
+    }
+
+    .mc-status-header {
+        flex-direction: column;
+    }
+
+    .mc-status-card {
+        width: 100%;
+    }
+}
+
 /* ── Server Cards ── */
 .mc-server-card {
     background: var(--bg-card);
@@ -135,18 +330,6 @@
 
 .mc-badge.online .dot {
     animation: pulse-dot 2s infinite;
-}
-
-@keyframes pulse-dot {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.4;
-    }
 }
 
 /* ── Action Buttons ── */

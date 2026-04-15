@@ -77,9 +77,13 @@ var MinecraftPage = {
 
         container.innerHTML = `
             <div class="minecraft-page">
-                <div class="mc-header" style="margin-bottom: 2rem;">
-                    <h1 class="mc-title">${title}</h1>
-                    <p class="mc-subtitle">${subtitle}</p>
+                <div class="mc-page-header">
+                    <div class="mc-header-accent"></div>
+                    <div class="mc-header-content">
+                        <h1 class="mc-title">${title}</h1>
+                        <p class="mc-subtitle">${subtitle}</p>
+                    </div>
+                    <div class="mc-header-glow"></div>
                 </div>
                 <div id="mc-page-content" class="animate-fade-in">
                     <!-- content injected here -->
@@ -122,9 +126,36 @@ var MinecraftPage = {
         const onlineCount = this.servers.filter(s => s.online).length;
 
         let html = `
-            <div style="display:flex;gap:12px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center">
-                <span class="mc-badge online"><span class="dot"></span>${totalPlayers} Players Online</span>
-                <span class="mc-badge ${onlineCount > 0 ? 'online' : 'offline'}">${onlineCount}/${this.servers.length} Servers</span>
+            <div class="mc-status-header">
+                <div class="mc-status-card players">
+                    <div class="mc-status-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                    <div class="mc-status-info">
+                        <span class="mc-status-value">${totalPlayers}</span>
+                        <span class="mc-status-label">Players Online</span>
+                    </div>
+                    <span class="mc-status-pulse"></span>
+                </div>
+                <div class="mc-status-card servers ${onlineCount === this.servers.length ? 'all-online' : onlineCount > 0 ? 'partial' : 'offline'}">
+                    <div class="mc-status-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                            <line x1="6" y1="6" x2="6.01" y2="6"/>
+                            <line x1="6" y1="18" x2="6.01" y2="18"/>
+                        </svg>
+                    </div>
+                    <div class="mc-status-info">
+                        <span class="mc-status-value">${onlineCount}/${this.servers.length}</span>
+                        <span class="mc-status-label">Servers Online</span>
+                    </div>
+                </div>
             </div>
             <div class="mc-server-grid">
         `;
