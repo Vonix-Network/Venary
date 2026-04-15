@@ -92,6 +92,21 @@ router.get('/ranks', async (req, res) => {
     }
 });
 
+// Public checkout configuration (used to determine if custom checkout is enabled)
+router.get('/checkout-config', async (req, res) => {
+    try {
+        const stripe = getStripe();
+        res.json({
+            stripe_enabled: !!stripe,
+            checkout_mode: Config.get('stripe_checkout_mode') || 'stripe_checkout',
+            stripe_publishable_key: Config.get('stripe_publishable_key') || '',
+        });
+    } catch (err) {
+        console.error('[Donations] Checkout config error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 router.get('/recent', async (req, res) => {
     try {
         const limit = Math.min(parseInt(req.query.limit) || 10, 50);
@@ -453,6 +468,153 @@ router.post('/verify-session', optionalAuth, async (req, res) => {
     }
 });
 
+// POST /create-payment-intent — create a PaymentIntent for custom inline checkout
+router.post('/create-payment-intent', optionalAuth, async (req, res) => {
+    try {
+        const stripe = getStripe();
+        if (!stripe) return res.status(503).json({ error: 'Payment system not configured. Contact an administrator.' });
+
+        const { rank_id, amount, balance_apply } = req.body;
+
+        // Determine what we're charging for
+        let chargeAmount = 0;
+        let itemDescription = '';
+
+        if (rank_id) {
+            const rank = await db.get('SELECT * FROM donation_ranks WHERE id = ? AND active = 1', [rank_id]);
+            if (!rank) return res.status(404).json({ error: 'Rank not found' });
+            chargeAmount = rank.price;
+            itemDescription = rank.name + ' Rank';
+        } else if (amount) {
+            chargeAmount = parseFloat(amount);
+            if (!chargeAmount || chargeAmount < 1 || chargeAmount > 10000) {
+                return res.status(400).json({ error: 'Amount must be between $1 and $10,000' });
+            }
+            itemDescription = 'Custom Donation';
+        } else {
+            return res.status(400).json({ error: 'rank_id or amount required' });
+        }
+
+        // Support guests (must provide mc_username)
+        const isGuest = !req.user;
+        const guestMcUsername = (req.body.mc_username || '').trim().slice(0, 16);
+        if (isGuest && !guestMcUsername) return res.status(400).json({ error: 'Minecraft username is required for guest donations' });
+
+        const rawGuestEmail = isGuest ? (req.body.guest_email || '').trim().toLowerCase() : '';
+        const guestEmail = rawGuestEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawGuestEmail) ? rawGuestEmail : null;
+
+        let user = null;
+        if (!isGuest) {
+            user = await db.get('SELECT username, email FROM users WHERE id = ?', [req.user.id]);
+            if (!user) return res.status(401).json({ error: 'User not found' });
+        }
+
+        // Handle balance application for logged-in users
+        let confirmedBalanceApply = 0;
+        if (!isGuest && balance_apply) {
+            const requestedApply = parseFloat(balance_apply) || 0;
+            if (requestedApply > 0) {
+                confirmedBalanceApply = Math.min(requestedApply, balanceMgr.getBalance(req.user.id), chargeAmount);
+                confirmedBalanceApply = Math.round(confirmedBalanceApply * 100) / 100;
+            }
+        }
+
+        const chargedAmount = Math.max(chargeAmount - confirmedBalanceApply, 0);
+        if (chargedAmount === 0) {
+            return res.status(400).json({ error: 'Use the balance spend endpoint for fully covered purchases' });
+        }
+        const stripeAmount = Math.round(Math.max(chargedAmount, 0.50) * 100);
+
+        // Create PaymentIntent
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: stripeAmount,
+            currency: 'usd',
+            automatic_payment_methods: { enabled: true },
+            description: itemDescription + (confirmedBalanceApply > 0 ? ` — $${confirmedBalanceApply.toFixed(2)} credit applied` : ''),
+            metadata: {
+                user_id: isGuest ? '' : req.user.id,
+                rank_id: rank_id || '',
+                username: isGuest ? guestMcUsername : user.username,
+                is_guest: isGuest ? '1' : '0',
+                mc_username: isGuest ? guestMcUsername : '',
+                balance_applied: confirmedBalanceApply.toFixed(2),
+            },
+            receipt_email: isGuest ? (guestEmail || undefined) : (user.email && !user.email.endsWith('@mc.local') ? user.email : undefined),
+        });
+
+        // Pre-create donation record as pending
+        const donationId = uuidv4();
+        let mcUuid = null, mcUsername = isGuest ? guestMcUsername : null;
+        if (!isGuest) {
+            const link = await db.get('SELECT minecraft_uuid, minecraft_username FROM linked_accounts WHERE user_id = ?', [req.user.id]).catch(() => null);
+            if (link) { mcUuid = link.minecraft_uuid; mcUsername = link.minecraft_username; }
+        }
+
+        await db.run(
+            `INSERT INTO donations (id, user_id, rank_id, amount, currency, payment_type, stripe_payment_intent_id, status, minecraft_uuid, minecraft_username, expires_at, balance_applied, guest_email)
+             VALUES (?, ?, ?, ?, 'usd', 'one-time', ?, 'pending', ?, ?, ?, ?, ?)`,
+            [donationId, isGuest ? null : req.user.id, rank_id || null, chargeAmount, paymentIntent.id, mcUuid, mcUsername,
+                new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), confirmedBalanceApply, guestEmail]
+        );
+
+        res.json({
+            clientSecret: paymentIntent.client_secret,
+            donationId: donationId,
+            amount: chargedAmount,
+        });
+    } catch (err) {
+        console.error('[Donations] Create payment intent error:', err);
+        res.status(500).json({ error: 'Payment error: ' + (err.message || 'Unknown') });
+    }
+});
+
+// POST /confirm-payment — called after custom checkout succeeds to grant rank
+router.post('/confirm-payment', optionalAuth, async (req, res) => {
+    try {
+        const { payment_intent_id } = req.body;
+        if (!payment_intent_id) return res.status(400).json({ error: 'payment_intent_id required' });
+
+        const stripe = getStripe();
+        if (!stripe) return res.status(503).json({ error: 'Payment system not configured' });
+
+        const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id);
+
+        if (paymentIntent.status !== 'succeeded') {
+            return res.json({ success: false, status: paymentIntent.status });
+        }
+
+        // Complete the donation
+        await completeDonation(null, payment_intent_id);
+
+        // Get donation details for receipt
+        const donation = await db.get(
+            `SELECT d.id, d.amount, d.currency, d.payment_type, d.expires_at, d.minecraft_username,
+                    r.name as rank_name, r.color as rank_color, r.icon as rank_icon
+             FROM donations d
+             LEFT JOIN donation_ranks r ON d.rank_id = r.id
+             WHERE d.stripe_payment_intent_id = ?`,
+            [paymentIntent.id]
+        );
+
+        res.json({
+            success: true,
+            receipt: donation ? {
+                ref: donation.id.slice(0, 8).toUpperCase(),
+                amount: donation.amount,
+                currency: donation.currency || 'usd',
+                rank_name: donation.rank_name || null,
+                rank_color: donation.rank_color || null,
+                rank_icon: donation.rank_icon || null,
+                expires_at: donation.expires_at || null,
+                minecraft_username: donation.minecraft_username || null,
+            } : null,
+        });
+    } catch (err) {
+        console.error('[Donations] Confirm payment error:', err);
+        res.status(500).json({ error: 'Confirmation failed' });
+    }
+});
+
 // ══════════════════════════════════════════════════════
 // STRIPE WEBHOOK
 // ══════════════════════════════════════════════════════
@@ -710,11 +872,13 @@ router.delete('/admin/ranks/:id', authenticateToken, requireAdmin, async (req, r
 
 router.put('/admin/config', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const { stripe_secret_key, stripe_webhook_secret, discord_donation_webhook, siteUrl } = req.body;
+        const { stripe_secret_key, stripe_webhook_secret, stripe_publishable_key, discord_donation_webhook, siteUrl, stripe_checkout_mode } = req.body;
         if (stripe_secret_key !== undefined) Config.set('stripe_secret_key', stripe_secret_key);
         if (stripe_webhook_secret !== undefined) Config.set('stripe_webhook_secret', stripe_webhook_secret);
+        if (stripe_publishable_key !== undefined) Config.set('stripe_publishable_key', stripe_publishable_key);
         if (discord_donation_webhook !== undefined) Config.set('discord_donation_webhook', discord_donation_webhook);
         if (siteUrl !== undefined) Config.set('siteUrl', siteUrl);
+        if (stripe_checkout_mode !== undefined) Config.set('stripe_checkout_mode', stripe_checkout_mode);
         res.json({ message: 'Config updated' });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -726,8 +890,10 @@ router.get('/admin/config', authenticateToken, requireAdmin, async (req, res) =>
         res.json({
             stripe_secret_key: Config.get('stripe_secret_key') ? '••••••••' + (Config.get('stripe_secret_key') || '').slice(-4) : '',
             stripe_webhook_secret: Config.get('stripe_webhook_secret') ? '••••••••' : '',
+            stripe_publishable_key: Config.get('stripe_publishable_key') ? '••••••••' + (Config.get('stripe_publishable_key') || '').slice(-4) : '',
             discord_donation_webhook: Config.get('discord_donation_webhook') || '',
             siteUrl: Config.get('siteUrl') || 'http://localhost:3000',
+            stripe_checkout_mode: Config.get('stripe_checkout_mode') || 'stripe_checkout',
         });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -817,9 +983,15 @@ router.post('/admin/manual-donation', authenticateToken, requireAdmin, async (re
 // ══════════════════════════════════════════════════════
 // INTERNAL: Complete a donation + send receipt email
 // Idempotent — safe to call multiple times for same session.
+// Pass either stripeSessionId OR stripePaymentIntentId.
 // ══════════════════════════════════════════════════════
-async function completeDonation(stripeSessionId) {
-    const donation = await db.get('SELECT * FROM donations WHERE stripe_session_id = ?', [stripeSessionId]);
+async function completeDonation(stripeSessionId, stripePaymentIntentId) {
+    let donation;
+    if (stripePaymentIntentId) {
+        donation = await db.get('SELECT * FROM donations WHERE stripe_payment_intent_id = ?', [stripePaymentIntentId]);
+    } else {
+        donation = await db.get('SELECT * FROM donations WHERE stripe_session_id = ?', [stripeSessionId]);
+    }
     if (!donation || donation.status === 'completed') return;
 
     const result = await db.run(

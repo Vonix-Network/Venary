@@ -463,6 +463,7 @@ window.DonationsAdminPage = {
     async renderSettings(area) {
         try {
             const config = await API.get('/api/donations/admin/config');
+            const checkoutMode = config.stripe_checkout_mode || 'stripe_checkout';
             area.innerHTML = `
                 <div style="background:var(--bg-card);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:var(--space-lg)">
                     <h3 style="margin:0 0 1rem 0;font-size:1rem;color:var(--text-secondary)">Payment & Integration Settings</h3>
@@ -474,6 +475,30 @@ window.DonationsAdminPage = {
                         <div>
                             <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Stripe Webhook Secret</label>
                             <input id="cfg-stripe-webhook" type="password" class="input-field" value="${App.escapeHtml(config.stripe_webhook_secret)}" placeholder="whsec_..." style="width:100%">
+                        </div>
+                        <div class="full-width">
+                            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Stripe Publishable Key (for Custom Checkout)</label>
+                            <input id="cfg-stripe-pubkey" type="password" class="input-field" value="${App.escapeHtml(config.stripe_publishable_key || '')}" placeholder="pk_live_..." style="width:100%">
+                            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px">Required only if using Custom Checkout mode below. Will be exposed to clients.</div>
+                        </div>
+                        <div class="full-width">
+                            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:8px">Checkout Mode</label>
+                            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:var(--radius-md);flex:1;min-width:200px">
+                                    <input type="radio" name="checkout-mode" value="stripe_checkout" ${checkoutMode === 'stripe_checkout' ? 'checked' : ''}>
+                                    <div>
+                                        <div style="font-size:0.85rem;color:var(--text-primary);font-weight:600">Stripe Checkout</div>
+                                        <div style="font-size:0.72rem;color:var(--text-muted)">Redirect to Stripe hosted page</div>
+                                    </div>
+                                </label>
+                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:var(--radius-md);flex:1;min-width:200px">
+                                    <input type="radio" name="checkout-mode" value="custom_checkout" ${checkoutMode === 'custom_checkout' ? 'checked' : ''}>
+                                    <div>
+                                        <div style="font-size:0.85rem;color:var(--text-primary);font-weight:600">Custom Checkout</div>
+                                        <div style="font-size:0.72rem;color:var(--text-muted)">Inline form with card + billing</div>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                         <div class="full-width">
                             <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Discord Donation Webhook URL</label>
@@ -497,13 +522,16 @@ window.DonationsAdminPage = {
         try {
             const stripeKey = document.getElementById('cfg-stripe-key').value;
             const stripeWebhook = document.getElementById('cfg-stripe-webhook').value;
+            const stripePubKey = document.getElementById('cfg-stripe-pubkey').value;
             const discordWebhook = document.getElementById('cfg-discord-webhook').value;
             const siteUrl = document.getElementById('cfg-site-url').value;
+            const checkoutMode = document.querySelector('input[name="checkout-mode"]:checked')?.value || 'stripe_checkout';
 
-            const body = { discord_donation_webhook: discordWebhook, siteUrl };
+            const body = { discord_donation_webhook: discordWebhook, siteUrl, stripe_checkout_mode: checkoutMode };
             // Only send keys if they aren't masked
             if (stripeKey && !stripeKey.startsWith('••')) body.stripe_secret_key = stripeKey;
             if (stripeWebhook && !stripeWebhook.startsWith('••')) body.stripe_webhook_secret = stripeWebhook;
+            if (stripePubKey && !stripePubKey.startsWith('••')) body.stripe_publishable_key = stripePubKey;
 
             await API.put('/api/donations/admin/config', body);
             App.showToast('Settings saved!', 'success');

@@ -5,6 +5,9 @@ window.DonationsPage = {
     currentRank: null,
     allRanks: [],
     _selectedAmount: null,
+    _checkoutConfig: null,
+    _stripe: null,
+    _stripeElements: null,
 
     async render(container) {
         const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -73,6 +76,7 @@ window.DonationsPage = {
         this.loadRecent();
         this.loadCryptoStatus(); // async, non-blocking — populates this._cryptoStatus
         this.loadUserBalance();  // async, non-blocking — populates this._userBalance
+        this.loadCheckoutConfig(); // async, non-blocking — populates this._checkoutConfig
 
         if (!App.currentUser) {
             const gw = document.getElementById('donate-onetime-guest-mc');
@@ -581,6 +585,29 @@ window.DonationsPage = {
         }
     },
 
+    async loadCheckoutConfig() {
+        try {
+            this._checkoutConfig = await API.get('/api/donations/checkout-config');
+        } catch {
+            this._checkoutConfig = { stripe_enabled: false, checkout_mode: 'stripe_checkout' };
+        }
+    },
+
+    isCustomCheckoutEnabled() {
+        return this._checkoutConfig?.stripe_enabled && this._checkoutConfig?.checkout_mode === 'custom_checkout';
+    },
+
+    async loadStripeJs() {
+        if (window.Stripe) return window.Stripe;
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://js.stripe.com/v3/';
+            script.onload = () => resolve(window.Stripe);
+            script.onerror = () => reject(new Error('Failed to load Stripe.js'));
+            document.head.appendChild(script);
+        });
+    },
+
     /** Display names and icons for known coin tickers */
     _COIN_META: {
         btc:  { name: 'Bitcoin',      icon: '₿',  color: '#f7931a' },
@@ -770,6 +797,13 @@ window.DonationsPage = {
                 return this._pickBalanceFree(rankId, amount);
             }
 
+            // Check if custom checkout is enabled
+            if (!this._checkoutConfig) await this.loadCheckoutConfig();
+            if (this.isCustomCheckoutEnabled()) {
+                return this._showCustomCheckout(rankId, amount, balanceApply, guestEmail);
+            }
+
+            // Use standard Stripe Checkout redirect
             if (rankId) {
                 const body = { rank_id: rankId };
                 if (totalApply > 0) body.balance_apply = totalApply;
@@ -784,6 +818,371 @@ window.DonationsPage = {
                 if (r?.url) window.location.href = r.url;
             }
         } catch (e) { App.showToast(e.message || 'Payment error', 'error'); }
+    },
+
+    // ══════════════════════════════════════════════════════
+    // CUSTOM CHECKOUT FORM (Stripe Elements)
+    // ══════════════════════════════════════════════════════
+    async _showCustomCheckout(rankId, amount, balanceApply, guestEmail) {
+        const rank = rankId ? this.allRanks.find(r => r.id === rankId) : null;
+        const totalPrice = rank ? rank.price : (amount || 0);
+        const totalApply = Math.min(balanceApply || 0, totalPrice);
+        const chargedAmount = Math.max(totalPrice - totalApply, 0);
+        const displayName = rank ? rank.name : 'Custom Donation';
+
+        // Load Stripe.js if not already loaded
+        try {
+            const Stripe = await this.loadStripeJs();
+            this._stripe = Stripe(this._checkoutConfig.stripe_publishable_key);
+        } catch (err) {
+            App.showToast('Failed to load payment system', 'error');
+            return;
+        }
+
+        // Create payment intent
+        let clientSecret, donationId;
+        try {
+            const body = { balance_apply: totalApply };
+            if (rankId) body.rank_id = rankId;
+            else if (amount) body.amount = amount;
+            if (guestEmail) body.guest_email = guestEmail;
+            if (!App.currentUser) {
+                const mcUsername = document.getElementById('donate-onetime-mc-username')?.value?.trim()
+                    || document.getElementById('ppm-guest-mc')?.value?.trim();
+                if (mcUsername) body.mc_username = mcUsername;
+            }
+
+            const result = await API.post('/api/donations/create-payment-intent', body);
+            clientSecret = result.clientSecret;
+            donationId = result.donationId;
+        } catch (err) {
+            App.showToast(err.message || 'Failed to initialize payment', 'error');
+            return;
+        }
+
+        // Show custom checkout modal
+        const isGuest = !App.currentUser;
+        App.showModal('Complete Payment', `
+            <div class="donate-custom-checkout" id="custom-checkout-form">
+                <div class="donate-checkout-amount">
+                    <div class="donate-checkout-amount-label">Total to Pay</div>
+                    <div class="donate-checkout-amount-value">$${chargedAmount.toFixed(2)}</div>
+                    ${totalApply > 0 ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px">$${totalApply.toFixed(2)} credit applied</div>` : ''}
+                </div>
+
+                <div class="donate-checkout-card">
+                    <div class="donate-checkout-card-header">
+                        <div class="donate-checkout-card-icon">💳</div>
+                        <div>
+                            <div class="donate-checkout-card-title">Card Information</div>
+                            <div class="donate-checkout-card-subtitle">Secure payment powered by Stripe</div>
+                        </div>
+                    </div>
+
+                    <div class="donate-checkout-error" id="checkout-error"></div>
+
+                    <div class="donate-checkout-form-group">
+                        <label class="donate-checkout-label">Card Number</label>
+                        <div class="donate-checkout-stripe-element" id="card-number-element"></div>
+                    </div>
+
+                    <div class="donate-checkout-form-row">
+                        <div class="donate-checkout-form-group">
+                            <label class="donate-checkout-label">Expiry Date</label>
+                            <div class="donate-checkout-stripe-element" id="card-expiry-element"></div>
+                        </div>
+                        <div class="donate-checkout-form-group">
+                            <label class="donate-checkout-label">CVC</label>
+                            <div class="donate-checkout-stripe-element" id="card-cvc-element"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="donate-checkout-card">
+                    <div class="donate-checkout-card-header">
+                        <div class="donate-checkout-card-icon">📍</div>
+                        <div>
+                            <div class="donate-checkout-card-title">Billing Address</div>
+                            <div class="donate-checkout-card-subtitle">Required for card verification</div>
+                        </div>
+                    </div>
+
+                    <div class="donate-checkout-form-row">
+                        <div class="donate-checkout-form-group">
+                            <label class="donate-checkout-label">First Name</label>
+                            <input type="text" class="donate-checkout-input" id="billing-first-name" placeholder="John">
+                        </div>
+                        <div class="donate-checkout-form-group">
+                            <label class="donate-checkout-label">Last Name</label>
+                            <input type="text" class="donate-checkout-input" id="billing-last-name" placeholder="Doe">
+                        </div>
+                    </div>
+
+                    <div class="donate-checkout-form-group">
+                        <label class="donate-checkout-label">Street Address</label>
+                        <input type="text" class="donate-checkout-input" id="billing-address" placeholder="123 Main St">
+                    </div>
+
+                    <div class="donate-checkout-form-row">
+                        <div class="donate-checkout-form-group">
+                            <label class="donate-checkout-label">City</label>
+                            <input type="text" class="donate-checkout-input" id="billing-city" placeholder="New York">
+                        </div>
+                        <div class="donate-checkout-form-group">
+                            <label class="donate-checkout-label">State</label>
+                            <input type="text" class="donate-checkout-input" id="billing-state" placeholder="NY">
+                        </div>
+                    </div>
+
+                    <div class="donate-checkout-form-row">
+                        <div class="donate-checkout-form-group">
+                            <label class="donate-checkout-label">ZIP / Postal Code</label>
+                            <input type="text" class="donate-checkout-input" id="billing-zip" placeholder="10001">
+                        </div>
+                        <div class="donate-checkout-form-group">
+                            <label class="donate-checkout-label">Country</label>
+                            <select class="donate-checkout-input" id="billing-country" style="cursor:pointer">
+                                <option value="US">United States</option>
+                                <option value="CA">Canada</option>
+                                <option value="GB">United Kingdom</option>
+                                <option value="AU">Australia</option>
+                                <option value="DE">Germany</option>
+                                <option value="FR">France</option>
+                                <option value="IT">Italy</option>
+                                <option value="ES">Spain</option>
+                                <option value="BR">Brazil</option>
+                                <option value="MX">Mexico</option>
+                                <option value="JP">Japan</option>
+                                <option value="KR">South Korea</option>
+                                <option value="CN">China</option>
+                                <option value="IN">India</option>
+                                <option value="NL">Netherlands</option>
+                                <option value="SE">Sweden</option>
+                                <option value="NO">Norway</option>
+                                <option value="DK">Denmark</option>
+                                <option value="FI">Finland</option>
+                                <option value="IE">Ireland</option>
+                                <option value="AT">Austria</option>
+                                <option value="BE">Belgium</option>
+                                <option value="CH">Switzerland</option>
+                                <option value="NZ">New Zealand</option>
+                                <option value="SG">Singapore</option>
+                                <option value="HK">Hong Kong</option>
+                                <option value="TW">Taiwan</option>
+                                <option value="AE">United Arab Emirates</option>
+                                <option value="SA">Saudi Arabia</option>
+                                <option value="ZA">South Africa</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="donate-checkout-submit" id="checkout-submit-btn" onclick="DonationsPage._submitCustomCheckout('${clientSecret}', '${donationId}')">
+                    <span id="checkout-btn-text">🔒 Complete Payment — $${chargedAmount.toFixed(2)}</span>
+                </button>
+            </div>
+        `);
+
+        // Initialize Stripe Elements
+        this._initStripeElements(clientSecret);
+    },
+
+    _initStripeElements(clientSecret) {
+        if (!this._stripe) return;
+
+        const elements = this._stripe.elements({
+            clientSecret: clientSecret,
+            appearance: {
+                theme: 'night',
+                variables: {
+                    colorPrimary: '#00FFFF',
+                    colorBackground: 'transparent',
+                    colorText: '#E0E6ED',
+                    colorDanger: '#ef4444',
+                    borderRadius: '8px',
+                },
+            },
+        });
+
+        // Create individual card elements
+        const cardNumber = elements.create('cardNumber', {
+            placeholder: '0000 0000 0000 0000',
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#E0E6ED',
+                    '::placeholder': { color: 'rgba(224, 230, 237, 0.4)' },
+                },
+            },
+        });
+
+        const cardExpiry = elements.create('cardExpiry', {
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#E0E6ED',
+                    '::placeholder': { color: 'rgba(224, 230, 237, 0.4)' },
+                },
+            },
+        });
+
+        const cardCvc = elements.create('cardCvc', {
+            placeholder: '123',
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#E0E6ED',
+                    '::placeholder': { color: 'rgba(224, 230, 237, 0.4)' },
+                },
+            },
+        });
+
+        // Mount elements
+        cardNumber.mount('#card-number-element');
+        cardExpiry.mount('#card-expiry-element');
+        cardCvc.mount('#card-cvc-element');
+
+        // Store for submission
+        this._stripeElements = { cardNumber, cardExpiry, cardCvc };
+
+        // Handle errors
+        cardNumber.on('change', (event) => {
+            this._showCheckoutError(event.error?.message || '');
+        });
+    },
+
+    _showCheckoutError(message) {
+        const errorEl = document.getElementById('checkout-error');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.toggle('visible', !!message);
+        }
+    },
+
+    async _submitCustomCheckout(clientSecret, donationId) {
+        const btn = document.getElementById('checkout-submit-btn');
+        const btnText = document.getElementById('checkout-btn-text');
+
+        // Validate billing address
+        const firstName = document.getElementById('billing-first-name')?.value?.trim();
+        const lastName = document.getElementById('billing-last-name')?.value?.trim();
+        const address = document.getElementById('billing-address')?.value?.trim();
+        const city = document.getElementById('billing-city')?.value?.trim();
+        const state = document.getElementById('billing-state')?.value?.trim();
+        const zip = document.getElementById('billing-zip')?.value?.trim();
+        const country = document.getElementById('billing-country')?.value;
+
+        if (!firstName || !lastName || !address || !city || !state || !zip) {
+            this._showCheckoutError('Please fill in all billing address fields');
+            return;
+        }
+
+        if (!this._stripe || !this._stripeElements) {
+            this._showCheckoutError('Payment system not initialized');
+            return;
+        }
+
+        // Show loading state
+        btn.disabled = true;
+        btn.classList.add('processing');
+        btnText.innerHTML = '<span class="donate-checkout-spinner"></span> Processing...';
+
+        try {
+            const { error, paymentIntent } = await this._stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: this._stripeElements.cardNumber,
+                    billing_details: {
+                        name: `${firstName} ${lastName}`,
+                        address: {
+                            line1: address,
+                            city: city,
+                            state: state,
+                            postal_code: zip,
+                            country: country,
+                        },
+                    },
+                },
+            });
+
+            if (error) {
+                this._showCheckoutError(error.message);
+                btn.disabled = false;
+                btn.classList.remove('processing');
+                btnText.textContent = '🔒 Complete Payment';
+                return;
+            }
+
+            if (paymentIntent.status === 'succeeded') {
+                // Confirm payment with server and grant rank
+                try {
+                    const confirmResult = await API.post('/api/donations/confirm-payment', {
+                        payment_intent_id: paymentIntent.id,
+                    });
+
+                    if (confirmResult.success) {
+                        App.closeModal();
+                        // Show success receipt
+                        this._showCheckoutSuccess(confirmResult.receipt);
+                    } else {
+                        this._showCheckoutError('Payment succeeded but confirmation failed. Please contact support.');
+                    }
+                } catch (err) {
+                    this._showCheckoutError(err.message || 'Payment succeeded but confirmation failed. Please contact support.');
+                }
+            } else {
+                this._showCheckoutError('Payment is processing. Please wait...');
+            }
+        } catch (err) {
+            this._showCheckoutError(err.message || 'Payment failed. Please try again.');
+            btn.disabled = false;
+            btn.classList.remove('processing');
+            btnText.textContent = '🔒 Complete Payment';
+        }
+    },
+
+    _showCheckoutSuccess(receipt) {
+        const rankColor = receipt?.rank_color || 'var(--neon-cyan)';
+        const rankName = receipt?.rank_name;
+        const amount = receipt?.amount || 0;
+        const ref = receipt?.ref || '—';
+
+        const rankBlock = rankName ? `
+            <div style="background:${rankColor}18;border:1px solid ${rankColor}55;border-radius:10px;padding:16px 20px;margin:16px 0;">
+                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Rank Granted</div>
+                <div style="font-size:1.3rem;font-weight:700;color:${rankColor};margin-top:4px">${rankName}</div>
+                ${receipt.expires_at ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px">Active for 30 days</div>` : ''}
+            </div>
+        ` : '';
+
+        App.showModal('Payment Successful!', `
+            <div class="donate-checkout-success">
+                <div class="donate-checkout-success-icon">✅</div>
+                <h2 style="color:var(--neon-green);margin-bottom:8px">Thank You!</h2>
+                <p style="color:var(--text-muted);margin-bottom:16px">Your payment has been processed successfully.</p>
+
+                ${rankBlock}
+
+                <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px 18px;margin-bottom:16px">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                        <span style="color:var(--text-muted);font-size:0.85rem">Amount</span>
+                        <span style="font-weight:700;color:var(--text-primary)">$${parseFloat(amount).toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between">
+                        <span style="color:var(--text-muted);font-size:0.85rem">Reference</span>
+                        <span style="font-family:monospace;color:var(--text-primary)">${ref}</span>
+                    </div>
+                </div>
+
+                <button class="donate-rank-btn" onclick="App.closeModal();window.location.hash='#/donate'" style="width:100%">
+                    Continue
+                </button>
+            </div>
+        `);
+
+        // Refresh rank and balance
+        this.loadCurrentRank();
+        this.loadUserBalance();
     },
 
     async startCryptoCheckout(rankId, amount, coin, mcUsername, balanceApply) {
