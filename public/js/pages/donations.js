@@ -255,13 +255,12 @@ window.DonationsPage = {
             ]);
             this.currentRank = rank;
             const usdBalance = parseFloat(balance?.usd_balance) || 0;
-            const balanceHtml = usdBalance > 0
-                ? '<div class="donate-dashboard-balance" style="text-align:right;margin-left:auto;padding-left:1rem;">' +
+            const balanceColor = usdBalance > 0 ? '#10b981' : 'var(--text-muted)';
+            const balanceHtml = '<div class="donate-dashboard-balance" style="text-align:right;margin-left:auto;padding-left:1rem;">' +
                     '<div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Credit Balance</div>' +
-                    '<div style="font-size:1.25rem;font-weight:800;color:#10b981;line-height:1.2">$' + usdBalance.toFixed(2) + '</div>' +
-                    '<div style="font-size:0.72rem;color:var(--text-secondary);margin-top:2px">Use at checkout</div>' +
-                  '</div>'
-                : '';
+                    '<div style="font-size:1.25rem;font-weight:800;color:' + balanceColor + ';line-height:1.2">$' + usdBalance.toFixed(2) + '</div>' +
+                    '<div style="font-size:0.72rem;color:var(--text-secondary);margin-top:2px">' + (usdBalance > 0 ? 'Use at checkout' : 'Add funds to spend') + '</div>' +
+                  '</div>';
             if (!rank || !rank.active || !rank.rank_name) {
                 area.innerHTML =
                     '<div class="donate-dashboard" style="--rank-accent:var(--text-muted)">' +
