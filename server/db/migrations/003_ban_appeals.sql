@@ -1,5 +1,5 @@
 -- Migration 003: Ban Appeals System
--- Run against your database to add the ban_appeals table
+-- Run against your PostgreSQL database to add the ban_appeals table
 -- ================================================
 
 CREATE TABLE IF NOT EXISTS ban_appeals (
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS ban_appeals (
     reviewed_at TEXT,
     cooldown_until TEXT,
     previous_appeal_id TEXT,
-    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    created_at TEXT DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (reviewed_by) REFERENCES users(id),
     FOREIGN KEY (previous_appeal_id) REFERENCES ban_appeals(id)

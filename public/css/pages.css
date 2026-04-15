@@ -2276,3 +2276,9 @@ input[type="range"]::-moz-range-thumb {
     gap: 8px;
     flex-shrink: 0;
 }
+
+/* Friends Status Header Cards */
+.friends-status-header {
+    display: flex;
+    gap: 1rem;
+}

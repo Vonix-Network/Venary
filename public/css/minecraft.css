@@ -70,7 +70,6 @@
 .mc-status-header {
     display: flex;
     gap: 1rem;
-    flex-wrap: wrap;
 }
 
 .mc-status-card {
@@ -150,6 +149,32 @@
 
 .mc-status-card.servers.offline .mc-status-icon {
     color: #ef4444;
+}
+
+.mc-status-card.friends {
+    background: linear-gradient(135deg, rgba(255, 45, 120, 0.08) 0%, var(--bg-card) 100%);
+    border-color: rgba(255, 45, 120, 0.2);
+}
+
+.mc-status-card.friends:hover {
+    border-color: rgba(255, 45, 120, 0.4);
+}
+
+.mc-status-card.friends .mc-status-icon {
+    color: var(--neon-pink);
+}
+
+.mc-status-card.friends-online {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, var(--bg-card) 100%);
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.mc-status-card.friends-online:hover {
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+.mc-status-card.friends-online .mc-status-icon {
+    color: #22c55e;
 }
 
 .mc-status-info {
