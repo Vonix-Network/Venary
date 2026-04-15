@@ -7,10 +7,7 @@ const FriendsPage = {
   async render(container) {
     container.innerHTML =
       '<div class="friends-page">' +
-      '<div class="page-header animate-fade-up">' +
-      '  <div class="friends-header-content"><h1>🎮 SQUAD</h1><p>Manage your gaming network</p></div>' +
-      '  <div class="friends-header-status" id="friends-header-status"></div>' +
-      '</div>' +
+      '<div id="friends-header-container"></div>' +
       '<div class="friends-search-bar animate-fade-up" style="animation-delay:0.05s">' +
       '  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
       '  <input type="text" class="input-field" placeholder="Search gamers..." id="friend-search" autocomplete="off">' +
@@ -89,41 +86,31 @@ const FriendsPage = {
       const totalFriends = friends.length;
       const onlineFriends = friends.filter(f => f.status === 'online').length;
 
-      // Inject status cards into header
-      var statusEl = document.getElementById('friends-header-status');
-      if (statusEl) {
-        statusEl.innerHTML = `
-          <div class="friends-status-header">
-            <div class="mc-status-card friends">
-              <div class="mc-status-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-              </div>
-              <div class="mc-status-info">
-                <span class="mc-status-value">${totalFriends}</span>
-                <span class="mc-status-label">Total Friends</span>
-              </div>
-            </div>
-            <div class="mc-status-card friends-online">
-              <div class="mc-status-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M2 12h20"/>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                </svg>
-              </div>
-              <div class="mc-status-info">
-                <span class="mc-status-value">${onlineFriends}</span>
-                <span class="mc-status-label">Online</span>
-              </div>
-              <span class="mc-status-pulse"></span>
-            </div>
-          </div>
-        `;
+      // Use StatusHeader component
+      var headerEl = document.getElementById('friends-header-container');
+      if (headerEl) {
+        headerEl.innerHTML = StatusHeader.render({
+          title: '🎮 SQUAD',
+          subtitle: 'Manage your gaming network',
+          theme: 'pink',
+          statusCards: [
+            {
+              type: 'friends',
+              value: totalFriends,
+              label: 'Total Friends',
+              theme: 'pink',
+              icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+            },
+            {
+              type: 'friends-online',
+              value: onlineFriends,
+              label: 'Online',
+              theme: 'green',
+              pulse: true,
+              icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
+            }
+          ]
+        });
       }
 
       if (friends.length === 0) {
