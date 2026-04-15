@@ -714,6 +714,10 @@ input[type="range"]::-moz-range-thumb {
     margin-bottom: 2rem;
     padding: 1.5rem 0;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
 }
 
 .friends-page .page-header::before {
@@ -727,6 +731,11 @@ input[type="range"]::-moz-range-thumb {
     border-radius: 2px;
 }
 
+.friends-header-content {
+    position: relative;
+    padding-left: 1.25rem;
+}
+
 .friends-page .page-header h1 {
     font-family: var(--font-display);
     font-size: 1.75rem;
@@ -737,7 +746,6 @@ input[type="range"]::-moz-range-thumb {
     background-clip: text;
     margin: 0 0 0.5rem 0;
     letter-spacing: 0.5px;
-    padding-left: 1.25rem;
 }
 
 .friends-page .page-header p {
@@ -745,7 +753,6 @@ input[type="range"]::-moz-range-thumb {
     color: var(--text-secondary);
     margin: 0;
     font-weight: 400;
-    padding-left: 1.25rem;
 }
 
 .friends-page .page-header::after {
@@ -2043,7 +2050,38 @@ input[type="range"]::-moz-range-thumb {
     }
 
     .friends-page .page-header {
-        display: none;
+        padding: 1rem 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .friends-header-status {
+        width: 100%;
+    }
+
+    .friends-status-header {
+        flex-direction: row;
+        gap: 0.75rem;
+    }
+
+    .friends-header-status .mc-status-card {
+        flex: 1;
+        min-width: 0;
+        padding: 0.875rem 1rem;
+    }
+
+    .friends-header-status .mc-status-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .friends-header-status .mc-status-value {
+        font-size: 1.25rem;
+    }
+
+    .friends-header-status .mc-status-label {
+        font-size: 0.75rem;
     }
 
     .friends-search-bar {

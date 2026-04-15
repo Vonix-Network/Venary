@@ -7,8 +7,10 @@ const FriendsPage = {
   async render(container) {
     container.innerHTML =
       '<div class="friends-page">' +
-      '<div class="page-header animate-fade-up"><h1>🎮 SQUAD</h1><p>Manage your gaming network</p></div>' +
-      '<div class="friends-header-status" id="friends-header-status"></div>' +
+      '<div class="page-header animate-fade-up">' +
+      '  <div class="friends-header-content"><h1>🎮 SQUAD</h1><p>Manage your gaming network</p></div>' +
+      '  <div class="friends-header-status" id="friends-header-status"></div>' +
+      '</div>' +
       '<div class="friends-search-bar animate-fade-up" style="animation-delay:0.05s">' +
       '  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
       '  <input type="text" class="input-field" placeholder="Search gamers..." id="friend-search" autocomplete="off">' +
