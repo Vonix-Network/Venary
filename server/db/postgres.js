@@ -103,6 +103,9 @@ class PostgresAdapter {
         // Translate SQLite-specific functions to PostgreSQL equivalents
         s = s.replace(/strftime\s*\(\s*'%s'\s*,\s*'now'\s*\)/gi, "EXTRACT(EPOCH FROM NOW())::INTEGER");
 
+        // SQLite ROUND(x, n) with double precision → PostgreSQL requires numeric cast
+        s = s.replace(/ROUND\s*\(\s*([^,)]+)\s*,\s*(\d+)\s*\)/gi, "ROUND(($1)::numeric, $2)");
+
         // Convert ? placeholders to $1, $2, ... for pg
         let paramIdx = 0;
         const pgSql = s.replace(/\?/g, () => `$${++paramIdx}`);
