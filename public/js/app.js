@@ -191,8 +191,7 @@ var App = {
                 { src: '/js/pages/pterodactyl.js',       global: 'PterodactylPage',      route: '/pterodactyl' },
                 { src: '/js/pages/pterodactyl-admin.js', global: 'PterodactylAdminPage', route: '/pterodactyl-admin' },
             ],
-            // Nav injected after access check in loadFeatures()
-            nav: [],
+            nav: [{ route: '/pterodactyl', label: 'Panel', icon: 'terminal', position: 5 }],
             _accessGated: true,
         },
         messenger: {
