@@ -24,6 +24,17 @@ const ProfilePage = {
         profile = await API.getUser(userId);
       }
       if (!profile) throw new Error('User not found');
+      
+      // Fetch panel access status for own profile
+      if (isOwnProfile) {
+        try {
+          const accessCheck = await API.get('/api/pterodactyl/access/me');
+          profile.pterodactyl_access = accessCheck.granted === true;
+        } catch {
+          profile.pterodactyl_access = false;
+        }
+      }
+      
       ProfilePage._currentProfile = profile;
 
       // Normalize userId and isOwnProfile in case user was accessed by username
@@ -155,6 +166,7 @@ const ProfilePage = {
 
     var rect = trigger.getBoundingClientRect();
     var donationsEnabled = App.extensions && App.extensions.some(function(e) { return e.id === 'donations' && e.enabled; });
+    var hasPanelAccess = ProfilePage._currentProfile && ProfilePage._currentProfile.pterodactyl_access === true;
 
     var menu = document.createElement('div');
     menu.id = 'profile-avatar-menu';
@@ -171,6 +183,12 @@ const ProfilePage = {
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
         '<span>Edit Profile</span>' +
       '</div>' +
+      (hasPanelAccess
+        ? '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu();window.location.hash=\'#/admin?tab=panel\';" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 16px">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+            '<span>Access Dashboard</span>' +
+          '</div>'
+        : '') +
       (donationsEnabled
         ? '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu();ProfilePage.showDonationHistory();" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 16px">' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' +

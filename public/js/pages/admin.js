@@ -13,7 +13,8 @@ var AdminPage = {
     forum: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
     minecraft: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path fill="currentColor" stroke="none" d="M6 6h4v4H6zM14 6h4v4h-4zM10 10h4v2h2v6h-2v-2h-4v2H8v-6h2v-2z"/></svg>',
     discord: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 12h4M8 10v4M15 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path></svg>',
-    appeals: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>'
+    appeals: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>',
+    panel: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
   },
 
   async render(container) {
@@ -53,6 +54,7 @@ var AdminPage = {
       (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="minecraft">' + this.icons.minecraft + ' <span>Minecraft</span></button>' : '') +
       (isAdmin && isMinecraftEnabled ? '<button class="admin-nav-item desktop-only-tab" data-tab="discord">' + this.icons.discord + ' <span>Discord</span></button>' : '') +
       (isAdmin ? '<button class="admin-nav-item desktop-only-tab" data-tab="appeals">' + this.icons.appeals + ' <span>Ban Appeals</span></button>' : '') +
+      '    <button class="admin-nav-item desktop-only-tab" data-tab="panel">' + this.icons.panel + ' <span>Panel</span></button>' +
       '    <button class="admin-nav-item admin-more-btn" onclick="AdminPage.showMoreMenu()">' + moreIcon + ' <span>More</span></button>' +
       '  </nav>' +
       '  <div class="admin-sidebar-footer">' +
@@ -165,6 +167,10 @@ var AdminPage = {
           titleEl.innerText = 'Ban Appeals';
           subtitleEl.innerText = 'Review and manage user ban appeals';
           self.loadAppeals();
+        } else if (tab === 'panel') {
+          titleEl.innerText = 'Server Panel';
+          subtitleEl.innerText = 'Manage and monitor game servers';
+          self.loadPanel();
         }
       });
     });
@@ -1170,6 +1176,30 @@ var AdminPage = {
       this.loadAppeals();
     } catch (err) {
       App.showToast(err.message, 'error');
+    }
+  },
+
+  async loadPanel() {
+    var content = document.getElementById('admin-content');
+    if (!content) return;
+
+    // Check if user has panel access
+    try {
+      const accessCheck = await API.get('/api/pterodactyl/access/me');
+      if (!accessCheck.granted) {
+        content.innerHTML = '<div class="empty-state"><h3>Access Denied</h3><p>You don\'t have permission to access the server panel.</p></div>';
+        return;
+      }
+    } catch {
+      content.innerHTML = '<div class="empty-state"><h3>Access Denied</h3><p>You don\'t have permission to access the server panel.</p></div>';
+      return;
+    }
+
+    // Render the panel using PterodactylPage
+    if (window.PterodactylPage && typeof window.PterodactylPage.render === 'function') {
+      window.PterodactylPage.render(content);
+    } else {
+      content.innerHTML = '<div class="empty-state"><h3>Panel Not Loaded</h3><p>The panel extension is not available. Please try again later.</p></div>';
     }
   }
 };

@@ -191,7 +191,7 @@ var App = {
                 { src: '/js/pages/pterodactyl.js',       global: 'PterodactylPage',      route: '/pterodactyl' },
                 { src: '/js/pages/pterodactyl-admin.js', global: 'PterodactylAdminPage', route: '/pterodactyl-admin' },
             ],
-            nav: [{ route: '/pterodactyl', label: 'Panel', icon: 'terminal', position: 5 }],
+            nav: [], // Panel removed from main nav - accessed via Access Dashboard
             _accessGated: true,
         },
         messenger: {
