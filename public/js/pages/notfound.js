@@ -15,15 +15,15 @@ var NotFoundPage = {
           <br><code style="font-family: var(--font-mono); color: var(--neon-cyan); background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 8px;">${App.escapeHtml(requestedPath)}</code>
         </p>
         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-          <button class="btn btn-primary" onclick="window.location.hash = '#/feed'" style="cursor: pointer;">
+          <button class="btn btn-primary" onclick="Router.go('/feed')" style="cursor: pointer;">
             ← Back to Feed
           </button>
-          <button class="btn btn-secondary" onclick="window.location.hash = '#/'" style="cursor: pointer;">
+          <button class="btn btn-secondary" onclick="Router.go('/feed')" style="cursor: pointer;">
             Go Home
           </button>
         </div>
         <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 0.85rem;">
-          <p>Need help? Check out the <a href="#/feed" style="color: var(--neon-cyan); text-decoration: none;">main feed</a> or contact support.</p>
+          <p>Need help? Check out the <a href="/feed" style="color: var(--neon-cyan); text-decoration: none;">main feed</a> or contact support.</p>
         </div>
       </div>
     `;

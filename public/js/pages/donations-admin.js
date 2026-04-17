@@ -17,7 +17,7 @@ window.DonationsAdminPage = {
                         <h1 style="margin-bottom:4px">Donations Management</h1>
                         <p style="color:var(--text-secondary);margin-bottom:0;font-size:0.9rem">Manage ranks, view donations, and configure payment settings.</p>
                     </div>
-                    <button class="mc-btn" onclick="window.location.hash='#/admin'" style="background:rgba(255,255,255,0.05);border-color:var(--border-subtle)">
+                    <button class="mc-btn" onclick="Router.go('/admin')" style="background:rgba(255,255,255,0.05);border-color:var(--border-subtle)">
                         &larr; Back to Admin
                     </button>
                 </div>`;
@@ -42,7 +42,7 @@ window.DonationsAdminPage = {
         container.innerHTML = html;
 
         // Restore sub-tab from URL on render (e.g. #/admin?tab=donations&subtab=crypto)
-        const _dQs     = new URLSearchParams(window.location.hash.split('?')[1] || '');
+        const _dQs     = new URLSearchParams(window.location.search);
         const _subtab  = _dQs.get('subtab');
         if (_subtab && document.querySelector(`.mc-chart-btn[onclick*="'${_subtab}'"]`)) {
             this.activeTab = _subtab;
@@ -58,9 +58,9 @@ window.DonationsAdminPage = {
             btn.classList.add('active');
         }
         // Silently update URL so refresh restores this sub-tab
-        const _qs = new URLSearchParams(window.location.hash.split('?')[1] || '');
+        const _qs = new URLSearchParams(window.location.search);
         _qs.set('subtab', tab);
-        history.replaceState(null, '', '#/admin?' + _qs.toString());
+        history.replaceState(null, '', '/admin?' + _qs.toString());
         this.loadTab();
     },
 

@@ -34,7 +34,7 @@ var App = {
         Router.register('/feed', function (c) { FeedPage.render(c); });
         Router.register('/profile', function (c, p) { ProfilePage.render(c, p); });
         Router.register('/friends', function (c) { FriendsPage.render(c); });
-        Router.register('/chat', function () { window.location.hash = '#/messenger'; });
+        Router.register('/chat', function () { Router.go('/messenger'); });
         Router.register('/admin', function (c) { AdminPage.render(c); });
         Router.register('/mod', function (c) { ModPage.render(c); });
         Router.register('/appeal', function (c) { AppealPage.render(c); });
@@ -214,6 +214,7 @@ var App = {
                 pteroAccess = !!ar.granted;
             } catch { pteroAccess = false; }
         }
+        App.pteroAccess = pteroAccess;
 
         var allNavItems = [];
         var loadPromises = [];
@@ -448,7 +449,7 @@ var App = {
 
         // Redirect to appeal page
         setTimeout(function() {
-            window.location.hash = '#/appeal';
+            Router.go('/appeal');
         }, 500);
     },
 
@@ -569,9 +570,8 @@ var App = {
     },
 
     _syncMobileNavActive() {
-        var hash = window.location.hash || '#/feed';
-        var path = hash.replace('#/', '');
-        var page = path.split('/')[0];
+        var path = window.location.pathname || '/feed';
+        var page = path.replace(/^\//, '').split('/')[0];
 
         document.querySelectorAll('.mbn-tab').forEach(function (tab) {
             tab.classList.toggle('active', tab.dataset.page === page);
@@ -608,8 +608,8 @@ var App = {
             actions.style.gap = '10px';
             actions.style.marginRight = '10px';
             actions.innerHTML = `
-                <button class="btn btn-ghost" onclick="window.location.hash='#/login'">Login</button>
-                <button class="btn btn-primary" onclick="window.location.hash='#/register'">Register</button>
+                <button class="btn btn-ghost" onclick="Router.go('/login')">Login</button>
+                <button class="btn btn-primary" onclick="Router.go('/register')">Register</button>
             `;
             var themeBtn = document.getElementById('theme-btn');
             if (themeBtn) navUser.insertBefore(actions, themeBtn);
@@ -651,7 +651,7 @@ var App = {
         this.onGuest();
         this.closeMobileDrawer();
 
-        window.location.hash = '#/login';
+        Router.go('/login');
         this.showToast('Logged out successfully', 'info');
     },
 
@@ -799,7 +799,7 @@ var App = {
             document.getElementById('notifications-dropdown').classList.add('hidden');
 
             if (type === 'comment' || type === 'like') {
-                window.location.hash = '#/feed';
+                Router.go('/feed');
                 // Note: a more complex app would jump straight to the specific post or thread.
             }
         } catch (err) {
@@ -1069,14 +1069,30 @@ var App = {
         if (!this.currentUser) return;
 
         if (this.currentUser.role === 'admin' || this.currentUser.role === 'superadmin') {
+            var pteroBtn = App.pteroAccess
+                ? '<button class="btn btn-secondary" style="width:100%" onclick="App.closeModal(); Router.go(\'/pterodactyl\')">Server Panel</button>'
+                : '';
             App.showModal('🛡️ Access Dashboard',
                 '<div style="display:flex;flex-direction:column;gap:var(--space-md)">' +
-                '<button class="btn btn-primary" style="width:100%" onclick="App.closeModal(); window.location.hash=\'#/mod\'">Moderator Dashboard</button>' +
-                '<button class="btn btn-danger" style="width:100%" onclick="App.closeModal(); window.location.hash=\'#/admin\'">Administrator Dashboard</button>' +
+                '<button class="btn btn-primary" style="width:100%" onclick="App.closeModal(); Router.go(\'/mod\')">Moderator Dashboard</button>' +
+                '<button class="btn btn-danger" style="width:100%" onclick="App.closeModal(); Router.go(\'/admin\')">Administrator Dashboard</button>' +
+                pteroBtn +
                 '</div>'
             );
         } else if (this.currentUser.role === 'moderator') {
-            window.location.hash = '#/mod';
+            var pteroBtn = App.pteroAccess
+                ? '<button class="btn btn-secondary" style="width:100%" onclick="App.closeModal(); Router.go(\'/pterodactyl\')">Server Panel</button>'
+                : '';
+            if (pteroBtn) {
+                App.showModal('🛡️ Access Dashboard',
+                    '<div style="display:flex;flex-direction:column;gap:var(--space-md)">' +
+                    '<button class="btn btn-primary" style="width:100%" onclick="App.closeModal(); Router.go(\'/mod\')">Moderator Dashboard</button>' +
+                    pteroBtn +
+                    '</div>'
+                );
+            } else {
+                Router.go('/mod');
+            }
         }
     },
 

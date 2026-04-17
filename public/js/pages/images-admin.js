@@ -31,7 +31,7 @@ var ImagesAdminPage = {
                         <h2 style="margin:0;font-size:1.4rem">ðŸŽ¬ Media & Embed Settings</h2>
                         <p style="margin:4px 0 0;color:var(--text-muted);font-size:0.85rem">Configure where uploaded files are stored.</p>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/admin'">â† Back</button>
+                    <button class="btn btn-secondary btn-sm" onclick="Router.go('/admin')">â† Back</button>
                 </div>
 
                 <!-- Upload toggle -->

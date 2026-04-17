@@ -20,7 +20,7 @@ var MinecraftAdminPage = {
                         <p style="margin:0;color:var(--text-muted);font-size:0.85rem">Manage server listings, API keys, and external links.</p>
                     </div>
                     <div style="display:flex;gap:8px;flex-shrink:0">
-                        <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/admin'">← Back</button>
+                        <button class="btn btn-secondary btn-sm" onclick="Router.go('/admin')">← Back</button>
                         <button class="btn btn-primary btn-sm" onclick="MinecraftAdminPage.openForm()">+ Add Server</button>
                     </div>
                 </div>

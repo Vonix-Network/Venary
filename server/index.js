@@ -26,7 +26,7 @@ app.use(helmet({
             fontSrc:        ["'self'", "data:"],
             imgSrc:         ["'self'", "data:", "https:", "http:"],
             connectSrc:     ["'self'", "wss:", "ws:"],
-            frameSrc:       ["'self'", "https://www.youtube.com"],
+            frameSrc:       ["'self'", "https://www.youtube.com", "http:", "https:"],
             objectSrc:      ["'none'"],
             baseUri:        ["'self'"],
             formAction:     ["'self'"],

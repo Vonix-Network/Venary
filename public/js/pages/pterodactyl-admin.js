@@ -18,7 +18,7 @@ var PterodactylAdminPage = {
                         <h2 style="margin:0 0 4px;font-size:1.4rem">🖥️ Pterodactyl Panel Settings</h2>
                         <p style="margin:0;color:var(--text-muted);font-size:0.85rem">Configure the connection to your Pterodactyl instance.</p>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#/admin'">← Back</button>
+                    <button class="btn btn-secondary btn-sm" onclick="Router.go('/admin')">← Back</button>
                 </div>
                 <div class="admin-settings-card animate-fade-up">
                     <div id="ptero-admin-form"><div class="loading-spinner"></div></div>

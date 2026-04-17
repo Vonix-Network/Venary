@@ -113,7 +113,7 @@ const ChatPage = {
         '  <button class="chat-back-btn" onclick="ChatPage.closeChat()" title="Back">' +
         '    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>' +
         '  </button>' +
-        '  <div class="avatar" style="width:36px;height:36px;font-size:0.8rem;cursor:pointer;flex-shrink:0" onclick="window.location.hash=\'#/profile/' + userId + '\'">' + avatarContent + '</div>' +
+        '  <div class="avatar" style="width:36px;height:36px;font-size:0.8rem;cursor:pointer;flex-shrink:0" onclick="Router.go(\'/profile/' + userId + '\')">' + avatarContent + '</div>' +
         '  <div class="chat-header-info" style="flex:1;min-width:0">' +
         '    <h3 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + App.escapeHtml(user.display_name || user.username) + '</h3>' +
         '    <span id="typing-indicator" class="typing-indicator"></span>' +

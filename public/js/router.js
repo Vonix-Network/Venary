@@ -2,6 +2,7 @@
    Venary — Client-Side Router
    Supports dynamic route registration
    and wildcard sub-paths for extensions.
+   Uses History API for clean URLs.
    ======================================= */
 var Router = {
     routes: {},
@@ -11,15 +12,20 @@ var Router = {
         this.routes[path] = handler;
     },
 
-    async navigate(hash) {
-        var fullPath = hash.replace('#', '') || '/login';
-        
+    go(path) {
+        history.pushState(null, '', path);
+        this.navigate(path);
+    },
+
+    async navigate(path) {
+        var fullPath = path || '/login';
+
         // Separate path and query string for correct routing
         var queryIndex = fullPath.indexOf('?');
-        var path = queryIndex !== -1 ? fullPath.substring(0, queryIndex) : fullPath;
+        var routePath = queryIndex !== -1 ? fullPath.substring(0, queryIndex) : fullPath;
 
         // Restore nav if leaving admin/messenger (only for authenticated users — auth/guest pages handle their own nav state below)
-        var segments = path.split('/').filter(Boolean);
+        var segments = routePath.split('/').filter(Boolean);
         var fullscreenPages = ['admin', 'messenger'];
         var isFullscreen = fullscreenPages.includes(segments[0]);
 
@@ -53,7 +59,7 @@ var Router = {
         }
 
         // 1. Try exact match first (e.g. /admin/images)
-        var handler = this.routes[path];
+        var handler = this.routes[routePath];
         var params = [];
 
         // 2. If no exact match, try base path match (e.g. /profile/123)
@@ -64,22 +70,22 @@ var Router = {
         }
 
         // Check auth
-        var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password';
+        var isAuthPage = routePath === '/login' || routePath === '/register' || routePath === '/forgot-password' || routePath === '/reset-password';
         // Always-public routes — accessible without login regardless of guestMode setting
         var alwaysPublicRoutes = ['/donate', '/feed'];
         // Additional routes unlocked when guestMode is explicitly enabled
         var guestAllowed = App.siteSettings && App.siteSettings.guestMode;
         var guestModeRoutes = ['/forum', '/servers', '/mc-leaderboard'];
-        var isGuestRoute = alwaysPublicRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); }) ||
-            (guestAllowed && guestModeRoutes.some(function(r) { return path === r || path.startsWith(r + '/'); }));
+        var isGuestRoute = alwaysPublicRoutes.some(function(r) { return routePath === r || routePath.startsWith(r + '/'); }) ||
+            (guestAllowed && guestModeRoutes.some(function(r) { return routePath === r || routePath.startsWith(r + '/'); }));
 
         if (!API.token && !isAuthPage && !isGuestRoute) {
-            window.location.hash = '#/login';
+            this.go('/login');
             return;
         }
-        var isLoginRegister = path === '/login' || path === '/register';
+        var isLoginRegister = routePath === '/login' || routePath === '/register';
         if (API.token && isLoginRegister) {
-            window.location.hash = '#/feed';
+            this.go('/feed');
             return;
         }
 
@@ -106,7 +112,7 @@ var Router = {
             var container = document.getElementById('page-container');
             container.style.opacity = '0';
             container.style.transform = 'translateY(10px)';
-            
+
             setTimeout(function () {
                 NotFoundPage.render(container, segments);
                 requestAnimationFrame(function () {
@@ -169,15 +175,20 @@ var Router = {
 
     init() {
         var self = this;
-        window.addEventListener('hashchange', function () {
-            self.navigate(window.location.hash);
+        window.addEventListener('popstate', function () {
+            self.navigate(window.location.pathname + window.location.search);
         });
 
-        // Initial route — no hash means root visit. Guests land on feed (always public), logged-in users too.
-        if (!window.location.hash) {
-            window.location.hash = '#/feed';
-        } else {
-            this.navigate(window.location.hash);
+        // Handle legacy hash URLs — convert to clean path and replace history entry
+        if (window.location.hash && window.location.hash.startsWith('#/')) {
+            var cleanPath = window.location.hash.slice(1);
+            history.replaceState(null, '', cleanPath);
+            this.navigate(cleanPath);
+            return;
         }
+
+        var path = window.location.pathname + window.location.search;
+        if (!path || path === '/') path = '/feed';
+        this.navigate(path);
     }
 };

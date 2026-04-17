@@ -39,7 +39,7 @@ var ForumPage = {
 
             categories.forEach(cat => {
                 html += `
-                    <div class=\"card forum-category-card animate-fade-up\" onclick=\"window.location.hash='#/forum/category/${cat.id}'\">
+                    <div class=\"card forum-category-card animate-fade-up\" onclick=\"Router.go('/forum/category/${cat.id}')\">
                         <div class=\"forum-cat-icon\">${cat.icon}</div>
                         <div class=\"forum-cat-info\">
                             <h3>${App.escapeHtml(cat.name)}</h3>
@@ -72,7 +72,7 @@ var ForumPage = {
             let html = `
                 <div class=\"forum-page\">
                     <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem\">
-                        <button class=\"btn btn-secondary\" onclick=\"window.location.hash='#/forum'\">← Back</button>
+                        <button class=\"btn btn-secondary\" onclick=\"Router.go('/forum')\">← Back</button>
                         ${App.currentUser
                             ? '<button class=\"btn btn-primary\" onclick=\"ForumPage.showNewThreadModal()\">+ New Thread</button>'
                             : '<span style=\"font-size:0.85rem;color:var(--text-muted);padding:8px 12px;background:var(--bg-tertiary);border-radius:var(--radius-md)\">🔒 You must be logged in to create a thread</span>'
@@ -129,7 +129,7 @@ var ForumPage = {
             let html = `
                 <div class=\"forum-page\">
                     <div style=\"margin-bottom:1.5rem\">
-                        <button class=\"btn btn-secondary\" onclick=\"window.location.hash='#/forum/category/${t.category_id}'\">← Back to ${App.escapeHtml(t.category_name)}</button>
+                        <button class=\"btn btn-secondary\" onclick=\"Router.go('/forum/category/${t.category_id}')\">← Back to ${App.escapeHtml(t.category_name)}</button>
                     </div>
                     <div class=\"page-header\">
                         <h1>${t.pinned ? '📌 ' : ''}${App.escapeHtml(t.title)}</h1>
@@ -277,7 +277,7 @@ var ForumPage = {
         try {
             const result = await API.post(`/api/forum/categories/${this.currentCategoryId}/threads`, { title, content, media });
             document.getElementById('new-thread-modal').remove();
-            window.location.hash = `#/forum/thread/${result.thread.id}`;
+            Router.go(`/forum/thread/${result.thread.id}`);
             App.showToast('Thread created!', 'success');
         } catch (err) {
             App.showToast(err.message || 'Failed to create thread', 'error');
@@ -345,7 +345,7 @@ var ForumPage = {
                 try {
                     await API.delete(`/api/forum/threads/${threadId}`);
                     App.showToast('Thread deleted', 'success');
-                    window.location.hash = `#/forum/category/${this.currentCategoryId}`;
+                    Router.go(`/forum/category/${this.currentCategoryId}`);
                 } catch (err) {
                     App.showToast(err.message || 'Failed to delete thread', 'error');
                 }

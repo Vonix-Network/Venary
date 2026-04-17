@@ -58,7 +58,7 @@ var AdminPage = {
       '    <button class="admin-nav-item admin-more-btn" onclick="AdminPage.showMoreMenu()">' + moreIcon + ' <span>More</span></button>' +
       '  </nav>' +
       '  <div class="admin-sidebar-footer">' +
-      '    <button class="admin-nav-item admin-back-btn" onclick="window.location.hash=\'#/feed\'">' + backIcon + ' Back to Site</button>' +
+      '    <button class="admin-nav-item admin-back-btn" onclick="Router.go(\'/feed\')">' + backIcon + ' Back to Site</button>' +
       '  </div>' +
       '</aside>' +
       '<main class="admin-main">' +
@@ -77,7 +77,7 @@ var AdminPage = {
     this.bindTabs();
 
     // Restore the tab that was active before the refresh (reads ?tab= from the URL)
-    const _adminQs  = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const _adminQs  = new URLSearchParams(window.location.search);
     const _adminTab = _adminQs.get('tab') || 'overview';
     const _adminBtn = document.querySelector(`.admin-nav-item[data-tab="${_adminTab}"]`);
     if (_adminBtn) _adminBtn.click();
@@ -97,7 +97,7 @@ var AdminPage = {
     if (isAdmin && isForumEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=forum]\').click()">' + this.icons.forum + ' Forum Settings</button>';
     if (isAdmin && isMinecraftEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=minecraft]\').click()">' + this.icons.minecraft + ' Minecraft Servers</button>';
     if (isAdmin && isMinecraftEnabled) html += '<button class="btn btn-secondary" onclick="App.closeModal(); document.querySelector(\'[data-tab=discord]\').click()">' + this.icons.discord + ' Discord Settings</button>';
-    html += '<button class="btn btn-danger" onclick="App.closeModal(); window.location.hash=\'#/feed\'">Exit Admin Dashboard</button>';
+    html += '<button class="btn btn-danger" onclick="App.closeModal(); Router.go(\'/feed\')">Exit Admin Dashboard</button>';
     html += '</div>';
 
     App.showModal('More Settings', html);
@@ -319,7 +319,7 @@ var AdminPage = {
               ? '<button class="btn btn-sm btn-secondary" onclick="AdminPage.unbanUser(\'' + u.id + '\')">Unban</button>'
               : '<button class="btn btn-sm btn-danger" onclick="AdminPage.showBanModal(\'' + u.id + '\', \'' + App.escapeHtml(u.username) + '\')">Ban</button>') +
             (isMinecraftEnabled ? '<button class="btn btn-sm btn-primary" onclick="AdminPage.assignMinecraftUuid(\'' + u.id + '\')" title="Assign MC UUID">UUID</button>' : '') +
-            '<button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button>' +
+            '<button class="btn btn-sm btn-ghost" onclick="Router.go(\'/profile/' + u.id + '\')">View</button>' +
             '<button class="btn btn-sm btn-danger" onclick="AdminPage.deleteUser(\'' + u.id + '\')">Delete</button>' +
             '  </div>' +
             '</div>' +

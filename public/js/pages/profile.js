@@ -63,7 +63,7 @@ const ProfilePage = {
         // no buttons here — actions moved to avatar dropdown
       } else {
         actionsHtml = this.renderFriendButton(profile) +
-          ' <button class="btn btn-secondary" onclick="window.location.hash=\'#/chat/' + profile.id + '\'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>';
+          ' <button class="btn btn-secondary" onclick="Router.go(\'/chat/' + profile.id + '\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>';
       }
 
       var statsHtml = '';
@@ -184,7 +184,7 @@ const ProfilePage = {
         '<span>Edit Profile</span>' +
       '</div>' +
       (hasPanelAccess
-        ? '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu();window.location.hash=\'#/admin?tab=panel\';" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 16px">' +
+        ? '<div class="notification-item" onclick="ProfilePage.closeAvatarMenu();Router.go(\'/admin?tab=panel\');" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 16px">' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
             '<span>Access Dashboard</span>' +
           '</div>'
@@ -607,15 +607,15 @@ const ProfilePage = {
   },
 
   async addFriend(id) {
-    try { await API.sendFriendRequest(id); App.showToast('Friend request sent!', 'success'); Router.navigate(window.location.hash); } catch (err) { App.showToast(err.message, 'error'); }
+    try { await API.sendFriendRequest(id); App.showToast('Friend request sent!', 'success'); Router.navigate(window.location.pathname + window.location.search); } catch (err) { App.showToast(err.message, 'error'); }
   },
   async acceptFriend(id) {
-    try { await API.acceptFriendRequest(id); App.showToast('Friend request accepted!', 'success'); Router.navigate(window.location.hash); } catch (err) { App.showToast(err.message, 'error'); }
+    try { await API.acceptFriendRequest(id); App.showToast('Friend request accepted!', 'success'); Router.navigate(window.location.pathname + window.location.search); } catch (err) { App.showToast(err.message, 'error'); }
   },
   async removeFriend(id) {
     var confirmed = await App.confirm('Remove Friend', 'Remove this friend?');
     if (!confirmed) return;
-    try { await API.removeFriend(id); App.showToast('Friend removed', 'info'); Router.navigate(window.location.hash); } catch (err) { App.showToast(err.message, 'error'); }
+    try { await API.removeFriend(id); App.showToast('Friend removed', 'info'); Router.navigate(window.location.pathname + window.location.search); } catch (err) { App.showToast(err.message, 'error'); }
   },
 
   // ──────────────────────────────────────────────
@@ -665,7 +665,7 @@ const ProfilePage = {
         App.currentUser = Object.assign({}, App.currentUser, updated);
         App.closeModal();
         App.showToast('Profile updated!', 'success');
-        Router.navigate(window.location.hash);
+        Router.navigate(window.location.pathname + window.location.search);
       } catch (err) { App.showToast(err.message, 'error'); }
     });
   }

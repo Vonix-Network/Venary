@@ -58,7 +58,7 @@ var ModPage = {
                         } else {
                             actionBtns += '<button class="btn btn-sm btn-danger" onclick="ModPage.banUser(\'' + u.id + '\')">Ban</button> ';
                         }
-                        actionBtns += '<button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/profile/' + u.id + '\'">View</button>';
+                        actionBtns += '<button class="btn btn-sm btn-ghost" onclick="Router.go(\'/profile/' + u.id + '\')">View</button>';
                     }
 
                     return '<tr>' +
@@ -119,7 +119,7 @@ var ModPage = {
                     '<td><span style="font-size:0.8rem;color:var(--text-muted)">' + p.like_count + ' Likes<br>' + p.comment_count + ' Comments</span></td>' +
                     '<td><span style="font-size:0.85rem;color:var(--text-muted)">' + App.timeAgo(p.created_at) + '</span></td>' +
                     '<td><div style="display:flex;gap:4px">' +
-                    '<button class="btn btn-sm btn-ghost" onclick="window.location.hash=\'#/feed\'">View in Feed</button> ' +
+                    '<button class="btn btn-sm btn-ghost" onclick="Router.go(\'/feed\')">View in Feed</button> ' +
                     '<button class="btn btn-sm btn-danger" onclick="ModPage.deleteFeedPost(\'' + p.id + '\')">Delete</button>' +
                     '</div></td></tr>';
             }).join('');

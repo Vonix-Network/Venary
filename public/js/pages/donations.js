@@ -10,7 +10,7 @@ window.DonationsPage = {
     _stripeElements: null,
 
     async render(container) {
-        const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+        const params = new URLSearchParams(window.location.search);
 
         // Receipt screen — returned from Stripe after successful payment
         if (params.get('status') === 'success' && params.get('session_id')) {
@@ -1174,7 +1174,7 @@ window.DonationsPage = {
                     </div>
                 </div>
 
-                <button class="donate-rank-btn" onclick="App.closeModal();window.location.hash='#/donate'" style="width:100%">
+                <button class="donate-rank-btn" onclick="App.closeModal();Router.go('/donate')" style="width:100%">
                     Continue
                 </button>
             </div>
@@ -1262,7 +1262,7 @@ window.DonationsPage = {
                     if (el) el.innerHTML = '<span style="color:var(--neon-green);font-weight:700">✓ Payment confirmed!</span>';
                     setTimeout(() => {
                         App.closeModal?.();
-                        window.location.hash = `#/donate?status=crypto_success&intent=${intentId}`;
+                        Router.go(`/donate?status=crypto_success&intent=${intentId}`);
                     }, 1500);
                 } else if (status.status === 'detected') {
                     if (el) el.innerHTML = '<span style="color:#eab308">⏳ Payment detected — waiting for confirmations…</span>';
@@ -1300,7 +1300,7 @@ window.DonationsPage = {
                                 ${parseFloat(intent.confirmed_amount_crypto||0).toFixed(6)} ${(intent.coin||'').toUpperCase()} received
                             </p>
                             ${intent.rank ? `<p style="color:${App.escapeHtml(intent.rank?.color||'#fff')};font-weight:700;font-size:1.1rem;margin-top:12px">${App.escapeHtml(intent.rank?.name||'')} rank granted!</p>` : ''}
-                            <button class="mc-btn" style="margin-top:20px" onclick="window.location.hash='#/donate'">← Back to Donate</button>
+                            <button class="mc-btn" style="margin-top:20px" onclick="Router.go('/donate')">← Back to Donate</button>
                         </div>`;
                 } else if (['expired','cancelled'].includes(intent.status)) {
                     area.innerHTML = `
@@ -1308,7 +1308,7 @@ window.DonationsPage = {
                             <div style="font-size:3rem;margin-bottom:1rem">❌</div>
                             <h2 style="color:#ef4444;margin-bottom:8px">Payment ${App.escapeHtml(intent.status)}</h2>
                             <p style="color:var(--text-muted);font-size:0.9rem">The payment was not received in time.</p>
-                            <button class="mc-btn" style="margin-top:20px" onclick="window.location.hash='#/donate'">← Try Again</button>
+                            <button class="mc-btn" style="margin-top:20px" onclick="Router.go('/donate')">← Try Again</button>
                         </div>`;
                 } else if (attempts < maxAttempts) {
                     setTimeout(check, 3000);
@@ -1318,7 +1318,7 @@ window.DonationsPage = {
                             <div style="font-size:3rem;margin-bottom:1rem">⏳</div>
                             <h2 style="color:#eab308;margin-bottom:8px">Payment Pending</h2>
                             <p style="color:var(--text-muted);font-size:0.9rem">Your payment was received but is still awaiting confirmations. Check back shortly.</p>
-                            <button class="mc-btn" style="margin-top:20px" onclick="window.location.hash='#/donate'">← Back to Donate</button>
+                            <button class="mc-btn" style="margin-top:20px" onclick="Router.go('/donate')">← Back to Donate</button>
                         </div>`;
                 }
             } catch (err) {

@@ -230,9 +230,9 @@ const FeedPage = {
 
     return '<div class="post-card" style="animation-delay: ' + (index * 0.05) + 's" data-post-id="' + post.id + '">' +
       '<div class="post-header">' +
-      '<div class="avatar" onclick="window.location.hash=\'#/profile/' + post.user_id + '\'" style="cursor:pointer">' + avatarContent + '</div>' +
+      '<div class="avatar" onclick="Router.go(\'/profile/' + post.user_id + '\')" style="cursor:pointer">' + avatarContent + '</div>' +
       '<div class="post-user-info">' +
-      '<div style="cursor:pointer; display:inline-flex; align-items:center;" onclick="window.location.hash=\'#/profile/' + post.user_id + '\'">' + App.renderUsername(post) + '</div> ' +
+      '<div style="cursor:pointer; display:inline-flex; align-items:center;" onclick="Router.go(\'/profile/' + post.user_id + '\')">' + App.renderUsername(post) + '</div> ' +
       App.renderRankBadge(post.donation_rank) +
       '<span class="badge badge-level">LVL ' + (post.level || 1) + '</span>' +
       '<div class="post-time">' + timeAgo + '</div>' +
@@ -253,7 +253,7 @@ const FeedPage = {
   },
 
   async toggleLike(postId, btn) {
-    if (!App.currentUser) { window.location.hash = '#/login'; return; }
+    if (!App.currentUser) { Router.go('/login'); return; }
     try {
       var result = await API.toggleLike(postId);
       var countEl = btn.querySelector('.like-count');
@@ -352,7 +352,7 @@ const FeedPage = {
   },
 
   async addComment(postId) {
-    if (!App.currentUser) { window.location.hash = '#/login'; return; }
+    if (!App.currentUser) { Router.go('/login'); return; }
     var input = document.getElementById('comment-input-' + postId);
     if (!input) return;
     var content = input.value.trim();

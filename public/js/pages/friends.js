@@ -64,7 +64,7 @@ const FriendsPage = {
           var avatarContent = u.avatar
             ? '<img src="' + App.escapeHtml(u.avatar) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
             : init;
-          return '<div class="search-result-item" onclick="window.location.hash=\'#/profile/' + u.id + '\'">' +
+          return '<div class="search-result-item" onclick="Router.go(\'/profile/' + u.id + '\')">' +
             '<div class="avatar" style="width:36px;height:36px;font-size:0.85rem;flex-shrink:0">' + avatarContent + '</div>' +
             '<div style="flex:1;min-width:0">' +
             '  <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + App.escapeHtml(u.display_name || u.username) + '</div>' +
@@ -129,14 +129,14 @@ const FriendsPage = {
           var isOnline = f.status === 'online';
           var statusText = isOnline ? 'Online' : 'Last seen ' + App.timeAgo(f.last_seen);
           return '<div class="friend-row" style="animation-delay:' + (i * 0.04) + 's">' +
-            '<div class="avatar" style="position:relative;width:44px;height:44px;font-size:1rem;flex-shrink:0;cursor:pointer" onclick="window.location.hash=\'#/profile/' + f.id + '\'">' +
+            '<div class="avatar" style="position:relative;width:44px;height:44px;font-size:1rem;flex-shrink:0;cursor:pointer" onclick="Router.go(\'/profile/' + f.id + '\')">' +
             avatarContent + '<span class="status-dot ' + (f.status || 'offline') + '"></span></div>' +
-            '<div class="friend-row-info" onclick="window.location.hash=\'#/profile/' + f.id + '\'">' +
+            '<div class="friend-row-info" onclick="Router.go(\'/profile/' + f.id + '\')">' +
             '  <div class="friend-row-name">' + App.escapeHtml(f.display_name || f.username) + '</div>' +
             '  <div class="friend-row-status ' + (isOnline ? 'online' : '') + '">' + statusText + '</div>' +
             '</div>' +
             '<div class="friend-row-actions">' +
-            '  <button class="friend-action-btn" onclick="window.location.hash=\'#/messenger?dm=' + f.id + '\'" title="Message">' +
+            '  <button class="friend-action-btn" onclick="Router.go(\'/messenger?dm=' + f.id + '\')" title="Message">' +
             '    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
             '  </button>' +
             '  <button class="friend-action-btn friend-action-remove" onclick="FriendsPage.removeFriend(\'' + f.id + '\')" title="Remove">' +

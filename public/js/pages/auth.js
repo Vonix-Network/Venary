@@ -40,11 +40,11 @@ const AuthPage = {
       '<div class="input-group">' +
       '<label for="login-password">Password</label>' +
       '<input type="password" id="login-password" class="input-field" placeholder="Enter your password" required autocomplete="current-password">' +
-      '<div style="text-align:right; margin-top:8px; font-size:0.85rem;"><a href="#/forgot-password">Forgot password?</a></div>' +
+      '<div style="text-align:right; margin-top:8px; font-size:0.85rem;"><a href="/forgot-password">Forgot password?</a></div>' +
       '</div>' +
       '<button type="submit" class="btn btn-primary btn-lg" id="login-btn">ENTER THE ARENA</button>' +
       '</form>' +
-      '<div class="auth-toggle">New to Venary? <a href="#/register">Create Account</a></div>';
+      '<div class="auth-toggle">New to Venary? <a href="/register">Create Account</a></div>';
   },
 
   registerForm() {
@@ -69,7 +69,7 @@ const AuthPage = {
       '</div>' +
       '<button type="submit" class="btn btn-primary btn-lg" id="register-btn">CREATE ACCOUNT</button>' +
       '</form>' +
-      '<div class="auth-toggle">Already a warrior? <a href="#/login">Sign In</a></div>';
+      '<div class="auth-toggle">Already a warrior? <a href="/login">Sign In</a></div>';
   },
 
   forgotForm() {
@@ -83,7 +83,7 @@ const AuthPage = {
       '</div>' +
       '<button type="submit" class="btn btn-primary btn-lg" id="forgot-btn">SEND RESET LINK</button>' +
       '</form>' +
-      '<div class="auth-toggle"><a href="#/login">Back to Sign In</a></div>';
+      '<div class="auth-toggle"><a href="/login">Back to Sign In</a></div>';
   },
 
   resetForm() {
@@ -96,7 +96,7 @@ const AuthPage = {
       '</div>' +
       '<button type="submit" class="btn btn-primary btn-lg" id="reset-btn">UPDATE PASSWORD</button>' +
       '</form>' +
-      '<div class="auth-toggle"><a href="#/login">Back to Sign In</a></div>';
+      '<div class="auth-toggle"><a href="/login">Back to Sign In</a></div>';
   },
 
   bindEvents(container, mode) {
@@ -131,7 +131,7 @@ const AuthPage = {
           API.setToken(result.token);
           App.currentUser = result.user;
           App.onLogin();
-          window.location.hash = '#/feed';
+          Router.go('/feed');
         } else if (mode === 'login') {
           result = await API.login({
             username: document.getElementById('login-username').value,
@@ -140,7 +140,7 @@ const AuthPage = {
           API.setToken(result.token);
           App.currentUser = result.user;
           App.onLogin();
-          window.location.hash = '#/feed';
+          Router.go('/feed');
         } else if (mode === 'forgot') {
           result = await API.forgotPassword({
             email: document.getElementById('forgot-email').value,
@@ -150,9 +150,7 @@ const AuthPage = {
             successEl.classList.remove('hidden');
           }
         } else if (mode === 'reset') {
-          let hashParts = window.location.hash.split('?');
-          let qs = hashParts.length > 1 ? hashParts[1] : '';
-          let urlParams = new URLSearchParams(qs);
+          let urlParams = new URLSearchParams(window.location.search);
           const token = urlParams.get('token');
           const uid = urlParams.get('id');
           if (!token || !uid) throw new Error('Invalid reset link.');
@@ -163,7 +161,7 @@ const AuthPage = {
             newPassword: document.getElementById('reset-password').value,
           });
           App.showToast('Password updated successfully. Please log in.', 'success');
-          window.location.hash = '#/login';
+          Router.go('/login');
         }
       } catch (err) {
         if (errorEl) {
@@ -177,9 +175,7 @@ const AuthPage = {
     });
 
     if (mode === 'reset') {
-      let hashParts = window.location.hash.split('?');
-      let qs = hashParts.length > 1 ? hashParts[1] : '';
-      let urlParams = new URLSearchParams(qs);
+      let urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
       const uid = urlParams.get('id');
       if (!token || !uid) {

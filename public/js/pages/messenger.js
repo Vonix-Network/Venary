@@ -1405,8 +1405,8 @@ var MessengerPage = {
             ${user.bio ? `<div class="msn-popout-bio">${this._esc(user.bio)}</div>` : ''}
             <div class="msn-popout-actions">
                 ${!isSelf ? `<button class="msn-btn msn-btn-primary" onclick="MessengerPage._startDM('${userId}');document.querySelector('.msn-user-popout').remove()">Message</button>` : ''}
-                ${!isSelf ? `<button class="msn-btn msn-btn-secondary" onclick="window.location.hash='#/profile/${userId}';document.querySelector('.msn-user-popout').remove()">View Profile</button>` : ''}
-                ${isSelf ? `<button class="msn-btn msn-btn-secondary" onclick="window.location.hash='#/profile';document.querySelector('.msn-user-popout').remove()">View Profile</button>` : ''}
+                ${!isSelf ? `<button class="msn-btn msn-btn-secondary" onclick="Router.go('/profile/${userId}');document.querySelector('.msn-user-popout').remove()">View Profile</button>` : ''}
+                ${isSelf ? `<button class="msn-btn msn-btn-secondary" onclick="Router.go('/profile');document.querySelector('.msn-user-popout').remove()">View Profile</button>` : ''}
             </div>
         </div>`;
 
@@ -2117,7 +2117,7 @@ var MessengerPage = {
     _showUserSettingsMenu(e) {
         var reqCount = this._pendingRequests.length;
         this._showContextMenu(e.clientX, e.clientY, [
-            { label: '👤 View Profile', action: () => { window.location.hash = '#/profile'; } },
+            { label: '👤 View Profile', action: () => { Router.go('/profile'); } },
             { label: '✏️ Edit Profile', action: () => { if (typeof ProfilePage !== 'undefined') ProfilePage.showEditModal(App.currentUser); } },
             { separator: true },
             { label: '💬 Messenger Settings', action: () => this._showMessengerSettings() },
@@ -2514,11 +2514,7 @@ var MessengerPage = {
     },
 
     _getHashParam(key) {
-        var hash = window.location.hash || '';
-        var idx = hash.indexOf('?');
-        if (idx === -1) return null;
-        var params = new URLSearchParams(hash.slice(idx + 1));
-        return params.get(key);
+        return new URLSearchParams(window.location.search).get(key);
     },
 
     // ── Cleanup ──────────────────────────────────────────────────

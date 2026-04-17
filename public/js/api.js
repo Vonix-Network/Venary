@@ -45,12 +45,12 @@ const API = {
             if (err.status === 401) {
                 // Token expired or invalid — clear session and redirect
                 this.setToken(null);
-                var currentPath = window.location.hash.split('?')[0];
-                if (!currentPath) currentPath = '#/feed';
-                var publicPaths = ['#/login', '#/register', '#/forgot-password', '#/reset-password', '#/donate', '#/feed'];
+                var currentPath = window.location.pathname;
+                if (!currentPath) currentPath = '/feed';
+                var publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/donate', '/feed'];
                 var isPublic = publicPaths.some(function(p) { return currentPath === p || currentPath.startsWith(p + '/'); });
                 if (!isPublic) {
-                    window.location.hash = '#/login';
+                    Router.go('/login');
                 }
             }
             throw err;

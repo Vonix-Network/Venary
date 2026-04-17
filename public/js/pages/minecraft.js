@@ -53,11 +53,11 @@ var MinecraftPage = {
     },
 
     async render(container, params) {
-        if (params && params.length > 0 && !window.location.hash.includes('leaderboard') && !window.location.hash.includes('link')) {
+        if (params && params.length > 0 && !window.location.pathname.includes('leaderboard') && !window.location.pathname.includes('link')) {
             return this.renderServerDetail(container, params[0]);
         }
 
-        const hash = window.location.hash || '';
+        const hash = window.location.pathname + window.location.search;
         let title = 'Minecraft Network';
         let subtitle = 'Explore servers and track your progress.';
 
@@ -251,7 +251,7 @@ var MinecraftPage = {
     },
 
     viewServer(id) {
-        window.location.hash = '#/servers/' + id;
+        Router.go('/servers/' + id);
     },
 
     // ══════════════════════════════════════════════════════
@@ -275,7 +275,7 @@ var MinecraftPage = {
 
         let html = `
             <div class="minecraft-page" style="max-width: 1000px; margin: 0 auto;">
-                <button class="mc-btn" onclick="window.location.hash='#/servers'" style="margin-bottom:1rem">\u2190 Back to Servers</button>
+                <button class="mc-btn" onclick="Router.go('/servers')" style="margin-bottom:1rem">\u2190 Back to Servers</button>
 
                 <div style="display:flex;gap:16px;align-items:center;margin-bottom:1.5rem">
                     ${iconHtml}
@@ -368,7 +368,7 @@ var MinecraftPage = {
 
     viewServerLeaderboard(serverId) {
         this.leaderboardServer = serverId;
-        window.location.hash = '#/mc-leaderboard';
+        Router.go('/mc-leaderboard');
     },
 
     setChartMetric(metric, btn, serverId) {
