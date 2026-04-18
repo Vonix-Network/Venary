@@ -33,6 +33,7 @@ const FEATURE_META = {
         name: 'Pterodactyl Panel',
         description: 'Embedded game-server panel with real-time console and power controls.',
         nav: [{ route: '/pterodactyl', label: 'Panel' }],
+        admin_route: '/pterodactyl-admin',
     },
     messenger: {
         name: 'Messenger',
@@ -49,6 +50,7 @@ function getFeatures() {
         description: meta.description,
         enabled:     cfg[key] !== false,
         nav:         meta.nav,
+        admin_route: meta.admin_route || null,
     }));
 }
 

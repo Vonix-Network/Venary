@@ -415,7 +415,9 @@ var AdminPage = {
             ? '<button class="mc-btn" style="background: rgba(239,68,68,0.05); color: var(--neon-magenta); border: 1px solid rgba(239,68,68,0.2); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Disable</button>'
             : '<button class="mc-btn" style="background: rgba(102,187,106,0.1); color: var(--neon-green); border: 1px solid rgba(102,187,106,0.3); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="AdminPage.toggleExtension(\'' + ext.id + '\')">Enable</button>';
 
-        const manageBtn = '';
+        const manageBtn = ext.admin_route
+            ? '<button class="mc-btn" style="background: rgba(153,69,255,0.1); color: #9945FF; border: 1px solid rgba(153,69,255,0.3); padding: 8px 16px; font-weight: 600; font-size: 0.85rem; flex: 1" onclick="App.navigate(\'' + ext.admin_route + '\')">⚙ Manage</button>'
+            : '';
 
         let navBadges = '';
         if (ext.nav && ext.nav.length > 0) {
