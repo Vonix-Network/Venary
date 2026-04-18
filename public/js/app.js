@@ -133,7 +133,7 @@ var App = {
             '<div style="font-size:4rem;margin-bottom:24px">\ud83d\udd27</div>',
             '<h1 style="font-family:Orbitron,sans-serif;font-size:2rem;margin-bottom:12px;background:linear-gradient(135deg,var(--neon-cyan,#00d4ff),var(--neon-magenta,#7b2fff));-webkit-background-clip:text;-webkit-text-fill-color:transparent">' + siteName + '</h1>',
             '<p style="font-size:1.1rem;color:#a0a0b8;max-width:480px;line-height:1.6">' + (message || 'We are performing scheduled maintenance. Be right back!') + '</p>',
-            '<p style="margin-top:32px;font-size:0.8rem;color:#555">If you are an admin, <a href="#/login" style="color:#00d4ff" onclick="location.reload()">log in</a> to access the platform.</p>',
+            '<p style="margin-top:32px;font-size:0.8rem;color:#555">If you are an admin, <a href="/login" style="color:#00d4ff" onclick="location.reload()">log in</a> to access the platform.</p>',
             '</div>'
         ].join('');
     },
@@ -297,7 +297,7 @@ var App = {
                 nav.children.forEach(function (child) {
                     var childIcon = App._getNavIcon(child.icon);
                     var page = child.route.replace('/', '');
-                    html += '<a href="#' + child.route + '" class="nav-link dropdown-item" data-page="' + page + '">' +
+                    html += '<a href="' + child.route + '" class="nav-link dropdown-item" data-page="' + page + '">' +
                         childIcon + '<span>' + child.label + '</span></a>';
                 });
                 html += '</div></div>';
@@ -305,7 +305,7 @@ var App = {
                 var page = nav.route ? nav.route.replace('/', '') : '';
                 var primaryClass = nav.primary ? ' nav-link-primary' : '';
                 var primaryIcon = nav.primary ? '<span style="margin-right:4px">💖</span>' : '';
-                html += '<a href="#' + nav.route + '" class="nav-link' + primaryClass + '" data-page="' + page + '">' +
+                html += '<a href="' + nav.route + '" class="nav-link' + primaryClass + '" data-page="' + page + '">' +
                     primaryIcon + iconSvg + '<span>' + nav.label + '</span>' + (nav.badgeHtml || '') + '</a>';
             }
         });
@@ -556,12 +556,12 @@ var App = {
                     nav.children.forEach(function (child) {
                         var icon = App._getNavIcon(child.icon || nav.icon);
                         var page = child.route.replace('/', '');
-                        html += '<a href="#' + child.route + '" class="nav-link" data-page="' + page + '" onclick="App.closeMobileDrawer()">' + icon + '<span>' + child.label + '</span></a>';
+                        html += '<a href="' + child.route + '" class="nav-link" data-page="' + page + '" onclick="App.closeMobileDrawer()">' + icon + '<span>' + child.label + '</span></a>';
                     });
                 } else {
                     var icon = App._getNavIcon(nav.icon);
                     var page = nav.route ? nav.route.replace('/', '') : '';
-                    html += '<a href="#' + nav.route + '" class="nav-link" data-page="' + page + '" onclick="App.closeMobileDrawer()">' + icon + '<span>' + nav.label + '</span></a>';
+                    html += '<a href="' + nav.route + '" class="nav-link" data-page="' + page + '" onclick="App.closeMobileDrawer()">' + icon + '<span>' + nav.label + '</span></a>';
                 }
             });
         });
@@ -632,7 +632,7 @@ var App = {
             });
             if (!document.getElementById('mbn-login')) {
                 var loginTab = document.createElement('a');
-                loginTab.href = '#/login';
+                loginTab.href = '/login';
                 loginTab.className = 'mbn-tab';
                 loginTab.id = 'mbn-login';
                 loginTab.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg><span>Login</span>';
@@ -893,9 +893,9 @@ var App = {
         // Linkify URLs
         s = s.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" class="social-link">$1</a>');
         // Linkify Mentions
-        s = s.replace(/@([a-zA-Z0-9_]+)/g, '<a href="#/profile/$1" class="mention social-tag">@$1</a>');
+        s = s.replace(/@([a-zA-Z0-9_]+)/g, '<a href="/profile/$1" class="mention social-tag">@$1</a>');
         // Linkify Hashtags
-        s = s.replace(/(^|\s)#([a-zA-Z0-9_]+)/g, '$1<a href="#/search?q=%23$2" class="hashtag social-tag">#$2</a>');
+        s = s.replace(/(^|\s)#([a-zA-Z0-9_]+)/g, '$1<a href="/search?q=%23$2" class="hashtag social-tag">#$2</a>');
         // Newlines
         s = s.replace(/\n/g, '<br>');
         return s;

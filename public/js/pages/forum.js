@@ -92,7 +92,7 @@ var ForumPage = {
             } else {
                 data.threads.forEach(t => {
                     html += `
-                        <a href=\"#/forum/thread/${t.id}\" class=\"forum-thread-row animate-fade-up\" style=\"text-decoration:none;\">
+                        <a href=\"/forum/thread/${t.id}\" class=\"forum-thread-row animate-fade-up\" style=\"text-decoration:none;\">
                             <div>
                                 <div class=\"forum-thread-title\">
                                     ${t.pinned ? '<span class=\"forum-badge pinned\">📌 Pinned</span>' : ''}
@@ -208,8 +208,8 @@ var ForumPage = {
             } else if (!App.currentUser) {
                 html += '<div class=\"card\" style=\"text-align:center;padding:1.5rem;color:var(--text-muted)\">' +
                     '🔒 <strong style=\"color:var(--text-secondary)\">You must be logged in to reply.</strong>' +
-                    ' <a href=\"#/login\" style=\"color:var(--neon-cyan);text-decoration:none\">Log in</a> or ' +
-                    '<a href=\"#/register\" style=\"color:var(--neon-cyan);text-decoration:none\">create an account</a>.' +
+                    ' <a href=\"/login\" style="color:var(--neon-cyan);text-decoration:none">Log in</a> or ' +
+                    '<a href=\"/register\" style="color:var(--neon-cyan);text-decoration:none">create an account</a>.' +
                     '</div>';
             } else {
                 html += `

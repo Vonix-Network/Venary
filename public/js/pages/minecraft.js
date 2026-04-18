@@ -194,7 +194,7 @@ var MinecraftPage = {
                                 <button class="mc-details-toggle" onclick="MinecraftPage.toggleDetails('${s.id}', this)">
                                     <span>Details</span> <span class="arrow">\u25BC</span>
                                 </button>
-                                <a href="#/servers/${s.id}" target="_blank" class="mc-btn" style="padding:6px 10px" title="Open in new page">\u2197</a>
+                                <a href="/servers/${s.id}" target="_blank" class="mc-btn" style="padding:6px 10px" title="Open in new page">\u2197</a>
                             </div>
                         </div>
                     </div>

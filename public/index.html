@@ -105,14 +105,14 @@
       <!-- Top Nav: flat link row + overflow trigger -->
       <div class="nav-center-links" id="nav-center-links">
         <div class="nav-links">
-          <a href="#/feed" class="nav-link" data-page="feed" id="nav-feed">
+          <a href="/feed" class="nav-link" data-page="feed" id="nav-feed">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
             <span>Feed</span>
           </a>
-          <a href="#/friends" class="nav-link" data-page="friends" id="nav-friends">
+          <a href="/friends" class="nav-link" data-page="friends" id="nav-friends">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
@@ -162,7 +162,7 @@
             <!-- Profile Dropdown Menu -->
             <div id="profile-menu-dropdown" class="notifications-dropdown hidden" style="position: absolute; bottom: calc(100% + 8px); top: auto; left: 0; min-width: 180px;">
               <div id="profile-menu-list">
-                <a href="#/profile" class="notification-item" onclick="App.closeProfileMenu()" style="text-decoration:none;display:flex;align-items:center;gap:10px">
+                <a href="/profile" class="notification-item" onclick="App.closeProfileMenu()" style="text-decoration:none;display:flex;align-items:center;gap:10px">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   <span>Profile</span>
                 </a>
@@ -170,7 +170,7 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   <span>Edit Profile</span>
                 </div>
-                <a href="#/donate?tab=history" class="notification-item" onclick="App.closeProfileMenu()" style="text-decoration:none;display:flex;align-items:center;gap:10px">
+                <a href="/donate?tab=history" class="notification-item" onclick="App.closeProfileMenu()" style="text-decoration:none;display:flex;align-items:center;gap:10px">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                   <span>Transactions</span>
                 </a>
@@ -233,16 +233,16 @@
 
   <!-- Mobile Bottom Nav (app-like tab bar) -->
   <nav id="mobile-bottom-nav" class="mobile-bottom-nav hidden">
-    <a href="#/feed" class="mbn-tab" data-page="feed" id="mbn-feed">
+    <a href="/feed" class="mbn-tab" data-page="feed" id="mbn-feed">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span>Feed</span>
     </a>
-    <a href="#/friends" class="mbn-tab" data-page="friends" id="mbn-friends">
+    <a href="/friends" class="mbn-tab" data-page="friends" id="mbn-friends">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Friends</span>
       <span class="mbn-badge hidden" id="mbn-friend-badge">0</span>
     </a>
-    <a href="#/messenger" class="mbn-tab" data-page="messenger" id="mbn-messenger">
+    <a href="/messenger" class="mbn-tab" data-page="messenger" id="mbn-messenger">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <span>Messenger</span>
       <span class="mbn-badge hidden" id="mbn-messenger-badge">0</span>
@@ -251,7 +251,7 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
       <span>More</span>
     </button>
-    <a href="#/profile" class="mbn-tab" data-page="profile" id="mbn-profile">
+    <a href="/profile" class="mbn-tab" data-page="profile" id="mbn-profile">
       <div class="mbn-avatar" id="mbn-avatar-tab">?</div>
       <span>Profile</span>
     </a>

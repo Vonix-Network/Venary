@@ -1517,7 +1517,7 @@ window.DonationsAdminPage = {
             const addrRow = (row, type) => {
                 const idx = row.derivation_index;
                 const userInfo = type === 'user'
-                    ? `<a href="#/profile/${row.user_id}" style="color:var(--neon-cyan);text-decoration:none;font-size:0.8rem">@${App.escapeHtml(row.username || row.user_id?.slice(0,8) || '—')}</a>`
+                    ? `<a href="/profile/${row.user_id}" style="color:var(--neon-cyan);text-decoration:none;font-size:0.8rem">@${App.escapeHtml(row.username || row.user_id?.slice(0,8) || '—')}</a>`
                     : `<span style="color:var(--text-muted);font-size:0.8rem;font-style:italic">${App.escapeHtml(row.label || '—')}</span>`;
 
                 const solAddr = row.sol_address && !isMalformedAddr(row.sol_address) ? row.sol_address : null;

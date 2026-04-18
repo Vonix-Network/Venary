@@ -113,7 +113,7 @@ var AdminPage = {
         if (!tab) return; // back button and other non-tab items have no data-tab
 
         // Silently update the URL so refresh restores this tab (no hashchange fired)
-        history.replaceState(null, '', '#/admin?tab=' + tab);
+        history.replaceState(null, '', '/admin?tab=' + tab);
         
         // Update title/subtitle based on tab
         const titleEl = document.getElementById('admin-view-title');

@@ -47,8 +47,8 @@ const FeedPage = {
               <span>Log in or register to post, like, and comment.</span>
             </div>
             <div class="feed-guest-actions">
-              <a href="#/login" class="btn btn-primary btn-sm">Log In</a>
-              <a href="#/register" class="btn btn-ghost btn-sm">Register</a>
+              <a href="/login" class="btn btn-primary btn-sm">Log In</a>
+              <a href="/register" class="btn btn-ghost btn-sm">Register</a>
             </div>
           </div>
           `}

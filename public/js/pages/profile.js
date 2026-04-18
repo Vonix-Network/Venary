@@ -535,7 +535,7 @@ const ProfilePage = {
               <div style="font-weight:700;color:${App.escapeHtml(rank.rank_color)}">${App.escapeHtml(rank.rank_name)}</div>
               <div style="font-size:0.8rem;color:var(--text-muted)">${daysLeft === '∞' ? 'Permanent' : daysLeft + ' days remaining'}</div>
             </div>
-            <a href="#/donate" onclick="App.closeModal()" style="margin-left:auto;font-size:0.8rem;color:var(--neon-cyan);text-decoration:none">Manage →</a>
+            <a href="/donate" onclick="App.closeModal()" style="margin-left:auto;font-size:0.8rem;color:var(--neon-cyan);text-decoration:none">Manage →</a>
           </div>`;
         }
       } catch { /* no rank */ }

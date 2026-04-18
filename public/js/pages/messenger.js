@@ -300,7 +300,7 @@ var MessengerPage = {
         this._clearMessageArea();
         var ml = document.getElementById('msn-member-list');
         if (ml) ml.innerHTML = '';
-        window.history.replaceState(null, '', '#/messenger');
+        window.history.replaceState(null, '', '/messenger');
     },
 
     _showDMList() {
@@ -581,7 +581,7 @@ var MessengerPage = {
         this.unreadCounts[dmId] = 0;
         this._showDMList();
         
-        window.history.replaceState(null, '', '#/messenger?dm=' + dmId);
+        window.history.replaceState(null, '', '/messenger?dm=' + dmId);
 
         var messagesEl = document.getElementById('msn-message-area');
         if (messagesEl) messagesEl.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center"><div class="loading-spinner"></div></div>';
@@ -626,7 +626,7 @@ var MessengerPage = {
         this.activeDmId = null;
         this._renderSpaceList();
 
-        window.history.replaceState(null, '', '#/messenger?space=' + spaceId);
+        window.history.replaceState(null, '', '/messenger?space=' + spaceId);
 
         var sidebar = document.getElementById('msn-channel-sidebar');
         var scroll = document.getElementById('msn-channel-scroll');
@@ -728,7 +728,7 @@ var MessengerPage = {
         this._showContextMenu(e.clientX, e.clientY, [
             { label: '📌 View Pinned Messages', action: () => this._showPinnedMessages(channelId) },
             { label: '🔍 Search Messages', action: () => this._showMessageSearch(channelId) },
-            { label: '🔗 Copy Link', action: () => { navigator.clipboard.writeText(window.location.origin + '/#/messenger?channel=' + channelId); this._toast('Link copied!'); } },
+            { label: '🔗 Copy Link', action: () => { navigator.clipboard.writeText(window.location.origin + '/messenger?channel=' + channelId); this._toast('Link copied!'); } },
             { separator: true, show: isOwner },
             { label: '✏️ Edit Channel', action: () => this._showEditChannelModal(channelId), show: isOwner },
             { label: '🗑️ Delete Channel', danger: true, action: () => this._deleteChannel(channelId), show: isOwner }
@@ -752,7 +752,7 @@ var MessengerPage = {
         this.activeDmId = null;
         this.unreadCounts[channelId] = 0;
         
-        window.history.replaceState(null, '', '#/messenger?space=' + this.activeSpaceId + '&channel=' + channelId);
+        window.history.replaceState(null, '', '/messenger?space=' + this.activeSpaceId + '&channel=' + channelId);
 
         document.querySelectorAll('.msn-channel-item').forEach(el => {
             el.classList.toggle('active', el.id === 'ch-' + channelId);
@@ -1707,7 +1707,7 @@ var MessengerPage = {
                         : invites.map(inv => `<div class="msn-invite-row">
                             <span style="font-family:monospace;font-size:0.9rem">${this._esc(inv.code)}</span>
                             <span style="color:var(--text-muted);font-size:0.8rem">${inv.uses} uses</span>
-                            <button class="msn-btn msn-btn-secondary" onclick="navigator.clipboard.writeText('${window.location.origin}/#/messenger?invite=${inv.code}');MessengerPage._toast('Copied!')">Copy</button>
+                            <button class="msn-btn msn-btn-secondary" onclick="navigator.clipboard.writeText('${window.location.origin}/messenger?invite=${inv.code}');MessengerPage._toast('Copied!')">Copy</button>
                             <button class="msn-msg-action-btn danger" onclick="MessengerPage._revokeInvite('${inv.code}',this.closest('.msn-invite-row'))">Revoke</button>
                           </div>`).join('')}
                     </div>
@@ -2032,7 +2032,7 @@ var MessengerPage = {
         var res = await this._api('POST', '/spaces/' + this.activeSpaceId + '/invites', { max_age: 86400, max_uses: 0 });
         if (res && res.error) return this._toast(res.error);
 
-        var link = window.location.origin + '/#/messenger?invite=' + res.code;
+        var link = window.location.origin + '/messenger?invite=' + res.code;
         var overlay = document.createElement('div');
         overlay.className = 'msn-modal-overlay';
         overlay.innerHTML = `<div class="msn-modal">

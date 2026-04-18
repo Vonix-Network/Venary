@@ -102,7 +102,7 @@ window.DonationsPage = {
                     <div style="color:var(--neon-magenta);font-size:2rem;margin-bottom:1rem">&#9888;</div>
                     <h2 style="margin-bottom:.5rem">Payment Pending</h2>
                     <p style="color:var(--text-muted);margin-bottom:1.5rem">Your payment is being processed. Check back shortly or contact support.</p>
-                    <a href="#/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>`;
+                    <a href="/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>`;
                 return;
             }
 
@@ -138,15 +138,15 @@ window.DonationsPage = {
                 </div>
                 <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:1.5rem">A receipt has been sent to your email if one is on file.</p>
                 <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-                    <a href="#/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>
-                    ${App.currentUser ? '<a href="#/donate?tab=history" class="donate-rank-btn" style="display:inline-block;text-decoration:none;background:var(--bg-tertiary);color:var(--text-primary)">View Transactions</a>' : ''}
+                    <a href="/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>
+                    ${App.currentUser ? '<a href="/donate?tab=history" class="donate-rank-btn" style="display:inline-block;text-decoration:none;background:var(--bg-tertiary);color:var(--text-primary)">View Transactions</a>' : ''}
                 </div>`;
         } catch {
             area.innerHTML = `
                 <div style="color:var(--text-muted);font-size:2rem;margin-bottom:1rem">&#128338;</div>
                 <h2 style="margin-bottom:.5rem">Verifying Payment</h2>
                 <p style="color:var(--text-muted);margin-bottom:1.5rem">Your payment is being verified. If you paid successfully, your rank will be granted shortly.</p>
-                <a href="#/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>`;
+                <a href="/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none">Back to Donations</a>`;
         }
     },
 
@@ -155,7 +155,7 @@ window.DonationsPage = {
         if (!App.currentUser) {
             container.innerHTML = `<div class="minecraft-page donate-page-wrap" style="max-width:700px;margin:0 auto;text-align:center;padding:3rem 1rem">
                 <p style="color:var(--text-muted)">Please log in to view your transaction history.</p>
-                <a href="#/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none;margin-top:1rem">Back to Donations</a>
+                <a href="/donate" class="donate-rank-btn" style="display:inline-block;text-decoration:none;margin-top:1rem">Back to Donations</a>
             </div>`;
             return;
         }
@@ -163,7 +163,7 @@ window.DonationsPage = {
         container.innerHTML = `
             <div class="minecraft-page donate-page-wrap" style="max-width:760px;margin:0 auto">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
-                    <a href="#/donate" style="color:var(--text-muted);text-decoration:none;font-size:0.85rem;display:flex;align-items:center;gap:5px">
+                    <a href="/donate" style="color:var(--text-muted);text-decoration:none;font-size:0.85rem;display:flex;align-items:center;gap:5px">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                         Donations
                     </a>
