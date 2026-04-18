@@ -1222,6 +1222,17 @@ html.style-radius-pill {
   html.layout-neon-bar .dropdown-chevron { margin-left: 0; width: 12px; height: 12px; }
 }
 
+/* ─── Layout isolation: auth & admin contexts ─── */
+html[class*="layout-"] .page-container.full-width {
+  margin-left: 0 !important;
+  padding-top: 0 !important;
+}
+
+html[class*="layout-"] .page-container.admin-fullscreen {
+  margin-left: 0 !important;
+  padding-top: 0 !important;
+}
+
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
