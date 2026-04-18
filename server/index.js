@@ -87,6 +87,12 @@ const friendRequestLimiter = rateLimit({
 // Middleware
 app.use(cors(corsOptions));
 app.use(hppProtection);                           // HTTP Parameter Pollution protection
+
+// Stripe webhook must be BEFORE express.json() to preserve raw body for signature verification
+const Config = require('./config');
+const db = require('./db');
+app.use('/api/donations/webhook', express.raw({ type: 'application/json' }), require('./routes/donations-webhook'));
+
 app.use(express.json({ limit: '100kb' }));
 
 async function start() {

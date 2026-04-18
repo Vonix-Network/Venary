@@ -615,37 +615,8 @@ router.post('/confirm-payment', optionalAuth, async (req, res) => {
     }
 });
 
-// ══════════════════════════════════════════════════════
-// STRIPE WEBHOOK
-// ══════════════════════════════════════════════════════
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    try {
-        const stripe = getStripe();
-        if (!stripe) return res.status(503).send('Not configured');
-
-        const webhookSecret = Config.get('stripe_webhook_secret');
-        let event;
-
-        if (webhookSecret) {
-            const sig = req.headers['stripe-signature'];
-            event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-        } else {
-            console.warn('[Donations] ⚠️  Stripe webhook received without signature verification — configure stripe_webhook_secret for production!');
-            event = req.body;
-            if (typeof event === 'string') event = JSON.parse(event);
-        }
-
-        if (event.type === 'checkout.session.completed') {
-            const session = event.data.object;
-            if (session.payment_status === 'paid') await completeDonation(session.id);
-        }
-
-        res.json({ received: true });
-    } catch (err) {
-        console.error('[Donations] Webhook error:', err);
-        res.status(400).json({ error: 'Webhook error' });
-    }
-});
+// Note: Stripe webhook is handled by standalone donations-webhook.js
+// (mounted before express.json() to preserve raw body for signature verification)
 
 // ══════════════════════════════════════════════════════
 // MOD / SERVER API

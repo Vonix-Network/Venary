@@ -589,12 +589,13 @@ window.DonationsPage = {
         try {
             this._checkoutConfig = await API.get('/api/donations/checkout-config');
         } catch {
-            this._checkoutConfig = { stripe_enabled: false, checkout_mode: 'stripe_checkout' };
+            this._checkoutConfig = { stripe_enabled: false, checkout_mode: 'stripe_checkout', stripe_publishable_key: '' };
         }
     },
 
     isCustomCheckoutEnabled() {
-        return this._checkoutConfig?.stripe_enabled && this._checkoutConfig?.checkout_mode === 'custom_checkout';
+        const hasKey = !!(this._checkoutConfig?.stripe_publishable_key?.startsWith('pk_'));
+        return this._checkoutConfig?.stripe_enabled && this._checkoutConfig?.checkout_mode === 'custom_checkout' && hasKey;
     },
 
     async loadStripeJs() {
@@ -833,9 +834,16 @@ window.DonationsPage = {
         // Load Stripe.js if not already loaded
         try {
             const Stripe = await this.loadStripeJs();
-            this._stripe = Stripe(this._checkoutConfig.stripe_publishable_key);
+            const pubKey = this._checkoutConfig?.stripe_publishable_key;
+            if (!pubKey || !pubKey.startsWith('pk_')) {
+                App.showToast('Stripe publishable key not configured. Please contact an administrator.', 'error');
+                console.error('[Custom Checkout] Missing or invalid stripe_publishable_key:', pubKey);
+                return;
+            }
+            this._stripe = Stripe(pubKey);
         } catch (err) {
-            App.showToast('Failed to load payment system', 'error');
+            console.error('[Custom Checkout] Stripe init error:', err);
+            App.showToast('Failed to load payment system: ' + (err.message || 'Stripe initialization failed'), 'error');
             return;
         }
 
