@@ -114,7 +114,7 @@ var App = {
                 // Validate token — if user is not admin, show maintenance
                 try {
                     var me = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } }).then(function (r) { return r.json(); });
-                    if (!me || me.role !== 'admin') {
+                    if (!me || !['admin', 'superadmin', 'moderator'].includes(me.role)) {
                         App._showMaintenance(s.maintenanceMessage);
                     }
                 } catch (_) {
@@ -396,6 +396,9 @@ var App = {
         // Initialize mobile UI
         this._initMobileNav();
 
+        // Start proactive token refresh (30-min intervals + on focus)
+        API.startAutoRefresh();
+
         // Connect socket
         if (API.token) {
             SocketClient.connect(API.token);
@@ -645,6 +648,7 @@ var App = {
 
     logout() {
         API.setToken(null);
+        API.stopAutoRefresh();
         this.currentUser = null;
         SocketClient.disconnect();
 

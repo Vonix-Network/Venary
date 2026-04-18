@@ -4,6 +4,8 @@
 const API = {
     baseUrl: '',
     token: localStorage.getItem('venary_token'),
+    _refreshPromise: null,
+    _autoRefreshTimer: null,
 
     setToken(token) {
         this.token = token;
@@ -22,7 +24,48 @@ const API = {
         return headers;
     },
 
-    async request(method, endpoint, body = null) {
+    // Refresh the JWT. Multiple simultaneous calls coalesce into one request.
+    async refreshToken() {
+        if (!this.token) return false;
+        if (this._refreshPromise) return this._refreshPromise;
+        this._refreshPromise = (async () => {
+            try {
+                const res = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+                });
+                if (!res.ok) return false;
+                const data = await res.json();
+                if (data.token) {
+                    this.setToken(data.token);
+                    // Update socket auth token if connected
+                    if (typeof SocketClient !== 'undefined' && SocketClient.socket) {
+                        SocketClient.socket.auth.token = data.token;
+                    }
+                    return true;
+                }
+                return false;
+            } catch { return false; } finally { this._refreshPromise = null; }
+        })();
+        return this._refreshPromise;
+    },
+
+    // Start proactive refresh: immediately refresh then every 30 minutes
+    startAutoRefresh() {
+        this.stopAutoRefresh();
+        this.refreshToken();
+        this._autoRefreshTimer = setInterval(() => { this.refreshToken(); }, 30 * 60 * 1000);
+        // Also refresh when the tab regains focus after being hidden
+        this._onFocus = () => { this.refreshToken(); };
+        window.addEventListener('focus', this._onFocus);
+    },
+
+    stopAutoRefresh() {
+        if (this._autoRefreshTimer) { clearInterval(this._autoRefreshTimer); this._autoRefreshTimer = null; }
+        if (this._onFocus) { window.removeEventListener('focus', this._onFocus); this._onFocus = null; }
+    },
+
+    async request(method, endpoint, body = null, _isRetry = false) {
         const options = {
             method,
             headers: this.getHeaders(),
@@ -42,9 +85,15 @@ const API = {
 
             return data;
         } catch (err) {
-            if (err.status === 401) {
-                // Token expired or invalid — clear session and redirect
+            if (err.status === 401 && !_isRetry && this.token) {
+                // Try to refresh and retry once before logging out
+                const refreshed = await this.refreshToken();
+                if (refreshed) {
+                    return this.request(method, endpoint, body, true);
+                }
+                // Refresh failed — clear session and redirect
                 this.setToken(null);
+                this.stopAutoRefresh();
                 var currentPath = window.location.pathname;
                 if (!currentPath) currentPath = '/feed';
                 var publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/donate', '/feed'];
@@ -67,6 +116,7 @@ const API = {
     register(data) { return this.post('/api/auth/register', data); },
     login(data) { return this.post('/api/auth/login', data); },
     getMe() { return this.get('/api/auth/me'); },
+    refresh() { return this.post('/api/auth/refresh'); },
     forgotPassword(data) { return this.post('/api/auth/forgot-password', data); },
     resetPassword(data) { return this.post('/api/auth/reset-password', data); },
 

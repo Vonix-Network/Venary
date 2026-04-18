@@ -48,8 +48,21 @@ const SocketClient = {
             this.emit('messages_read', data);
         });
 
-        this.socket.on('connect_error', (err) => {
-            console.error('Socket connection error:', err.message);
+        this.socket.on('connect_error', async (err) => {
+            if (err.message === 'Invalid token' || err.message === 'Authentication required') {
+                // Token expired — refresh and reconnect with the new token
+                if (typeof API !== 'undefined') {
+                    const refreshed = await API.refreshToken();
+                    if (refreshed && this.socket) {
+                        this.socket.auth.token = API.token;
+                        this.socket.connect();
+                        return;
+                    }
+                }
+                if (typeof App !== 'undefined') App.logout();
+            } else {
+                console.error('Socket connection error:', err.message);
+            }
         });
     },
 

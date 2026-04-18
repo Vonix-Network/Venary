@@ -80,7 +80,7 @@ router.post('/register', async (req, res) => {
             [id, username, email, hashedPassword, display_name || username, now]
         );
 
-        const token = jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '2h' });
+        const token = jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '7d' });
 
         // Link any completed guest donations that used this email address
         try {
@@ -138,7 +138,7 @@ router.post('/login', async (req, res) => {
         // Update last seen
         await db.run("UPDATE users SET last_seen = ?, status = ? WHERE id = ?", [new Date().toISOString(), 'online', user.id]);
 
-        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '2h' });
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
 
         logger.security('login_success', { userId: user.id, username: user.username, ip });
 
@@ -274,6 +274,21 @@ router.get('/me', authenticateToken, async (req, res) => {
         res.json(userObj);
     } catch (err) {
         logger.error('Get me error', { err: err.message, stack: err.stack });
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Refresh token — issues a new 7d token from a still-valid one
+router.post('/refresh', authenticateToken, async (req, res) => {
+    try {
+        const user = await db.get('SELECT id, username, banned FROM users WHERE id = ?', [req.user.id]);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (user.banned) return res.status(403).json({ error: 'Account banned' });
+
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ token });
+    } catch (err) {
+        logger.error('Token refresh error', { err: err.message });
         res.status(500).json({ error: 'Server error' });
     }
 });
