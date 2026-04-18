@@ -40,6 +40,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `logs/` directory added to `.gitignore` — log files are never committed.
 
+## [1.8.2] - 2026-04-18
+
+### Fixed
+- **Session Handling — Sudden Logouts** — JWT tokens were issued with a 2-hour expiry and there was no refresh mechanism, causing admin and long-lived sessions to silently expire. Tokens are now issued with a 7-day expiry.
+- **Token Refresh on 401** — `api.js` now catches a 401 response, attempts a silent token refresh via `POST /api/auth/refresh`, and retries the original request once before forcing a logout. Transient auth failures no longer immediately terminate the session.
+- **Socket Reconnect After Token Expiry** — `socket-client.js` now detects `Invalid token` / `Authentication required` connect errors, refreshes the token, updates `socket.auth.token`, and reconnects automatically instead of silently failing.
+- **Maintenance Mode Role Check** — The client-side maintenance bypass check now correctly allows `superadmin` and `moderator` roles through, consistent with server-side `requireAdmin` middleware. Previously only `admin` was permitted.
+
+### Added
+- **`POST /api/auth/refresh`** — New endpoint that accepts a valid JWT and re-issues a fresh 7-day token. Returns `403` for banned accounts. Multiple simultaneous refresh calls coalesce into a single request.
+- **Auto-Refresh** — On login, the client starts a 30-minute periodic refresh timer and additionally refreshes whenever the browser tab regains focus, keeping long-lived sessions alive proactively.
+
 ## [Unreleased]
 
 ### Added
