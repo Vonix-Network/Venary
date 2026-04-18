@@ -389,6 +389,27 @@
     animation: pulse-dot 2s infinite;
 }
 
+.mc-badge.loading {
+    background: rgba(255, 200, 0, 0.12);
+    color: rgba(255, 200, 0, 0.7);
+}
+
+.mc-badge.loading .dot {
+    animation: pulse-dot 1s infinite;
+    background: rgba(255, 200, 0, 0.7);
+}
+
+.mc-server-card .status-bar.loading {
+    background: rgba(255, 200, 0, 0.5);
+    animation: pulse-dot 1s infinite;
+}
+
+.mc-loading-text {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
 /* ── Action Buttons ── */
 .mc-btn-group {
     display: flex;

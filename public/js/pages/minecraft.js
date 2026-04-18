@@ -105,13 +105,9 @@ var MinecraftPage = {
             this.servers = res;
         } catch { this.servers = []; }
 
-        const totalPlayers = this.servers.reduce((sum, s) => sum + (s.players?.online || 0), 0);
-        const onlineCount = this.servers.filter(s => s.online).length;
-
-        // Use StatusHeader component
+        // Render header with loading state
         const headerEl = document.getElementById('mc-header-container');
         if (headerEl) {
-            const serverTheme = onlineCount === this.servers.length ? 'green' : onlineCount > 0 ? 'yellow' : 'red';
             headerEl.innerHTML = StatusHeader.render({
                 title: 'Network Servers',
                 subtitle: 'View live status and online players.',
@@ -119,17 +115,17 @@ var MinecraftPage = {
                 statusCards: [
                     {
                         type: 'players',
-                        value: totalPlayers,
+                        value: '—',
                         label: 'Players Online',
                         theme: 'cyan',
-                        pulse: true,
+                        pulse: false,
                         icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
                     },
                     {
                         type: 'servers',
-                        value: `${onlineCount}/${this.servers.length}`,
+                        value: `—/${this.servers.length}`,
                         label: 'Servers Online',
-                        theme: serverTheme,
+                        theme: 'yellow',
                         icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>'
                     }
                 ]
@@ -146,88 +142,199 @@ var MinecraftPage = {
             return;
         }
 
-        let html = `
-            <div class="mc-server-grid">
-        `;
-
+        // Render all cards immediately with loading state
+        let html = '<div class="mc-server-grid">';
         for (const s of this.servers) {
-            const address = s.hide_port || s.port === 25565 ? s.address : s.address + ':' + s.port;
-            const iconHtml = s.icon && s.icon.startsWith('data:')
-                ? `<img class="mc-server-icon" src="${s.icon}" alt="${s.name}">`
-                : `<div class="mc-server-icon-placeholder">\u26CF</div>`;
+            html += this._renderServerCard(s, null);
+        }
+        html += '</div>';
+        container.innerHTML = html;
 
-            const playerList = (s.players?.list || []).slice(0, 10);
-            const morePlayers = (s.players?.online || 0) - playerList.length;
+        // Fetch status for each server individually and update cards
+        let resolvedOnline = 0;
+        let resolvedTotal = 0;
+        let totalPlayers = 0;
 
-            html += `
-                <div class="mc-server-card" data-server-id="${s.id}">
-                    <div class="status-bar ${s.online ? 'online' : 'offline'}"></div>
-                    <div class="mc-server-card-main">
-                        <div class="mc-server-card-left">
-                            ${iconHtml}
-                            <div>
-                                <div class="mc-server-name">${this._esc(s.name)}</div>
-                                <div class="mc-server-version">${s.version || 'Unknown'}</div>
-                            </div>
-                        </div>
-                        <div class="mc-server-card-center">
-                            ${s.description ? `<p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin:0">${this._esc(s.description)}</p>` : ''}
-                            ${s.motd ? `<div class="mc-server-motd" style="margin:4px 0 0 0">${this.formatMOTD(s.motd)}</div>` : ''}
-                            <div class="mc-server-stats" style="margin-top:8px">
-                                <div class="mc-stat">\uD83D\uDC64 <span class="value">${s.players?.online || 0}</span>/<span>${s.players?.max || 0}</span></div>
-                                ${s.modpack_name ? `<div class="mc-stat">\uD83D\uDCE6 ${this._esc(s.modpack_name)}</div>` : ''}
-                                ${s.is_bedrock ? `<div class="mc-stat">\uD83D\uDCF1 Bedrock</div>` : ''}
-                            </div>
-                        </div>
-                        <div class="mc-server-card-right">
-                            <span class="mc-badge ${s.online ? 'online' : 'offline'}">
-                                <span class="dot"></span>${s.online ? 'Online' : 'Offline'}
-                            </span>
-                            <div class="mc-server-card-actions">
-                                <div class="mc-ip-bar" style="margin:0;padding:6px 12px">
-                                    <code style="font-size:0.75rem">${address}</code>
-                                    <button class="mc-btn mc-btn-copy" style="padding:4px 8px;font-size:0.7rem" onclick="MinecraftPage.copyIP('${address}', this)">\uD83D\uDCCB Copy</button>
-                                </div>
-                                ${s.curseforge_url ? `<a href="${s.curseforge_url}" target="_blank" class="mc-btn mc-btn-curseforge" style="padding:6px 10px"><img src="https://www.curseforge.com/favicon.ico" alt="CF"></a>` : ''}
-                                ${s.modrinth_url ? `<a href="${s.modrinth_url}" target="_blank" class="mc-btn mc-btn-modrinth" style="padding:6px 10px"><img src="https://modrinth.com/favicon.ico" alt="MR"></a>` : ''}
-                                ${s.bluemap_url ? `<a href="${s.bluemap_url}" target="_blank" class="mc-btn mc-btn-map" style="padding:6px 10px">\uD83D\uDDFA\uFE0F</a>` : ''}
-                                <button class="mc-details-toggle" onclick="MinecraftPage.toggleDetails('${s.id}', this)">
-                                    <span>Details</span> <span class="arrow">\u25BC</span>
-                                </button>
-                                <a href="/servers/${s.id}" target="_blank" class="mc-btn" style="padding:6px 10px" title="Open in new page">\u2197</a>
-                            </div>
+        const statusPromises = this.servers.map(async s => {
+            try {
+                const status = await API.get(`/api/ext/minecraft/servers/${s.id}/status`);
+                Object.assign(s, status);
+            } catch {
+                s.online = false;
+                s.players = { online: 0, max: 0, list: [] };
+                s.motd = '';
+                s.responseTimeMs = null;
+            }
+            this._updateServerCard(s);
+            resolvedTotal++;
+            if (s.online) resolvedOnline++;
+            totalPlayers += s.players?.online || 0;
+
+            // Update header counts as each server resolves
+            const allDone = resolvedTotal === this.servers.length;
+            const headerEl2 = document.getElementById('mc-header-container');
+            if (headerEl2) {
+                const serverTheme = allDone
+                    ? (resolvedOnline === this.servers.length ? 'green' : resolvedOnline > 0 ? 'yellow' : 'red')
+                    : 'yellow';
+                headerEl2.innerHTML = StatusHeader.render({
+                    title: 'Network Servers',
+                    subtitle: 'View live status and online players.',
+                    theme: 'cyan',
+                    statusCards: [
+                        {
+                            type: 'players',
+                            value: totalPlayers,
+                            label: 'Players Online',
+                            theme: 'cyan',
+                            pulse: allDone,
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+                        },
+                        {
+                            type: 'servers',
+                            value: `${resolvedOnline}/${this.servers.length}`,
+                            label: 'Servers Online',
+                            theme: serverTheme,
+                            icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>'
+                        }
+                    ]
+                });
+            }
+        });
+        await Promise.allSettled(statusPromises);
+    },
+
+    _renderServerCard(s, status) {
+        const address = s.hide_port || s.port === 25565 ? s.address : s.address + ':' + s.port;
+        const isLoading = status === null;
+        const online = isLoading ? null : s.online;
+        const iconHtml = s.icon && s.icon.startsWith('data:')
+            ? `<img class="mc-server-icon" src="${s.icon}" alt="${s.name}">`
+            : `<div class="mc-server-icon-placeholder">\u26CF</div>`;
+
+        const playerList = (s.players?.list || []).slice(0, 10);
+        const morePlayers = (s.players?.online || 0) - playerList.length;
+
+        return `
+            <div class="mc-server-card${isLoading ? ' mc-status-loading' : ''}" data-server-id="${s.id}">
+                <div class="status-bar ${isLoading ? 'loading' : (online ? 'online' : 'offline')}"></div>
+                <div class="mc-server-card-main">
+                    <div class="mc-server-card-left">
+                        <div class="mc-server-icon-wrap" id="icon-${s.id}">${iconHtml}</div>
+                        <div>
+                            <div class="mc-server-name">${this._esc(s.name)}</div>
+                            <div class="mc-server-version" id="ver-${s.id}">${s.version || 'Unknown'}</div>
                         </div>
                     </div>
-                    <div class="mc-server-details" id="details-${s.id}">
-                        <div class="mc-details-grid">
-                            <div class="mc-details-section">
-                                <h4>\uD83D\uDC65 Online Players (${s.players?.online || 0})</h4>
-                                <div class="mc-player-list">
-                                    ${playerList.length > 0 ? playerList.map(p => `
-                                        <div class="mc-player-pill">
-                                            <img class="mc-player-head" src="https://mc-heads.net/avatar/${p.uuid || p.name}/20" alt="${p.name}">
-                                            ${this._esc(p.name)}
-                                        </div>
-                                    `).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:0.85rem">No players online</p>'}
-                                    ${morePlayers > 0 ? `<div class="mc-player-pill" style="opacity:0.6">+${morePlayers} more</div>` : ''}
-                                </div>
+                    <div class="mc-server-card-center" id="center-${s.id}">
+                        ${s.description ? `<p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin:0">${this._esc(s.description)}</p>` : ''}
+                        ${isLoading ? `<div class="mc-server-motd mc-loading-text" style="margin:4px 0 0 0">Checking status...</div>` : (s.motd ? `<div class="mc-server-motd" style="margin:4px 0 0 0">${this.formatMOTD(s.motd)}</div>` : '')}
+                        <div class="mc-server-stats" id="stats-${s.id}" style="margin-top:8px">
+                            <div class="mc-stat">\uD83D\uDC64 <span class="value">${isLoading ? '?' : (s.players?.online || 0)}</span>/<span>${isLoading ? '?' : (s.players?.max || 0)}</span></div>
+                            ${s.modpack_name ? `<div class="mc-stat">\uD83D\uDCE6 ${this._esc(s.modpack_name)}</div>` : ''}
+                            ${s.is_bedrock ? `<div class="mc-stat">\uD83D\uDCF1 Bedrock</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="mc-server-card-right">
+                        <span class="mc-badge ${isLoading ? 'loading' : (online ? 'online' : 'offline')}" id="badge-${s.id}">
+                            <span class="dot"></span>${isLoading ? 'Loading' : (online ? 'Online' : 'Offline')}
+                        </span>
+                        <div class="mc-server-card-actions">
+                            <div class="mc-ip-bar" style="margin:0;padding:6px 12px">
+                                <code style="font-size:0.75rem">${address}</code>
+                                <button class="mc-btn mc-btn-copy" style="padding:4px 8px;font-size:0.7rem" onclick="MinecraftPage.copyIP('${address}', this)">\uD83D\uDCCB Copy</button>
                             </div>
-                            <div class="mc-details-section">
-                                <h4>\u2139\uFE0F Server Info</h4>
-                                <div style="font-size:0.85rem;color:rgba(255,255,255,0.7);display:flex;flex-direction:column;gap:6px">
-                                    <div>Address: <code style="color:var(--neon-cyan)">${address}</code></div>
-                                    <div>Port: <span style="color:#fff">${s.port}</span></div>
-                                    <div>Ping: <span style="color:#fff">${s.responseTimeMs || '\u2014'}ms</span></div>
-                                    ${s.bluemap_url ? `<div><a href="${s.bluemap_url}" target="_blank" style="color:var(--neon-cyan)">\uD83D\uDDFA\uFE0F View Live Map</a></div>` : ''}
-                                </div>
+                            ${s.curseforge_url ? `<a href="${s.curseforge_url}" target="_blank" class="mc-btn mc-btn-curseforge" style="padding:6px 10px"><img src="https://www.curseforge.com/favicon.ico" alt="CF"></a>` : ''}
+                            ${s.modrinth_url ? `<a href="${s.modrinth_url}" target="_blank" class="mc-btn mc-btn-modrinth" style="padding:6px 10px"><img src="https://modrinth.com/favicon.ico" alt="MR"></a>` : ''}
+                            ${s.bluemap_url ? `<a href="${s.bluemap_url}" target="_blank" class="mc-btn mc-btn-map" style="padding:6px 10px">\uD83D\uDDFA\uFE0F</a>` : ''}
+                            <button class="mc-details-toggle" onclick="MinecraftPage.toggleDetails('${s.id}', this)">
+                                <span>Details</span> <span class="arrow">\u25BC</span>
+                            </button>
+                            <a href="/servers/${s.id}" target="_blank" class="mc-btn" style="padding:6px 10px" title="Open in new page">\u2197</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="mc-server-details" id="details-${s.id}">
+                    <div class="mc-details-grid">
+                        <div class="mc-details-section">
+                            <h4>\uD83D\uDC65 Online Players (<span id="player-count-${s.id}">${isLoading ? '...' : (s.players?.online || 0)}</span>)</h4>
+                            <div class="mc-player-list" id="player-list-${s.id}">
+                                ${isLoading ? '<p style="color:rgba(255,255,255,0.4);font-size:0.85rem">Loading...</p>' : (playerList.length > 0 ? playerList.map(p => `
+                                    <div class="mc-player-pill">
+                                        <img class="mc-player-head" src="https://mc-heads.net/avatar/${p.uuid || p.name}/20" alt="${p.name}">
+                                        ${this._esc(p.name)}
+                                    </div>
+                                `).join('') + (morePlayers > 0 ? `<div class="mc-player-pill" style="opacity:0.6">+${morePlayers} more</div>` : '') : '<p style="color:rgba(255,255,255,0.4);font-size:0.85rem">No players online</p>')}
+                            </div>
+                        </div>
+                        <div class="mc-details-section">
+                            <h4>\u2139\uFE0F Server Info</h4>
+                            <div style="font-size:0.85rem;color:rgba(255,255,255,0.7);display:flex;flex-direction:column;gap:6px">
+                                <div>Address: <code style="color:var(--neon-cyan)">${address}</code></div>
+                                <div>Port: <span style="color:#fff">${s.port}</span></div>
+                                <div>Ping: <span style="color:#fff" id="ping-${s.id}">${isLoading ? '...' : (s.responseTimeMs || '\u2014')}ms</span></div>
+                                ${s.bluemap_url ? `<div><a href="${s.bluemap_url}" target="_blank" style="color:var(--neon-cyan)">\uD83D\uDDFA\uFE0F View Live Map</a></div>` : ''}
                             </div>
                         </div>
                     </div>
                 </div>
-            `;
+            </div>
+        `;
+    },
+
+    _updateServerCard(s) {
+        const card = document.querySelector(`.mc-server-card[data-server-id="${s.id}"]`);
+        if (!card) return;
+
+        card.classList.remove('mc-status-loading');
+
+        const statusBar = card.querySelector('.status-bar');
+        if (statusBar) { statusBar.className = `status-bar ${s.online ? 'online' : 'offline'}`; }
+
+        const badge = document.getElementById(`badge-${s.id}`);
+        if (badge) {
+            badge.className = `mc-badge ${s.online ? 'online' : 'offline'}`;
+            badge.innerHTML = `<span class="dot"></span>${s.online ? 'Online' : 'Offline'}`;
         }
-        html += '</div>';
-        container.innerHTML = html;
+
+        const ver = document.getElementById(`ver-${s.id}`);
+        if (ver) ver.textContent = s.version || 'Unknown';
+
+        const iconWrap = document.getElementById(`icon-${s.id}`);
+        if (iconWrap && s.icon && s.icon.startsWith('data:')) {
+            iconWrap.innerHTML = `<img class="mc-server-icon" src="${s.icon}" alt="${s.name}">`;
+        }
+
+        const stats = document.getElementById(`stats-${s.id}`);
+        if (stats) {
+            const modpackHtml = s.modpack_name ? `<div class="mc-stat">\uD83D\uDCE6 ${this._esc(s.modpack_name)}</div>` : '';
+            const bedrockHtml = s.is_bedrock ? `<div class="mc-stat">\uD83D\uDCF1 Bedrock</div>` : '';
+            stats.innerHTML = `<div class="mc-stat">\uD83D\uDC64 <span class="value">${s.players?.online || 0}</span>/<span>${s.players?.max || 0}</span></div>${modpackHtml}${bedrockHtml}`;
+        }
+
+        const center = document.getElementById(`center-${s.id}`);
+        if (center) {
+            const descHtml = s.description ? `<p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin:0">${this._esc(s.description)}</p>` : '';
+            const motdHtml = s.motd ? `<div class="mc-server-motd" style="margin:4px 0 0 0">${this.formatMOTD(s.motd)}</div>` : '';
+            const statsEl = document.getElementById(`stats-${s.id}`);
+            center.innerHTML = descHtml + motdHtml;
+            if (statsEl) center.appendChild(statsEl);
+        }
+
+        const playerCount = document.getElementById(`player-count-${s.id}`);
+        if (playerCount) playerCount.textContent = s.players?.online || 0;
+
+        const playerList = document.getElementById(`player-list-${s.id}`);
+        if (playerList) {
+            const list = (s.players?.list || []).slice(0, 10);
+            const more = (s.players?.online || 0) - list.length;
+            playerList.innerHTML = list.length > 0
+                ? list.map(p => `<div class="mc-player-pill"><img class="mc-player-head" src="https://mc-heads.net/avatar/${p.uuid || p.name}/20" alt="${p.name}">${this._esc(p.name)}</div>`).join('') + (more > 0 ? `<div class="mc-player-pill" style="opacity:0.6">+${more} more</div>` : '')
+                : '<p style="color:rgba(255,255,255,0.4);font-size:0.85rem">No players online</p>';
+        }
+
+        const ping = document.getElementById(`ping-${s.id}`);
+        if (ping) ping.textContent = (s.responseTimeMs || '—') + 'ms';
     },
 
     toggleDetails(serverId, btn) {

@@ -145,6 +145,7 @@ async function pingServerAPI(address, port = 25565, isBedrock = false) {
     const endpoint = isBedrock ? 'bedrock' : 'java';
     const target = port === 25565 ? encodeURIComponent(address) : encodeURIComponent(`${address}:${port}`);
     const url = `https://api.mcstatus.io/v2/status/${endpoint}/${target}`;
+    const startTime = Date.now();
     try {
         const controller = new AbortController();
         const tid = setTimeout(() => controller.abort(), 10000);
@@ -158,10 +159,10 @@ async function pingServerAPI(address, port = 25565, isBedrock = false) {
             version: data.version?.name_clean || data.version?.name_raw || null,
             motd: (data.motd?.clean || []).join(' ').trim(),
             icon: data.icon || null,
-            responseTimeMs: 0
+            responseTimeMs: Date.now() - startTime
         };
     } catch {
-        return { online: false, players: { online: 0, max: 0, list: [] }, version: null, motd: '', icon: null, responseTimeMs: 0 };
+        return { online: false, players: { online: 0, max: 0, list: [] }, version: null, motd: '', icon: null, responseTimeMs: Date.now() - startTime };
     }
 }
 

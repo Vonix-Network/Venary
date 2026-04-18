@@ -60,23 +60,40 @@ router.get('/servers', optionalAuth, async (req, res) => {
             isLinked = !!linked;
         }
 
-        const results = await Promise.all(servers.map(async s => {
-            const status = await smartPing(s.address, s.port, !!s.is_bedrock);
-            return {
-                id: s.id, name: s.name, address: s.address, port: s.port,
-                description: s.description, icon: status.icon || s.icon,
-                version: status.version || s.version, modpack_name: s.modpack_name,
-                curseforge_url: s.curseforge_url, modrinth_url: s.modrinth_url,
-                bluemap_url: s.bluemap_url, hide_port: !!s.hide_port, is_bedrock: !!s.is_bedrock,
-                online: status.online, players: status.players,
-                motd: status.motd, responseTimeMs: status.responseTimeMs,
-                user_linked: isLinked
-            };
+        const results = servers.map(s => ({
+            id: s.id, name: s.name, address: s.address, port: s.port,
+            description: s.description, icon: s.icon,
+            version: s.version, modpack_name: s.modpack_name,
+            curseforge_url: s.curseforge_url, modrinth_url: s.modrinth_url,
+            bluemap_url: s.bluemap_url, hide_port: !!s.hide_port, is_bedrock: !!s.is_bedrock,
+            user_linked: isLinked
         }));
         res.json(results);
     } catch (err) {
         console.error('[MC] Server list error:', err);
         res.status(500).json({ error: 'Failed to fetch servers' });
+    }
+});
+
+// Individual server live status (used by frontend for progressive loading)
+router.get('/servers/:id/status', async (req, res) => {
+    try {
+        const server = await db.get('SELECT id, address, port, icon, version, is_bedrock FROM mc_servers WHERE id = ?', [req.params.id]);
+        if (!server) return res.status(404).json({ error: 'Server not found' });
+        const startTime = Date.now();
+        const status = await smartPing(server.address, server.port, !!server.is_bedrock);
+        if (!status.responseTimeMs) status.responseTimeMs = Date.now() - startTime;
+        res.json({
+            online: status.online,
+            players: status.players,
+            motd: status.motd,
+            version: status.version || server.version,
+            icon: status.icon || server.icon,
+            responseTimeMs: status.responseTimeMs
+        });
+    } catch (err) {
+        console.error('[MC] Server status error:', err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
