@@ -340,8 +340,6 @@ var App = {
     onLogin() {
         var nav = document.getElementById('main-nav');
         var page = document.getElementById('page-container');
-        if (nav) nav.classList.remove('hidden');
-        if (page) page.classList.remove('full-width');
 
         var userSection = document.getElementById('nav-user-info');
         if (userSection) userSection.classList.remove('hidden');
