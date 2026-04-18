@@ -1100,12 +1100,15 @@ input[type="range"]::-moz-range-thumb {
     border-top: none;
     border-bottom: none;
     border-left: none;
+    position: -webkit-sticky;
     position: sticky;
     top: 0;
     height: 100vh;
+    max-height: 100vh;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    align-self: start;
 }
 
 .admin-fullscreen .admin-main {
@@ -1121,6 +1124,7 @@ input[type="range"]::-moz-range-thumb {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
+    position: -webkit-sticky;
     position: sticky;
     top: 2rem;
     align-self: start;
