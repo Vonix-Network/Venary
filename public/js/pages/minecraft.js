@@ -7,7 +7,7 @@ var MinecraftPage = {
     currentTab: 'servers',
     servers: [],
     selectedServer: null,
-    chartRange: '7d',
+    chartRange: '24h',
     chartMetric: 'players',
     leaderboardPage: 1,
     leaderboardLimit: 50,
@@ -448,6 +448,9 @@ var MinecraftPage = {
                             </div>
                         </div>
                         <div class="mc-chart-controls" style="margin-bottom:10px">
+                            <button class="mc-chart-btn range-btn ${this.chartRange === '6h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','6h',this)">6h</button>
+                            <button class="mc-chart-btn range-btn ${this.chartRange === '12h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','12h',this)">12h</button>
+                            <button class="mc-chart-btn range-btn ${this.chartRange === '24h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','24h',this)">24h</button>
                             <button class="mc-chart-btn range-btn ${this.chartRange === '3d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','3d',this)">3d</button>
                             <button class="mc-chart-btn range-btn ${this.chartRange === '7d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','7d',this)">7d</button>
                             <button class="mc-chart-btn range-btn ${this.chartRange === '10d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','10d',this)">10d</button>

@@ -111,23 +111,41 @@ router.get('/servers/:id', async (req, res) => {
 
 router.get('/servers/:id/history', async (req, res) => {
     try {
-        const rangeMap = { '3d': 72, '7d': 168, '10d': 240, '20d': 480, '30d': 720 };
-        const hours = rangeMap[req.query.range] || 168;
+        const rangeMap = { '6h': 6, '12h': 12, '24h': 24, '3d': 72, '7d': 168, '10d': 240, '20d': 480, '30d': 720 };
+        const hours = rangeMap[req.query.range] || 24;
         const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
-        // Aggregate by hour so chart stays readable regardless of range
-        const records = await db.all(`
-            SELECT
-                strftime('%Y-%m-%dT%H:00:00.000Z', checked_at) AS checked_at,
-                CASE WHEN AVG(CAST(online AS FLOAT)) >= 0.5 THEN 1 ELSE 0 END AS online,
-                ROUND(AVG(players_online)) AS players_online,
-                MAX(players_online) AS players_max,
-                ROUND(AVG(response_time_ms)) AS response_time_ms
-            FROM uptime_history
-            WHERE server_id = ? AND checked_at > ?
-            GROUP BY strftime('%Y-%m-%dT%H:00:00', checked_at)
-            ORDER BY checked_at ASC
-        `, [req.params.id, since]);
+        const raw = await db.all(
+            'SELECT online, players_online, players_max, response_time_ms, checked_at FROM uptime_history WHERE server_id = ? AND checked_at > ? ORDER BY checked_at ASC',
+            [req.params.id, since]
+        );
+
+        // For ranges over 24h, aggregate by hour in JS (keeps chart readable and works on any DB)
+        let records = raw;
+        if (hours > 24 && raw.length > 0) {
+            const buckets = new Map();
+            for (const r of raw) {
+                const d = new Date(r.checked_at);
+                d.setMinutes(0, 0, 0);
+                const key = d.toISOString();
+                if (!buckets.has(key)) buckets.set(key, []);
+                buckets.get(key).push(r);
+            }
+            records = Array.from(buckets.entries())
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([key, rows]) => {
+                    const onlineFrac = rows.filter(r => r.online).length / rows.length;
+                    const playerCounts = rows.map(r => r.players_online || 0);
+                    const rtRows = rows.filter(r => r.response_time_ms);
+                    return {
+                        checked_at: key,
+                        online: onlineFrac >= 0.5 ? 1 : 0,
+                        players_online: Math.round(playerCounts.reduce((a, b) => a + b, 0) / playerCounts.length),
+                        players_max: Math.max(...rows.map(r => r.players_max || 0)),
+                        response_time_ms: rtRows.length ? Math.round(rtRows.reduce((a, b) => a + b.response_time_ms, 0) / rtRows.length) : null
+                    };
+                });
+        }
 
         const total = records.length;
         const onlineCount = records.filter(r => r.online).length;
