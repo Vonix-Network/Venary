@@ -140,7 +140,7 @@ router.get('/servers/:id/history', async (req, res) => {
                     return {
                         checked_at: key,
                         online: onlineFrac >= 0.5 ? 1 : 0,
-                        players_online: Math.round(playerCounts.reduce((a, b) => a + b, 0) / playerCounts.length),
+                        players_online: Math.max(...playerCounts),
                         players_max: Math.max(...rows.map(r => r.players_max || 0)),
                         response_time_ms: rtRows.length ? Math.round(rtRows.reduce((a, b) => a + b.response_time_ms, 0) / rtRows.length) : null
                     };

@@ -585,7 +585,7 @@ var MinecraftPage = {
             const value = isUptime ? (r.online ? 1 : 0) : (r.players_online || 0);
             const barH = isUptime
                 ? (r.online ? chartH - 2 : 3)
-                : Math.max(2, (value / maxValue) * (chartH - 2));
+                : (value > 0 ? Math.max(1, (value / maxValue) * (chartH - 2)) : 0);
             const y = PAD.top + chartH - barH;
 
             if (r.online) {
