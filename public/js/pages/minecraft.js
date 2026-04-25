@@ -458,7 +458,8 @@ var MinecraftPage = {
                             <button class="mc-chart-btn range-btn ${this.chartRange === '30d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','30d',this)">30d</button>
                         </div>
                         <div id="mc-chart-stats" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06)"></div>
-                        <canvas id="mc-chart" class="mc-chart-canvas"></canvas>
+                        <canvas id="mc-chart" class="mc-chart-canvas" style="cursor:pointer"></canvas>
+                        <div id="mc-chart-drilldown" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)"></div>
                     </div>
         `;
 
@@ -496,10 +497,14 @@ var MinecraftPage = {
     async loadChart(serverId, range, btn) {
         this.chartRange = range;
         this.chartMetric = this.chartMetric || 'players';
+        this._chartServerId = serverId;
         if (btn) {
             btn.closest('.mc-chart-controls').querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         }
+
+        const ddEl = document.getElementById('mc-chart-drilldown');
+        if (ddEl) { ddEl.style.display = 'none'; ddEl.innerHTML = ''; }
 
         const canvas = document.getElementById('mc-chart');
         if (!canvas) return;
@@ -510,7 +515,6 @@ var MinecraftPage = {
             data = await API.get(`/api/ext/minecraft/servers/${serverId}/history?range=${range}`);
         } catch { data = { records: [], stats: {} }; }
 
-        // Update stats summary
         const statsEl = document.getElementById('mc-chart-stats');
         if (statsEl && data.stats) {
             const s = data.stats;
@@ -520,11 +524,23 @@ var MinecraftPage = {
                 <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Uptime</span><span style="font-weight:700;color:${uptimeColor}">${uptimePct}%</span></div>
                 <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Avg Players</span><span style="font-weight:700;color:#fff">${s.avgPlayers || 0}</span></div>
                 <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Peak Players</span><span style="font-weight:700;color:var(--neon-cyan)">${s.peakPlayers || 0}</span></div>
-                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Hourly Points</span><span style="font-weight:700;color:rgba(255,255,255,0.6)">${s.totalChecks || 0}</span></div>
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Data Points</span><span style="font-weight:700;color:rgba(255,255,255,0.6)">${s.totalChecks || 0}</span></div>
             `;
         }
 
         const records = data.records || [];
+        const rangeHours = { '6h': 6, '12h': 12, '24h': 24, '3d': 72, '7d': 168, '10d': 240, '20d': 480, '30d': 720 };
+        const isAggregated = (rangeHours[range] || 24) > 24;
+
+        this._drawChart(canvas, records, isAggregated);
+
+        // Wire up click handler for drill-down on multi-day views
+        canvas.onclick = isAggregated ? (e) => this._handleChartClick(e, canvas) : null;
+        canvas.title = isAggregated ? 'Click a bar to drill into that hour' : '';
+    },
+
+    _drawChart(canvas, records, isAggregated) {
+        const ctx = canvas.getContext('2d');
         const W = canvas.width = canvas.parentElement.clientWidth;
         const H = canvas.height = 200;
         ctx.clearRect(0, 0, W, H);
@@ -539,13 +555,15 @@ var MinecraftPage = {
 
         const isUptime = this.chartMetric === 'uptime';
         const maxValue = isUptime ? 1 : Math.max(1, ...records.map(r => r.players_online || 0));
-
         const PAD = { left: 36, right: 8, top: 12, bottom: 22 };
         const chartW = W - PAD.left - PAD.right;
         const chartH = H - PAD.top - PAD.bottom;
         const barW = Math.max(1, Math.floor(chartW / records.length) - 1);
 
-        // Grid lines
+        // Store geometry for click mapping
+        this._chartGeo = { records, barW, PAD, chartH, H, W };
+
+        // Grid
         ctx.strokeStyle = 'rgba(255,255,255,0.06)';
         ctx.lineWidth = 1;
         [0, 0.25, 0.5, 0.75, 1].forEach(frac => {
@@ -566,17 +584,25 @@ var MinecraftPage = {
             ctx.fillText('0', PAD.left - 3, PAD.top + chartH + 1);
         }
 
-        // X-axis date labels (up to 7 evenly spaced)
+        // X-axis labels
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         ctx.font = '9px sans-serif';
         ctx.textAlign = 'center';
-        const labelCount = Math.min(7, records.length);
-        const labelStep = Math.max(1, Math.floor(records.length / labelCount));
+        const labelStep = Math.max(1, Math.floor(records.length / Math.min(7, records.length)));
         for (let i = 0; i < records.length; i += labelStep) {
             const d = new Date(records[i].checked_at);
-            const label = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}h`;
-            const x = PAD.left + i * (barW + 1) + barW / 2;
-            ctx.fillText(label, x, H - 4);
+            const label = isAggregated
+                ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}h`
+                : `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            ctx.fillText(label, PAD.left + i * (barW + 1) + barW / 2, H - 4);
+        }
+
+        // Drill-down hint
+        if (isAggregated) {
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.font = 'italic 9px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText('click bar to drill down', W - PAD.right, PAD.top + 9);
         }
 
         // Bars
@@ -587,7 +613,6 @@ var MinecraftPage = {
                 ? (r.online ? chartH - 2 : 3)
                 : (value > 0 ? Math.max(1, (value / maxValue) * (chartH - 2)) : 0);
             const y = PAD.top + chartH - barH;
-
             if (r.online) {
                 const grad = ctx.createLinearGradient(x, y, x, PAD.top + chartH);
                 grad.addColorStop(0, isUptime ? 'rgba(34,197,94,0.85)' : 'rgba(0,255,255,0.85)');
@@ -596,8 +621,118 @@ var MinecraftPage = {
             } else {
                 ctx.fillStyle = 'rgba(239,68,68,0.5)';
             }
-            ctx.fillRect(x, y, barW, barH);
+            if (barH > 0) ctx.fillRect(x, y, barW, barH);
         });
+    },
+
+    _handleChartClick(e, canvas) {
+        const geo = this._chartGeo;
+        if (!geo) return;
+        const rect = canvas.getBoundingClientRect();
+        const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const idx = Math.floor((clickX - geo.PAD.left) / (geo.barW + 1));
+        if (idx < 0 || idx >= geo.records.length) return;
+        this._drillDownHour(this._chartServerId, geo.records[idx].checked_at);
+    },
+
+    async _drillDownHour(serverId, hourIso) {
+        const ddEl = document.getElementById('mc-chart-drilldown');
+        if (!ddEl) return;
+        const d = new Date(hourIso);
+        const h0 = String(d.getHours()).padStart(2, '0');
+        const h1 = String(d.getHours() + 1).padStart(2, '0');
+        const label = `${d.getMonth()+1}/${d.getDate()} ${h0}:00 – ${h1}:00`;
+
+        ddEl.style.display = 'block';
+        ddEl.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <button class="mc-chart-btn" onclick="MinecraftPage._closeDrilldown()" style="padding:3px 10px;font-size:0.75rem">✕ Close</button>
+                <span style="font-size:0.85rem;color:rgba(255,255,255,0.55)">Drill-down: <strong style="color:#fff">${label}</strong></span>
+            </div>
+            <div id="mc-drill-loading" style="text-align:center;padding:0.75rem;color:rgba(255,255,255,0.35);font-size:0.8rem">Loading per-minute data...</div>
+        `;
+
+        let raw;
+        try {
+            raw = await API.get(`/api/ext/minecraft/servers/${serverId}/history?hour=${encodeURIComponent(hourIso)}`);
+        } catch { raw = { records: [] }; }
+
+        const loadEl = document.getElementById('mc-drill-loading');
+        if (loadEl) loadEl.remove();
+
+        const records = raw.records || [];
+        if (records.length === 0) {
+            ddEl.insertAdjacentHTML('beforeend', '<p style="color:rgba(255,255,255,0.35);font-size:0.85rem;text-align:center">No data recorded for this hour</p>');
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.style.width = '100%';
+        canvas.style.display = 'block';
+        ddEl.appendChild(canvas);
+
+        // Re-use draw logic with smaller height
+        const isUptime = this.chartMetric === 'uptime';
+        const maxValue = isUptime ? 1 : Math.max(1, ...records.map(r => r.players_online || 0));
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width = ddEl.clientWidth;
+        const H = canvas.height = 110;
+        ctx.clearRect(0, 0, W, H);
+
+        const PAD = { left: 36, right: 8, top: 8, bottom: 20 };
+        const chartW = W - PAD.left - PAD.right;
+        const chartH = H - PAD.top - PAD.bottom;
+        const barW = Math.max(1, Math.floor(chartW / records.length) - 1);
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        [0, 0.5, 1].forEach(frac => {
+            const y = PAD.top + chartH * frac;
+            ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+        });
+
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
+        if (!isUptime) {
+            ctx.fillText(maxValue, PAD.left - 3, PAD.top + 10);
+            ctx.fillText('0', PAD.left - 3, PAD.top + chartH + 1);
+        } else {
+            ctx.fillText('ON', PAD.left - 3, PAD.top + 10);
+            ctx.fillText('OFF', PAD.left - 3, PAD.top + chartH);
+        }
+
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        const step = Math.max(1, Math.floor(records.length / 6));
+        for (let i = 0; i < records.length; i += step) {
+            const t = new Date(records[i].checked_at);
+            ctx.fillText(`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`, PAD.left + i * (barW + 1) + barW / 2, H - 4);
+        }
+
+        records.forEach((r, i) => {
+            const x = PAD.left + i * (barW + 1);
+            const value = isUptime ? (r.online ? 1 : 0) : (r.players_online || 0);
+            const barH = isUptime
+                ? (r.online ? chartH - 2 : 3)
+                : (value > 0 ? Math.max(1, (value / maxValue) * (chartH - 2)) : 0);
+            const y = PAD.top + chartH - barH;
+            if (r.online) {
+                const grad = ctx.createLinearGradient(x, y, x, PAD.top + chartH);
+                grad.addColorStop(0, isUptime ? 'rgba(34,197,94,0.85)' : 'rgba(0,200,255,0.9)');
+                grad.addColorStop(1, isUptime ? 'rgba(34,197,94,0.1)' : 'rgba(0,200,255,0.1)');
+                ctx.fillStyle = grad;
+            } else {
+                ctx.fillStyle = 'rgba(239,68,68,0.5)';
+            }
+            if (barH > 0) ctx.fillRect(x, y, barW, barH);
+        });
+    },
+
+    _closeDrilldown() {
+        const ddEl = document.getElementById('mc-chart-drilldown');
+        if (ddEl) { ddEl.style.display = 'none'; ddEl.innerHTML = ''; }
     },
 
     // ══════════════════════════════════════════════════════

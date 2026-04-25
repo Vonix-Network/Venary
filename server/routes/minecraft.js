@@ -111,6 +111,18 @@ router.get('/servers/:id', async (req, res) => {
 
 router.get('/servers/:id/history', async (req, res) => {
     try {
+        // Drill-down: raw per-minute records for one specific hour
+        if (req.query.hour) {
+            const hourStart = new Date(req.query.hour);
+            if (isNaN(hourStart.getTime())) return res.status(400).json({ error: 'Invalid hour' });
+            const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000);
+            const raw = await db.all(
+                'SELECT online, players_online, players_max, response_time_ms, checked_at FROM uptime_history WHERE server_id = ? AND checked_at >= ? AND checked_at < ? ORDER BY checked_at ASC',
+                [req.params.id, hourStart.toISOString(), hourEnd.toISOString()]
+            );
+            return res.json({ records: raw, stats: {} });
+        }
+
         const rangeMap = { '6h': 6, '12h': 12, '24h': 24, '3d': 72, '7d': 168, '10d': 240, '20d': 480, '30d': 720 };
         const hours = rangeMap[req.query.range] || 24;
         const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
