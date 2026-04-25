@@ -111,14 +111,36 @@ router.get('/servers/:id', async (req, res) => {
 
 router.get('/servers/:id/history', async (req, res) => {
     try {
-        const rangeMap = { '1h': 1, '7h': 7, '24h': 24, '7d': 168 };
-        const hours = rangeMap[req.query.range || '24h'] || 24;
+        const rangeMap = { '3d': 72, '7d': 168, '10d': 240, '20d': 480, '30d': 720 };
+        const hours = rangeMap[req.query.range] || 168;
         const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-        const records = await db.all('SELECT * FROM uptime_history WHERE server_id = ? AND checked_at > ? ORDER BY checked_at ASC', [req.params.id, since]);
+
+        // Aggregate by hour so chart stays readable regardless of range
+        const records = await db.all(`
+            SELECT
+                strftime('%Y-%m-%dT%H:00:00.000Z', checked_at) AS checked_at,
+                CASE WHEN AVG(CAST(online AS FLOAT)) >= 0.5 THEN 1 ELSE 0 END AS online,
+                ROUND(AVG(players_online)) AS players_online,
+                MAX(players_online) AS players_max,
+                ROUND(AVG(response_time_ms)) AS response_time_ms
+            FROM uptime_history
+            WHERE server_id = ? AND checked_at > ?
+            GROUP BY strftime('%Y-%m-%dT%H:00:00', checked_at)
+            ORDER BY checked_at ASC
+        `, [req.params.id, since]);
+
         const total = records.length;
         const onlineCount = records.filter(r => r.online).length;
         const playerCounts = records.filter(r => r.players_online != null).map(r => r.players_online);
-        res.json({ records, stats: { uptimePercentage: total > 0 ? (onlineCount / total) * 100 : 0, avgPlayers: playerCounts.length ? Math.round(playerCounts.reduce((a, b) => a + b, 0) / playerCounts.length) : 0, peakPlayers: playerCounts.length ? Math.max(...playerCounts) : 0, totalChecks: total } });
+        res.json({
+            records,
+            stats: {
+                uptimePercentage: total > 0 ? (onlineCount / total) * 100 : 0,
+                avgPlayers: playerCounts.length ? Math.round(playerCounts.reduce((a, b) => a + b, 0) / playerCounts.length) : 0,
+                peakPlayers: playerCounts.length ? Math.max(...playerCounts) : 0,
+                totalChecks: total
+            }
+        });
     } catch (err) {
         console.error('[MC] History error:', err);
         res.status(500).json({ error: 'Server error' });
@@ -659,7 +681,7 @@ router._pingAll = async function () {
                 offlineStrikes.delete(s.id);
             }
         }
-        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         await db.run('DELETE FROM uptime_history WHERE checked_at < ?', [cutoff]);
     } catch (err) {
         console.error('[MC] Ping cron error:', err);

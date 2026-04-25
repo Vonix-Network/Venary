@@ -7,7 +7,8 @@ var MinecraftPage = {
     currentTab: 'servers',
     servers: [],
     selectedServer: null,
-    chartRange: '24h',
+    chartRange: '7d',
+    chartMetric: 'players',
     leaderboardPage: 1,
     leaderboardLimit: 50,
     leaderboardStat: 'play_time',
@@ -446,12 +447,14 @@ var MinecraftPage = {
                                 <button class="mc-chart-btn metric-btn ${this.chartMetric === 'uptime' ? 'active' : ''}" onclick="MinecraftPage.setChartMetric('uptime', this, '${serverId}')">Uptime</button>
                             </div>
                         </div>
-                        <div class="mc-chart-controls">
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '1h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','1h',this)">1h</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '7h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','7h',this)">7h</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '24h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','24h',this)">24h</button>
+                        <div class="mc-chart-controls" style="margin-bottom:10px">
+                            <button class="mc-chart-btn range-btn ${this.chartRange === '3d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','3d',this)">3d</button>
                             <button class="mc-chart-btn range-btn ${this.chartRange === '7d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','7d',this)">7d</button>
+                            <button class="mc-chart-btn range-btn ${this.chartRange === '10d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','10d',this)">10d</button>
+                            <button class="mc-chart-btn range-btn ${this.chartRange === '20d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','20d',this)">20d</button>
+                            <button class="mc-chart-btn range-btn ${this.chartRange === '30d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','30d',this)">30d</button>
                         </div>
+                        <div id="mc-chart-stats" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06)"></div>
                         <canvas id="mc-chart" class="mc-chart-canvas"></canvas>
                     </div>
         `;
@@ -504,55 +507,93 @@ var MinecraftPage = {
             data = await API.get(`/api/ext/minecraft/servers/${serverId}/history?range=${range}`);
         } catch { data = { records: [], stats: {} }; }
 
-        const records = data.records || [];
-        if (records.length === 0) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            ctx.font = '14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('No history data yet', canvas.width / 2, canvas.height / 2);
-            return;
+        // Update stats summary
+        const statsEl = document.getElementById('mc-chart-stats');
+        if (statsEl && data.stats) {
+            const s = data.stats;
+            const uptimePct = (s.uptimePercentage || 0).toFixed(1);
+            const uptimeColor = s.uptimePercentage >= 95 ? '#22c55e' : s.uptimePercentage >= 80 ? '#f59e0b' : '#ef4444';
+            statsEl.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Uptime</span><span style="font-weight:700;color:${uptimeColor}">${uptimePct}%</span></div>
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Avg Players</span><span style="font-weight:700;color:#fff">${s.avgPlayers || 0}</span></div>
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Peak Players</span><span style="font-weight:700;color:var(--neon-cyan)">${s.peakPlayers || 0}</span></div>
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em">Hourly Points</span><span style="font-weight:700;color:rgba(255,255,255,0.6)">${s.totalChecks || 0}</span></div>
+            `;
         }
 
-        // Draw a simple bar chart
+        const records = data.records || [];
         const W = canvas.width = canvas.parentElement.clientWidth;
         const H = canvas.height = 200;
         ctx.clearRect(0, 0, W, H);
 
+        if (records.length === 0) {
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('No history data yet', W / 2, H / 2);
+            return;
+        }
+
         const isUptime = this.chartMetric === 'uptime';
         const maxValue = isUptime ? 1 : Math.max(1, ...records.map(r => r.players_online || 0));
-        const barW = Math.max(1, Math.floor((W - 40) / records.length) - 1);
-        const startX = 30;
 
-        // Y axis labels
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        const PAD = { left: 36, right: 8, top: 12, bottom: 22 };
+        const chartW = W - PAD.left - PAD.right;
+        const chartH = H - PAD.top - PAD.bottom;
+        const barW = Math.max(1, Math.floor(chartW / records.length) - 1);
+
+        // Grid lines
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        [0, 0.25, 0.5, 0.75, 1].forEach(frac => {
+            const y = PAD.top + chartH * frac;
+            ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+        });
+
+        // Y-axis labels
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
         ctx.font = '10px sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(isUptime ? 'ON' : maxValue, 25, 15);
-        ctx.fillText(isUptime ? 'OFF' : '0', 25, H - 5);
+        if (isUptime) {
+            ctx.fillText('ON', PAD.left - 3, PAD.top + 10);
+            ctx.fillText('OFF', PAD.left - 3, PAD.top + chartH);
+        } else {
+            ctx.fillText(maxValue, PAD.left - 3, PAD.top + 10);
+            if (maxValue > 2) ctx.fillText(Math.round(maxValue / 2), PAD.left - 3, PAD.top + chartH / 2 + 4);
+            ctx.fillText('0', PAD.left - 3, PAD.top + chartH + 1);
+        }
 
-        // Grid line
-        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-        ctx.beginPath();
-        ctx.moveTo(startX, H - 2);
-        ctx.lineTo(W, H - 2);
-        ctx.stroke();
+        // X-axis date labels (up to 7 evenly spaced)
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        const labelCount = Math.min(7, records.length);
+        const labelStep = Math.max(1, Math.floor(records.length / labelCount));
+        for (let i = 0; i < records.length; i += labelStep) {
+            const d = new Date(records[i].checked_at);
+            const label = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}h`;
+            const x = PAD.left + i * (barW + 1) + barW / 2;
+            ctx.fillText(label, x, H - 4);
+        }
 
+        // Bars
         records.forEach((r, i) => {
-            const x = startX + i * (barW + 1);
+            const x = PAD.left + i * (barW + 1);
             const value = isUptime ? (r.online ? 1 : 0) : (r.players_online || 0);
-            const h = isUptime ? (r.online ? H - 20 : 4) : ((value / maxValue) * (H - 20));
+            const barH = isUptime
+                ? (r.online ? chartH - 2 : 3)
+                : Math.max(2, (value / maxValue) * (chartH - 2));
+            const y = PAD.top + chartH - barH;
 
             if (r.online) {
-                const grad = ctx.createLinearGradient(x, H - h - 2, x, H - 2);
-                grad.addColorStop(0, isUptime ? 'rgba(34,197,94,0.8)' : 'rgba(0,255,255,0.8)');
-                grad.addColorStop(1, isUptime ? 'rgba(34,197,94,0.2)' : 'rgba(0,255,255,0.2)');
+                const grad = ctx.createLinearGradient(x, y, x, PAD.top + chartH);
+                grad.addColorStop(0, isUptime ? 'rgba(34,197,94,0.85)' : 'rgba(0,255,255,0.85)');
+                grad.addColorStop(1, isUptime ? 'rgba(34,197,94,0.1)' : 'rgba(0,255,255,0.1)');
                 ctx.fillStyle = grad;
-                ctx.fillRect(x, H - h - 2, barW, h);
             } else {
-                ctx.fillStyle = 'rgba(255,0,0,0.5)';
-                ctx.fillRect(x, H - 8, barW, 6);
+                ctx.fillStyle = 'rgba(239,68,68,0.5)';
             }
+            ctx.fillRect(x, y, barW, barH);
         });
     },
 
