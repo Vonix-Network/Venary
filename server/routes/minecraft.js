@@ -109,6 +109,20 @@ router.get('/servers/:id', async (req, res) => {
     }
 });
 
+router.get('/servers/:id/history/span', async (req, res) => {
+    try {
+        const row = await db.get(
+            'SELECT MIN(checked_at) as oldest, COUNT(*) as total FROM uptime_history WHERE server_id = ?',
+            [req.params.id]
+        );
+        if (!row || !row.oldest) return res.json({ hoursAvailable: 0 });
+        const hours = Math.floor((Date.now() - new Date(row.oldest).getTime()) / (1000 * 60 * 60));
+        res.json({ hoursAvailable: hours });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 router.get('/servers/:id/history', async (req, res) => {
     try {
         // Drill-down: raw per-minute records for one specific hour

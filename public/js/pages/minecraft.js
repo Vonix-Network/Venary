@@ -447,15 +447,8 @@ var MinecraftPage = {
                                 <button class="mc-chart-btn metric-btn ${this.chartMetric === 'uptime' ? 'active' : ''}" onclick="MinecraftPage.setChartMetric('uptime', this, '${serverId}')">Uptime</button>
                             </div>
                         </div>
-                        <div class="mc-chart-controls" style="margin-bottom:10px">
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '6h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','6h',this)">6h</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '12h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','12h',this)">12h</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '24h' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','24h',this)">24h</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '3d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','3d',this)">3d</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '7d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','7d',this)">7d</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '10d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','10d',this)">10d</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '20d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','20d',this)">20d</button>
-                            <button class="mc-chart-btn range-btn ${this.chartRange === '30d' ? 'active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','30d',this)">30d</button>
+                        <div id="mc-chart-range-btns" class="mc-chart-controls" style="margin-bottom:10px">
+                            <span style="color:rgba(255,255,255,0.25);font-size:0.8rem;padding:4px 2px">Loading...</span>
                         </div>
                         <div id="mc-chart-stats" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06)"></div>
                         <canvas id="mc-chart" class="mc-chart-canvas" style="cursor:pointer"></canvas>
@@ -476,8 +469,7 @@ var MinecraftPage = {
         html += '</div></div>';
         container.innerHTML = html;
 
-        // Load chart
-        this.loadChart(serverId, this.chartRange);
+        this._initChartRanges(serverId);
     },
 
     viewServerLeaderboard(serverId) {
@@ -537,6 +529,44 @@ var MinecraftPage = {
         // Wire up click handler for drill-down on multi-day views
         canvas.onclick = isAggregated ? (e) => this._handleChartClick(e, canvas) : null;
         canvas.title = isAggregated ? 'Click a bar to drill into that hour' : '';
+    },
+
+    async _initChartRanges(serverId) {
+        const ALL_RANGES = [
+            { key: '6h',  hours: 6   },
+            { key: '12h', hours: 12  },
+            { key: '24h', hours: 24  },
+            { key: '3d',  hours: 72  },
+            { key: '7d',  hours: 168 },
+            { key: '10d', hours: 240 },
+            { key: '20d', hours: 480 },
+            { key: '30d', hours: 720 },
+        ];
+
+        let hoursAvailable = 0;
+        try {
+            const span = await API.get(`/api/ext/minecraft/servers/${serverId}/history/span`);
+            hoursAvailable = span.hoursAvailable || 0;
+        } catch { /* show at least short ranges */ }
+
+        // Show a range if we have at least 1 hour of data within its window
+        // Always include at least 6h so the chart always shows something
+        const available = ALL_RANGES.filter(r => r.hours <= Math.max(6, hoursAvailable + 1));
+
+        // Pick best default: prefer 24h, else the largest available
+        const preferred = available.find(r => r.key === '24h') || available[available.length - 1];
+        if (!available.find(r => r.key === this.chartRange)) {
+            this.chartRange = preferred?.key || '6h';
+        }
+
+        const rangeEl = document.getElementById('mc-chart-range-btns');
+        if (rangeEl) {
+            rangeEl.innerHTML = available.map(r =>
+                `<button class="mc-chart-btn range-btn${this.chartRange === r.key ? ' active' : ''}" onclick="MinecraftPage.loadChart('${serverId}','${r.key}',this)">${r.key}</button>`
+            ).join('');
+        }
+
+        this.loadChart(serverId, this.chartRange);
     },
 
     _drawChart(canvas, records, isAggregated) {
